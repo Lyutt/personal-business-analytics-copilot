@@ -1,0 +1,242 @@
+config_type: field_mapping_profile
+mapping_profile_id: MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1
+mapping_profile_name: CTV（不含植入）季度累计业绩收入字段映射
+dataset_id: DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
+dataset_version_constraint: TBD
+source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+business_domains:
+  - Revenue
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-07-30
+approval_record:
+  approved_by: WORKFLOW_OWNER
+  approved_at: 2026-07-30
+  approval_scope: P0 Weekly Business Report fields
+  approval_note: Owner confirmed source scope, four P0 mappings and readiness handling
+
+scope:
+  asset_scope: Entire Sheet0 data region
+  source_object_or_sheet: Sheet0
+  source_header_row: 1
+  header_structure: Single row
+  expected_raw_field_count: 29
+  mapped_field_count: 4
+  not_mapped_in_v1_field_count: 25
+  record_grain_reference: Dataset Inventory
+
+evidence:
+  evidence_sources:
+    - '${LOCAL_WORKFLOW_DATA_ROOT}\订单分季度收入.xlsx'
+    - phase1_5/discovery/DS_REVENUE_CTV_EXCL_PLACEMENT_QTD_Field_Structure_Inspection.md
+  inspected_sample_count: 1
+  sample_periods:
+    - TBD
+  schema_observation_status: completed
+
+source_schema:
+  structure_type: Excel worksheet table
+  observed_used_range: A1:AC1154
+  expected_field_count: 29
+  field_order_is_contractual: TBD
+  duplicate_header_policy: block_and_confirm
+  missing_p0_field_policy: notify_owner_and_pause_affected_pipeline
+  missing_not_mapped_in_v1_field_policy: ignore
+  unknown_source_field_policy: notify_and_request_owner_confirmation
+
+record_identity:
+  natural_unique_key:
+    - 订单ID
+  natural_unique_key_status: owner_confirmed
+  blank_key_allowed_at_ingestion: true
+  duplicate_key_allowed_at_ingestion: true
+  retain_all_source_records: true
+  automatic_deduplication_allowed: false
+  blank_or_duplicate_runtime_effect: completed_with_warning
+  owner_notification_required: true
+  pipeline_blocking_behavior: continue
+
+raw_field_inventory:
+  - {raw_field_inventory_id: RF001, raw_column: A, raw_field_name: 订单ID, observed_raw_storage_type: text_identifier, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF002, raw_column: B, raw_field_name: 合同编号, observed_raw_storage_type: text_identifier, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF003, raw_column: C, raw_field_name: 代理商BN号, observed_raw_storage_type: text_identifier, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF004, raw_column: D, raw_field_name: 订单名称, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF005, raw_column: E, raw_field_name: 第一次审核通过时间, observed_raw_storage_type: date_candidate, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF006, raw_column: F, raw_field_name: 地域, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF007, raw_column: G, raw_field_name: 订单类型, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF008, raw_column: H, raw_field_name: 是否实际结算, observed_raw_storage_type: text_flag, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF009, raw_column: I, raw_field_name: 上线状态, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF010, raw_column: J, raw_field_name: 代理商名称, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF011, raw_column: K, raw_field_name: 代理商集团名称, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF012, raw_column: L, raw_field_name: 广告主名称, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF013, raw_column: M, raw_field_name: 客户简称, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF014, raw_column: N, raw_field_name: 集团名称, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF015, raw_column: O, raw_field_name: 一级行业, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF016, raw_column: P, raw_field_name: 直客销售, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF017, raw_column: Q, raw_field_name: 渠道销售, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF018, raw_column: R, raw_field_name: 创新销售, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF019, raw_column: S, raw_field_name: 执行开始日期, observed_raw_storage_type: date_candidate, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF020, raw_column: T, raw_field_name: 执行结束日期, observed_raw_storage_type: date_candidate, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF021, raw_column: U, raw_field_name: 合同金额, observed_raw_storage_type: numeric_candidate, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF022, raw_column: V, raw_field_name: 销售业绩, observed_raw_storage_type: numeric_candidate, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF023, raw_column: W, raw_field_name: 非销售业绩, observed_raw_storage_type: numeric_candidate, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF024, raw_column: X, raw_field_name: 所属季度, observed_raw_storage_type: text_period, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF025, raw_column: Y, raw_field_name: 已执行收入(季度), observed_raw_storage_type: numeric, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF026, raw_column: Z, raw_field_name: 未执行收入(季度), observed_raw_storage_type: numeric_candidate, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF027, raw_column: AA, raw_field_name: 总收入(季度), observed_raw_storage_type: numeric, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF028, raw_column: AB, raw_field_name: TV总金额(季度), observed_raw_storage_type: numeric, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF029, raw_column: AC, raw_field_name: GD信息流金额(季度), observed_raw_storage_type: numeric_candidate, source_value_origin: source_value, mapping_status: not_mapped_in_v1}
+
+field_mappings:
+  - mapping_entry_id: FM001
+    raw_field_inventory_id: RF001
+    raw_field_name: 订单ID
+    raw_field_position: A
+    standard_field_id: order_id
+    standard_field_name: 订单ID
+    standard_data_type: string
+    semantic_role: business_identifier
+    required: true
+    nullable: true
+    ingestion_behavior: preserve_source_text
+    numeric_cast_allowed: false
+    preserve_leading_zeros: true
+    text_normalization:
+      - trim_leading_and_trailing_whitespace
+      - remove_leading_and_trailing_carriage_return_or_line_feed
+    preserve_internal_characters: true
+    blank_or_duplicate_handling: retain_record_and_warn
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM002
+    raw_field_inventory_id: RF025
+    raw_field_name: 已执行收入(季度)
+    raw_field_position: Y
+    standard_field_id: qtd_executed_revenue_amount
+    standard_field_name: QTD已执行金额
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    period_semantics: current_quarter_cumulative_as_of_dataset_cutoff
+    required: true
+    nullable: false
+    unit: CNY_yuan
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    invalid_nonblank_numeric_handling: notify_owner_and_pause_pipeline
+    affected_pipeline_id: PL_REVENUE_CTV_WEEKLY
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM003
+    raw_field_inventory_id: RF027
+    raw_field_name: 总收入(季度)
+    raw_field_position: AA
+    standard_field_id: qtd_signed_amount
+    standard_field_name: QTD签单金额
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    period_semantics: current_quarter_cumulative_as_of_dataset_cutoff
+    required: true
+    nullable: false
+    unit: CNY_yuan
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    invalid_nonblank_numeric_handling: notify_owner_and_pause_pipeline
+    affected_pipeline_id: PL_REVENUE_CTV_WEEKLY
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM004
+    raw_field_inventory_id: RF028
+    raw_field_name: TV总金额(季度)
+    raw_field_position: AB
+    standard_field_id: qtd_ctv_signed_amount
+    standard_field_name: QTD CTV签单金额
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    period_semantics: current_quarter_cumulative_as_of_dataset_cutoff
+    required: true
+    nullable: false
+    unit: CNY_yuan
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    invalid_nonblank_numeric_handling: notify_owner_and_pause_pipeline
+    affected_pipeline_id: PL_REVENUE_CTV_WEEKLY
+    mapping_status: owner_confirmed
+
+explicit_ignored_fields:
+  status: not_mapped_in_v1
+  missing_field_handling: ignore
+  raw_field_inventory_ids:
+    - RF002
+    - RF003
+    - RF004
+    - RF005
+    - RF006
+    - RF007
+    - RF008
+    - RF009
+    - RF010
+    - RF011
+    - RF012
+    - RF013
+    - RF014
+    - RF015
+    - RF016
+    - RF017
+    - RF018
+    - RF019
+    - RF020
+    - RF021
+    - RF022
+    - RF023
+    - RF024
+    - RF026
+    - RF029
+
+validation:
+  required_standard_fields:
+    - order_id
+    - qtd_executed_revenue_amount
+    - qtd_signed_amount
+    - qtd_ctv_signed_amount
+  p0_source_header_validation_required: true
+  missing_p0_source_header_behavior:
+    notify_owner: true
+    affected_pipeline_id: PL_REVENUE_CTV_WEEKLY
+    pipeline_behavior: pause_pending_resolution
+  type_validation_required: true
+  order_id_quality_validation:
+    blank_check: true
+    duplicate_check: true
+    retain_all_records: true
+    automatic_deduplication_allowed: false
+    pipeline_status_on_anomaly: COMPLETED_WITH_WARNING
+    pipeline_blocking_behavior: continue
+    owner_notification_required: true
+  unknown_field_validation_required: true
+  new_raw_field_policy:
+    notify_owner: true
+    owner_confirmation_required_before_registration: true
+    automatic_registration_allowed: false
+    automatic_mapping_allowed: false
+    block_confirmed_field_processing: false
+    temporary_status: unmapped_new_field
+  duplicate_standard_target_allowed: false
+  validation_rule_ids: []
+
+governance:
+  evidence_required_for_approval: true
+  owner_confirmation_required: true
+  change_reason: Approved V1 field mapping for Weekly Business Report P0 fields
+  notes: >
+    Dataset保留完整Sheet0原始结构。v1仅映射订单ID及三个当前周报金额字段；
+    其余25个字段不参与当前标准化计算。订单ID异常保留记录并形成警告；
+    P0表头缺失或P0金额字段存在非空非数字值时通知Owner并暂停受影响Pipeline。
+
+constraints:
+  profile_cannot_define_metric_formula: true
+  profile_cannot_define_business_rule: true
+  profile_cannot_create_dataset_or_pipeline_dependency: true
+  profile_cannot_auto_approve_unknown_field: true
+  profile_must_reference_registered_dataset: true

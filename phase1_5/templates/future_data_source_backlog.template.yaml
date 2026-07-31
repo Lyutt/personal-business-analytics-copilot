@@ -1,0 +1,15 @@
+config_type: future_data_source_backlog
+backlog_version: 0.1.0-draft
+
+future_candidates:
+  - source_name: TBD
+    potential_business_use: TBD
+    status: backlog
+    notes: TBD
+
+constraints:
+  candidate_is_not_active_data_source: true
+  candidate_cannot_enter_dataset_inventory: true
+  candidate_cannot_enter_pipeline_registry: true
+  candidate_cannot_enter_metric_library: true
+  activation_requires_current_workflow_use_or_confirmed_planned_workflow: true

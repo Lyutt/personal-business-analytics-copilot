@@ -1,0 +1,65 @@
+config_type: pipeline_registry
+registry_version: 0.1.1-draft
+status: draft
+owner: TBD
+
+pipelines:
+  - pipeline_id: TBD
+    pipeline_name: TBD
+    business_domain: TBD
+    business_line: TBD
+    business_context_id: TBD
+    trigger_type: TBD
+    owner: TBD
+    version: 0.1.0-draft
+    approval_status: pending
+
+    workflow_bindings:
+      - workflow_id: TBD
+        required_or_optional: TBD
+        failure_scope: TBD
+        execution_order_or_dependency: TBD
+
+    dataset_dependencies:
+      - dataset_id: TBD
+        dataset_version_constraint: TBD
+        dependency_role: TBD
+        required: true
+        join_or_relationship_rule_id: TBD
+
+    execution:
+      minimum_execution_unit: pipeline
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids: []
+      ordered_rule_set_ids: []
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids: []
+      output_mapping_ids: []
+      write_to_metrics_store: TBD
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    governance:
+      effective_from: TBD
+      evidence_sources: []
+      change_reason: initial_definition
+
+constraints:
+  dataset_dependencies_must_trace_to_active_data_sources: true
+  future_backlog_sources_cannot_create_pipelines: true
+  dependencies_must_be_explicit: true
+  auto_dependency_by_field_similarity: false
+  auto_dependency_by_name_match: false
+  auto_dependency_by_history: false
+  output_assembly_may_calculate: false

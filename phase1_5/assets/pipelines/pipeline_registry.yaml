@@ -1,0 +1,1921 @@
+config_type: pipeline_registry
+registry_version: 0.1.0-initialization
+status: completed
+owner: WORKFLOW_OWNER
+current_stage: Pipeline Registry Initialization - Completed
+stage_completion_requires_explicit_owner_confirmation: true
+stage_completion:
+  owner_confirmation: confirmed
+  confirmed_by: WORKFLOW_OWNER
+  confirmation_date: 2026-07-29
+  next_stage_started: true
+  next_stage: Field Mapping Initialization
+  next_stage_start_date: 2026-07-30
+readiness_gate:
+  status: Pass
+  assessment_date: 2026-07-29
+  initialized_pipeline_count: 12
+  duplicate_pipeline_id_count: 0
+  unresolved_candidate_dependency_count: 0
+  weekly_in_scope_dataset_coverage: Complete
+  known_out_of_scope_dataset:
+    - DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+  deferred_business_logic_remains_tbd: true
+initialization_scope:
+  included_workflows:
+    - WF_WEEKLY_BUSINESS_REPORT
+  deferred_workflows:
+    - workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+      initialization_timing: After Weekly Workflow Pipeline Registry completion
+      known_deferred_output:
+        - 预算盘点 Excel
+      output_initialization_stage: WF_CUSTOMER_REVENUE_DETAIL Output Mapping
+      weekly_report_file_dependency: false
+  cross_workflow_file_dependency_allowed: false
+  cross_workflow_validated_result_sharing:
+    - Metrics Store
+    - Metric Result Contract
+  deferred_to_output_mapping:
+    - Weekly Report Revenue Section Assembly
+    - Weekly Report Inventory Section Assembly
+    - Weekly Report Email Body Assembly
+    - Outlook Draft creation
+    - display_item: 订单整体曝光完成率
+      asset_classification: Configured display value
+      dataset_dependency: none
+      pipeline_dependency: none
+      metric_library_registration: false
+      metrics_store_write: false
+      allowed_display_range: 92%-95%
+      allowed_values:
+        - 92%
+        - 93%
+        - 94%
+        - 95%
+      decimal_values_allowed: false
+      weekly_selection_method: Select any allowed integer value excluding prior week's displayed value
+      consecutive_week_repeat_allowed: false
+      prior_display_value_source: Previous generated Weekly Report output record
+      prior_display_value_unavailable_action:
+        selection_method: Randomly select one allowed integer value
+        notify_owner: false
+        block_workflow: false
+  deferred_output_components_may_calculate: false
+  outlook_auto_send: false
+
+pipelines:
+  - pipeline_id: PL_REVENUE_TECHNICAL_WEEKLY
+    pipeline_name: 技术线周度收入分析 Pipeline
+    business_domain: Revenue
+    business_line: Technical Line
+    business_context_id: CTX_REVENUE_TECHNICAL_WEEKLY
+    trigger_type: Scheduled
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from Data Source and Dataset registries
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        按已确认条件获取本期销售业务线Rolling Deck季度累计业绩收入数据。
+      includes:
+        - 获取本期Rolling Deck输入
+        - 访问明确对应的去年同期Rolling Deck历史附件
+        - 读取技术线Weekly Revenue Historical Metric Result Store历史结果
+        - 执行后续已确认的标准化、业务规则与指标计算
+        - 生成并验证技术线周度收入结果
+        - 写入技术线Weekly Revenue Historical Metric Result Store
+      end: >
+        生成通过验证的技术线收入Result Contract，
+        并按已确认持久化规则尝试更新历史Metric Result Store。
+      excludes:
+        - CTV revenue processing
+        - Smart Speaker revenue processing
+        - Fast Version revenue processing
+        - Customer Revenue Detail Workflow
+        - Weekly Report Revenue Section Assembly
+        - Weekly Business Report Output Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: pipeline
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: required
+        failure_scope: Weekly Report Revenue Section only
+        execution_order_or_dependency: >
+          Thursday 17:30 revenue-stage pipeline.
+          No predecessor dependency on CTV, Smart Speaker, or Fast Version
+          revenue pipelines; eligible for parallel execution.
+        failure_handling:
+          immediate_action:
+            - Notify owner of the failure reason
+            - Provide a proposed resolution or required owner action
+          recovery_window: >
+            等待并允许技术线收入Pipeline独立修复或补跑，
+            不阻断库存等其他Domain Pipeline继续执行。
+          friday_fallback: >
+            如果星期五库存等模块完成后收入模块仍未修复成功，
+            则先创建仅包含其他已完成模块的Outlook Draft。
+          revenue_section_representation_in_fallback_draft: >
+            保留“二、本周收入情况”模块标题，
+            并注明“收入数据处理失败，待补充”。
+
+    dataset_dependencies:
+      - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+        dataset_version_constraint: TBD
+        dependency_role: Current-period technical-line revenue input
+        required: true
+        join_or_relationship_rule_id: TBD
+        acquisition_and_selection_rules:
+          source_of_truth: Dataset Readiness Matrix
+          automatic_rule_duplication_in_pipeline: false
+
+    historical_input_dependencies:
+      - dependency_type: Historical Attachment Archive
+        source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+        dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+        role: Prior-year comparable Rolling Deck input
+        required: true
+        relationship_rule_id: TBD
+        missing_input_action: >
+          暂停技术线收入Pipeline并通知Owner，
+          禁止使用相近日期文件替代。
+        multiple_match_action: >
+          暂停相关处理并请求Owner确认具体采用文件，
+          禁止自动选择。
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
+        role: Prior-week validated technical-line revenue results
+        read_required_or_optional: required_for_regular_week
+        missing_or_incomplete_action: >
+          暂停技术线收入Pipeline并通知Owner，
+          禁止使用其他日期或未验证结果替代。
+
+    execution:
+      schedule:
+        day_of_week: Thursday
+        start_time: "17:30"
+        timezone: Asia/Shanghai
+        schedule_source: Confirmed Weekly Business Report operating sequence
+      manual_trigger_allowed: true
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids:
+        - MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+      ordered_rule_set_ids:
+        - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+        - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_REVENUE_TECHNICAL_WEEKLY
+      result_contract_modes:
+        contract_id: RC_REVENUE_TECHNICAL_WEEKLY
+        mode_field: report_mode
+        allowed_modes:
+          - regular_week
+          - quarter_transition_week
+        mode_selection_rule_id: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+        non_applicable_field_representation: not_applicable
+        missing_data_must_not_be_mapped_to_not_applicable: true
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_revenue_section_consumption: true
+        owner_notification_required: true
+        notification_reason: Historical Metric Result Store persistence failed
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    cross_pipeline_dependencies:
+      upstream_pipeline_ids: []
+      parallel_peer_pipeline_contexts:
+        - CTV weekly revenue
+        - Smart Speaker weekly revenue
+        - Fast Version weekly revenue
+      downstream_consumer:
+        component: Weekly Report Revenue Section Assembly
+        behavior: Wait for applicable revenue Pipeline results
+        may_calculate: false
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Dataset Inventory
+        - Historical Weekly Report Context Extraction
+        - Weekly Revenue Historical Metric Result Store Registry
+      change_reason: Initial Pipeline Registry definition
+
+  - pipeline_id: PL_REVENUE_CTV_WEEKLY
+    pipeline_name: CTV（不含植入）周度收入分析 Pipeline
+    business_domain: Revenue
+    business_line: CTV excluding placement
+    business_context_id: CTX_REVENUE_CTV_WEEKLY
+    trigger_type: Scheduled
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from Data Source and Dataset registries
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        按已确认邮件选择规则获取当期CTV（不含植入）季度累计收入附件。
+      includes:
+        - 获取并选择当期CTV收入邮件附件
+        - 读取CTV Weekly Revenue Historical Metric Result Store历史结果
+        - 执行后续已确认的标准化、业务规则与指标计算
+        - 生成并验证CTV周度收入结果
+        - 写入CTV Weekly Revenue Historical Metric Result Store
+      end: >
+        生成通过验证的CTV收入Result Contract，
+        并按已确认持久化规则尝试更新历史Metric Result Store。
+      excludes:
+        - Technical Line revenue processing
+        - Smart Speaker revenue processing
+        - Fast Version revenue processing
+        - Customer Revenue Detail Workflow
+        - Weekly Report Revenue Section Assembly
+        - Weekly Business Report Output Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: pipeline
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: required
+        failure_scope: Weekly Report Revenue Section only
+        execution_order_or_dependency: >
+          Thursday 17:30 revenue-stage pipeline.
+          No predecessor dependency on Technical Line, Smart Speaker, or Fast
+          Version revenue pipelines; eligible for parallel execution.
+        failure_handling:
+          immediate_action:
+            - Notify owner of the failure reason
+            - Provide a proposed resolution or required owner action
+          recovery_window: >
+            等待并允许CTV收入Pipeline独立修复或补跑，
+            不阻断其他Domain Pipeline继续执行。
+          friday_fallback: >
+            如果星期五库存等模块完成后收入模块仍未修复成功，
+            则先创建仅包含其他已完成模块的Outlook Draft。
+          revenue_section_representation_in_fallback_draft: >
+            保留“二、本周收入情况”模块标题，
+            并注明“收入数据处理失败，待补充”。
+
+    dataset_dependencies:
+      - dataset_id: DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
+        dataset_version_constraint: TBD
+        dependency_role: Current-period CTV excluding placement revenue input
+        required: true
+        join_or_relationship_rule_id: TBD
+        acquisition_and_selection_rules:
+          source_of_truth: Dataset Readiness Matrix
+          automatic_rule_duplication_in_pipeline: false
+
+    historical_input_dependencies:
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
+        role: Prior-period validated CTV revenue results
+        read_required_or_optional: required_for_regular_week
+        missing_or_incomplete_action: >
+          暂停CTV收入Pipeline并通知Owner，
+          禁止使用其他日期或未验证结果替代。
+
+    execution:
+      schedule:
+        day_of_week: Thursday
+        start_time: "17:30"
+        timezone: Asia/Shanghai
+        schedule_source: Confirmed Weekly Business Report operating sequence
+      manual_trigger_allowed: true
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids:
+        - MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1
+      ordered_rule_set_ids:
+        - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_REVENUE_CTV_WEEKLY
+      result_contract_modes:
+        contract_id: RC_REVENUE_CTV_WEEKLY
+        mode_field: report_mode
+        allowed_modes:
+          - regular_week
+          - quarter_transition_week
+        mode_selection_rule_id: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+        non_applicable_field_representation: not_applicable
+        missing_data_must_not_be_mapped_to_not_applicable: true
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_revenue_section_consumption: true
+        owner_notification_required: true
+        notification_reason: Historical Metric Result Store persistence failed
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    cross_pipeline_dependencies:
+      upstream_pipeline_ids: []
+      parallel_peer_pipeline_contexts:
+        - Technical Line weekly revenue
+        - Smart Speaker weekly revenue
+        - Fast Version weekly revenue
+      downstream_consumer:
+        component: Weekly Report Revenue Section Assembly
+        behavior: Wait for applicable revenue Pipeline results
+        may_calculate: false
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Dataset Inventory
+        - Dataset Readiness Matrix
+        - Weekly Revenue Historical Metric Result Store Registry
+      change_reason: Initial Pipeline Registry definition
+
+  - pipeline_id: PL_REVENUE_SMART_SPEAKER_WEEKLY
+    pipeline_name: 智能音箱周度收入分析 Pipeline
+    business_domain: Revenue
+    business_line: Smart Speaker
+    business_context_id: CTX_REVENUE_SMART_SPEAKER_WEEKLY
+    trigger_type: Scheduled
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from Data Source and Dataset registries
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        通过Apollo奇胜执行收入查询中的智能音箱收入查询模板，
+        获取显式指定日期范围的收入结果。
+      includes:
+        - 执行智能音箱收入查询模板
+        - 获取单行日期区间收入汇总结果
+        - 执行后续已确认的标准化、业务规则与指标计算
+        - 生成并验证智能音箱周度收入结果
+      end: Generate a validated Smart Speaker weekly revenue Result Contract
+      excludes:
+        - Fast Version revenue processing
+        - Technical Line revenue processing
+        - CTV revenue processing
+        - Weekly Report Revenue Section Assembly
+        - Weekly Business Report Output Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: pipeline
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: required
+        failure_scope: Weekly Report Revenue Section only
+        execution_order_or_dependency: >
+          Thursday 17:30 revenue-stage pipeline.
+          No predecessor dependency on the other revenue pipelines;
+          eligible for parallel execution.
+        failure_handling:
+          immediate_action:
+            - Notify owner of the failure reason
+            - Provide a proposed resolution or required owner action
+          recovery_window: >
+            等待并允许智能音箱收入Pipeline独立修复或补跑，
+            不阻断其他Domain Pipeline继续执行。
+          friday_fallback: >
+            如果星期五库存等模块完成后收入模块仍未修复成功，
+            则先创建仅包含其他已完成模块的Outlook Draft。
+          revenue_section_representation_in_fallback_draft: >
+            保留“二、本周收入情况”模块标题，
+            并注明“收入数据处理失败，待补充”。
+
+    dataset_dependencies:
+      - dataset_id: DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+        query_asset_id: QRY_APOLLO_QISHENG_EXECUTION_REVENUE
+        query_template_parameter: 智能音箱收入查询模板
+        dataset_version_constraint: TBD
+        dependency_role: Smart Speaker date-range revenue result
+        required: true
+        join_or_relationship_rule_id: TBD
+
+    historical_input_dependencies:
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
+        role: Validated weekly revenue history for QTD accumulation
+        read_required_or_optional: required
+        missing_data_recovery:
+          materiality_basis: Explicit Metric and Business Rule dependency only
+          non_material_missing_action: Ignore and continue
+          material_missing_action: >
+            在本Pipeline内启动有限自动修复，
+            不按全部历史缺口逐周回填。
+          max_automatic_repair_queries: 2
+          repair_query_plan:
+            - query_role: One missing week revenue
+              date_range: The explicitly identified missing business week
+            - query_role: Current-quarter cumulative revenue
+              start_date: Current fiscal-quarter first day
+              end_date: Target revenue cutoff date
+          sequential_backfill_of_all_missing_weeks: false
+          repair_failure_conditions:
+            - Query execution failed
+            - Query returned empty result
+            - Query result failed validation
+          repair_failure_action: Notify owner and pause this Pipeline
+          successful_repair_persistence: >
+            补查结果验证通过后，
+            将能够完整验证的缺失周记录补写回Store Asset，
+            并使用当Q截止累计补查结果完成目标周QTD，
+            完成回读验证后再继续。
+
+    execution:
+      schedule:
+        day_of_week: Thursday
+        start_time: "17:30"
+        timezone: Asia/Shanghai
+      manual_trigger_allowed: true
+      query_invocations:
+        - invocation_id: INV_APOLLO_SMART_SPEAKER_WEEKLY_REVENUE
+          query_count_per_run: 1
+          query_template: 智能音箱收入查询模板
+          date_parameters:
+            start_date: Thursday execution date minus 7 days
+            end_date: Thursday execution date minus 1 day
+          expected_result_shape: Single-row business-line period result
+      qtd_acquisition_method: >
+        不执行第二次Apollo QTD查询。
+        QTD通过已验证的上一周“截止当周最后一天本Q累计收入”
+        与本周收入生成；
+        具体累计与季度重置规则留待Business Rule和Metric阶段确认。
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids:
+        - MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1
+      ordered_rule_set_ids:
+        - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+        - BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_REVENUE_SMART_SPEAKER_WEEKLY
+      result_contract_modes:
+        contract_id: RC_REVENUE_SMART_SPEAKER_WEEKLY
+        mode_field: report_mode
+        allowed_modes:
+          - regular_week
+          - quarter_transition_week
+        mode_selection_rule_id: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+        non_applicable_field_representation: not_applicable
+        missing_data_must_not_be_mapped_to_not_applicable: true
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
+      persisted_fields:
+        - 数据当周最后一天
+        - 当周收入
+        - 截止当周最后一天本Q累计收入
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_revenue_section_consumption: true
+        owner_notification_required: true
+        notification_reason: Historical Metric Result Store persistence failed
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    cross_pipeline_dependencies:
+      upstream_pipeline_ids: []
+      parallel_peer_pipeline_ids:
+        - PL_REVENUE_FAST_VERSION_WEEKLY
+        - PL_REVENUE_TECHNICAL_WEEKLY
+        - PL_REVENUE_CTV_WEEKLY
+      downstream_consumer:
+        component: Weekly Report Revenue Section Assembly
+        behavior: Wait for applicable revenue Pipeline results
+        may_calculate: false
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Dataset Inventory
+        - Dataset Readiness Matrix
+      change_reason: Initial Pipeline Registry definition
+
+  - pipeline_id: PL_REVENUE_FAST_VERSION_WEEKLY
+    pipeline_name: 极速版周度收入分析 Pipeline
+    business_domain: Revenue
+    business_line: Fast Version
+    business_context_id: CTX_REVENUE_FAST_VERSION_WEEKLY
+    trigger_type: Scheduled
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from Data Source and Dataset registries
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        通过Apollo奇胜执行收入查询中的极速版收入查询模板，
+        获取显式指定日期范围的收入结果。
+      includes:
+        - 执行极速版收入查询模板
+        - 获取单行日期区间收入汇总结果
+        - 执行后续已确认的标准化、业务规则与指标计算
+        - 生成并验证极速版周度收入结果
+      end: Generate a validated Fast Version weekly revenue Result Contract
+      excludes:
+        - Smart Speaker revenue processing
+        - Technical Line revenue processing
+        - CTV revenue processing
+        - Weekly Report Revenue Section Assembly
+        - Weekly Business Report Output Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: pipeline
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: required
+        failure_scope: Weekly Report Revenue Section only
+        execution_order_or_dependency: >
+          Thursday 17:30 revenue-stage pipeline.
+          No predecessor dependency on the other revenue pipelines;
+          eligible for parallel execution.
+        failure_handling:
+          immediate_action:
+            - Notify owner of the failure reason
+            - Provide a proposed resolution or required owner action
+          recovery_window: >
+            等待并允许极速版收入Pipeline独立修复或补跑，
+            不阻断其他Domain Pipeline继续执行。
+          friday_fallback: >
+            如果星期五库存等模块完成后收入模块仍未修复成功，
+            则先创建仅包含其他已完成模块的Outlook Draft。
+          revenue_section_representation_in_fallback_draft: >
+            保留“二、本周收入情况”模块标题，
+            并注明“收入数据处理失败，待补充”。
+
+    dataset_dependencies:
+      - dataset_id: DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+        query_asset_id: QRY_APOLLO_QISHENG_EXECUTION_REVENUE
+        query_template_parameter: 极速版收入查询模板
+        dataset_version_constraint: TBD
+        dependency_role: Fast Version date-range revenue result
+        required: true
+        join_or_relationship_rule_id: TBD
+
+    historical_input_dependencies:
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
+        role: Validated weekly revenue history for QTD accumulation
+        read_required_or_optional: required
+        missing_data_recovery:
+          materiality_basis: Explicit Metric and Business Rule dependency only
+          non_material_missing_action: Ignore and continue
+          material_missing_action: >
+            在本Pipeline内启动有限自动修复，
+            不按全部历史缺口逐周回填。
+          max_automatic_repair_queries: 2
+          repair_query_plan:
+            - query_role: One missing week revenue
+              date_range: The explicitly identified missing business week
+            - query_role: Current-quarter cumulative revenue
+              start_date: Current fiscal-quarter first day
+              end_date: Target revenue cutoff date
+          sequential_backfill_of_all_missing_weeks: false
+          repair_failure_conditions:
+            - Query execution failed
+            - Query returned empty result
+            - Query result failed validation
+          repair_failure_action: Notify owner and pause this Pipeline
+          successful_repair_persistence: >
+            补查结果验证通过后，
+            将能够完整验证的缺失周记录补写回Store Asset，
+            并使用当Q截止累计补查结果完成目标周QTD，
+            完成回读验证后再继续。
+
+    execution:
+      schedule:
+        day_of_week: Thursday
+        start_time: "17:30"
+        timezone: Asia/Shanghai
+      manual_trigger_allowed: true
+      query_invocations:
+        - invocation_id: INV_APOLLO_FAST_VERSION_WEEKLY_REVENUE
+          query_count_per_run: 1
+          query_template: 极速版收入查询模板
+          date_parameters:
+            start_date: Thursday execution date minus 7 days
+            end_date: Thursday execution date minus 1 day
+          expected_result_shape: Single-row business-line period result
+      qtd_acquisition_method: >
+        不执行第二次Apollo QTD查询。
+        QTD通过已验证的上一周“截止当周最后一天本Q累计收入”
+        与本周收入生成；
+        具体累计与季度重置规则留待Business Rule和Metric阶段确认。
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids:
+        - MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1
+      ordered_rule_set_ids:
+        - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+        - BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_REVENUE_FAST_VERSION_WEEKLY
+      result_contract_modes:
+        contract_id: RC_REVENUE_FAST_VERSION_WEEKLY
+        mode_field: report_mode
+        allowed_modes:
+          - regular_week
+          - quarter_transition_week
+        mode_selection_rule_id: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+        non_applicable_field_representation: not_applicable
+        missing_data_must_not_be_mapped_to_not_applicable: true
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
+      persisted_fields:
+        - 数据当周最后一天
+        - 当周收入
+        - 截止当周最后一天本Q累计收入
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_revenue_section_consumption: true
+        owner_notification_required: true
+        notification_reason: Historical Metric Result Store persistence failed
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    cross_pipeline_dependencies:
+      upstream_pipeline_ids: []
+      parallel_peer_pipeline_ids:
+        - PL_REVENUE_SMART_SPEAKER_WEEKLY
+        - PL_REVENUE_TECHNICAL_WEEKLY
+        - PL_REVENUE_CTV_WEEKLY
+      downstream_consumer:
+        component: Weekly Report Revenue Section Assembly
+        behavior: Wait for applicable revenue Pipeline results
+        may_calculate: false
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Dataset Inventory
+        - Dataset Readiness Matrix
+      change_reason: Initial Pipeline Registry definition
+
+  - pipeline_id: PL_INVENTORY_FULL_SITE_WEEKLY
+    pipeline_name: 全站整体库存周度分析 Pipeline
+    business_domain: Inventory
+    business_line: Full-site inventory
+    business_context_id: CTX_INVENTORY_FULL_SITE_WEEKLY
+    trigger_type: Scheduled
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from Data Source and Dataset registries
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        通过Apollo库存查询模块执行“周报全站库存”查询，
+        获取指定周度日期范围的Excel结果。
+      includes:
+        - 执行周报全站库存查询模板
+        - 下载并验证Excel结果文件
+        - 执行后续已确认的数据标准化
+        - 执行后续已确认的整体库存业务规则与指标计算
+        - 生成并验证全站整体库存结果
+      end: Generate a validated full-site weekly inventory Result Contract
+      excludes:
+        - Patch inventory processing
+        - Non-patch product inventory processing
+        - Sell-through calculation
+        - Weekly Report Inventory Section Assembly
+        - Weekly Business Report Output Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: pipeline
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: required
+        failure_scope: Weekly Report Inventory Section only
+        execution_order_or_dependency: >
+          Friday 10:30 inventory-stage pipeline.
+          No dependency on completion of Thursday revenue pipelines.
+        failure_handling:
+          immediate_action:
+            - Notify owner of the failure reason
+            - Provide a proposed resolution or required owner action
+          friday_fallback: >
+            如果周报组装时库存模块仍未恢复，
+            继续创建包含收入等已完成模块的Outlook Draft。
+          inventory_section_representation_in_fallback_draft: >
+            保留“一、库存及售卖”模块标题，
+            并注明“库存数据处理失败，待补充”。
+
+    dataset_dependencies:
+      - dataset_id: DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+        query_asset_id: QRY_APOLLO_INVENTORY_WEEKLY_FULL_SITE_STOCK
+        dataset_version_constraint: TBD
+        dependency_role: Full-site date-range inventory input
+        required: true
+        join_or_relationship_rule_id: TBD
+        acquisition_and_selection_rules:
+          source_of_truth: Dataset Readiness Matrix
+          automatic_rule_duplication_in_pipeline: false
+
+    historical_input_dependencies:
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_FULL_SITE
+        role: Prior-week validated full-site inventory metrics
+        read_required_or_optional: required_when_referenced_by_metric
+        missing_data_recovery:
+          materiality_basis: Explicit Metric and Business Rule dependency only
+          non_material_missing_action: Ignore and continue
+          material_missing_action: >
+            自动执行一次对应上一周日期范围的Apollo补查，
+            验证后补写Metrics Store再继续。
+          max_automatic_repair_queries: 1
+          repair_failure_action: Notify owner and pause this Pipeline
+
+    execution:
+      schedule:
+        day_of_week: Friday
+        start_time: "10:30"
+        timezone: Asia/Shanghai
+      manual_trigger_allowed: true
+      query_invocations:
+        - invocation_id: INV_APOLLO_FULL_SITE_INVENTORY_WEEKLY
+          query_count_per_run: 1
+          query_template: 周报全站库存
+          date_parameters:
+            start_date: Friday execution date minus 7 days
+            end_date: Friday execution date minus 1 day
+          result_acquisition_method: CSV Export
+          expected_result_shape: Non-empty exported CSV result file
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids:
+        - MAP_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY_V1
+      ordered_rule_set_ids: []
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_INVENTORY_FULL_SITE_WEEKLY
+      result_contract_scope:
+        includes:
+          - Validated full-site overall inventory results
+        excludes:
+          - Patch inventory results
+          - Non-patch product inventory results
+          - Sell-through results
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_FULL_SITE
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_inventory_section_consumption: true
+        owner_notification_required: true
+        notification_reason: Weekly Inventory Historical Metric Result Store persistence failed
+
+    failure_conditions:
+      - Query execution failed
+      - Query succeeded but exported Excel is empty
+    failure_action: Immediately notify owner and pause this Pipeline
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Dataset Inventory
+        - Dataset Readiness Matrix
+      change_reason: Initial Pipeline Registry definition
+
+  - pipeline_id: PL_INVENTORY_PATCH_WEEKLY
+    pipeline_name: 贴片库存周度分析 Pipeline
+    business_domain: Inventory
+    business_line: Patch inventory
+    business_context_id: CTX_INVENTORY_PATCH_WEEKLY
+    trigger_type: Scheduled
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from Data Source and Dataset registries
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        通过Apollo库存查询模块执行“贴片库存计算”查询，
+        获取指定周度日期范围的Excel结果。
+      includes:
+        - 执行贴片库存计算查询模板
+        - 下载并验证Excel结果文件
+        - 执行后续已确认的数据标准化
+        - 执行后续已确认的贴片库存业务规则与指标计算
+        - 生成并验证贴片库存结果
+      end: Generate a validated patch weekly inventory Result Contract
+      excludes:
+        - Full-site inventory processing
+        - Non-patch product inventory processing
+        - Brand Moment exposure processing
+        - Final sell-through calculation
+        - Weekly Report Inventory Section Assembly
+        - Weekly Business Report Output Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: pipeline
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: required
+        failure_scope: Weekly Report Inventory Section only
+        execution_order_or_dependency: >
+          Friday 10:30 inventory-stage pipeline.
+          No predecessor dependency on the other normal inventory pipelines;
+          eligible for parallel execution.
+        failure_handling:
+          immediate_action:
+            - Notify owner of the failure reason
+            - Provide a proposed resolution or required owner action
+          friday_fallback: >
+            如果周报组装时库存模块仍未恢复，
+            继续创建包含收入等已完成模块的Outlook Draft。
+          inventory_section_representation_in_fallback_draft: >
+            保留“一、库存及售卖”模块标题，
+            并注明“库存数据处理失败，待补充”。
+
+    dataset_dependencies:
+      - dataset_id: DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
+        query_asset_id: QRY_APOLLO_INVENTORY_PATCH_STOCK
+        dataset_version_constraint: TBD
+        dependency_role: Patch date-range inventory input
+        required: true
+        join_or_relationship_rule_id: TBD
+        acquisition_and_selection_rules:
+          source_of_truth: Dataset Readiness Matrix
+          automatic_rule_duplication_in_pipeline: false
+
+    historical_input_dependencies:
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
+        role: Prior-week validated patch inventory metrics
+        read_required_or_optional: required_when_referenced_by_metric
+        missing_data_recovery:
+          materiality_basis: Explicit Metric and Business Rule dependency only
+          non_material_missing_action: Ignore and continue
+          material_missing_action: >
+            自动执行一次对应上一周日期范围的Apollo补查，
+            验证后补写Metrics Store再继续。
+          max_automatic_repair_queries: 1
+          repair_failure_action: Notify owner and pause this Pipeline
+
+    execution:
+      schedule:
+        day_of_week: Friday
+        start_time: "10:30"
+        timezone: Asia/Shanghai
+      manual_trigger_allowed: true
+      query_invocations:
+        - invocation_id: INV_APOLLO_PATCH_INVENTORY_WEEKLY
+          query_count_per_run: 1
+          query_template: 贴片库存计算
+          date_parameters:
+            start_date: Friday execution date minus 7 days
+            end_date: Friday execution date minus 1 day
+          result_acquisition_method: CSV Export
+          expected_result_shape: Non-empty exported CSV result file
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids:
+        - MAP_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY_V1
+      ordered_rule_set_ids: []
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_INVENTORY_PATCH_WEEKLY
+      result_contract_scope:
+        includes:
+          - Validated patch inventory results
+        excludes:
+          - Full-site inventory results
+          - Non-patch product inventory results
+          - Brand Moment exposure results
+          - Final sell-through results
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_inventory_section_consumption: true
+        owner_notification_required: true
+        notification_reason: Weekly Inventory Historical Metric Result Store persistence failed
+
+    failure_conditions:
+      - Query execution failed
+      - Query succeeded but exported Excel is empty
+    failure_action: Immediately notify owner and pause this Pipeline
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    cross_pipeline_dependencies:
+      upstream_pipeline_ids: []
+      downstream_consumers:
+        - pipeline_id: PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+          dependency_role: Regular patch product inventory input
+          registration_status: registry_initialized
+        - component: Weekly Report Inventory Section Assembly
+          behavior: Consume validated results only
+          may_calculate: false
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Dataset Inventory
+        - Dataset Readiness Matrix
+      change_reason: Initial Pipeline Registry definition
+
+  - pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    pipeline_name: 非贴片分产品库存周度分析 Pipeline
+    business_domain: Inventory
+    business_line: Non-patch product inventory
+    business_context_id: CTX_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    trigger_type: Scheduled
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from Data Source and Dataset registries
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        通过Apollo库存查询模块执行“非贴片分产品库存数据”查询，
+        获取指定周度日期范围的Excel结果。
+      includes:
+        - 执行非贴片分产品库存数据查询模板
+        - 下载并验证Excel结果文件
+        - 执行后续已确认的数据标准化
+        - 执行后续已确认的非贴片产品库存业务规则与指标计算
+        - 生成并验证非贴片分产品库存结果
+      end: Generate a validated non-patch product weekly inventory Result Contract
+      excludes:
+        - Full-site inventory processing
+        - Patch inventory processing
+        - Final sell-through calculation
+        - Weekly Report Inventory Section Assembly
+        - Weekly Business Report Output Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: pipeline
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: required
+        failure_scope: Weekly Report Inventory Section only
+        execution_order_or_dependency: >
+          Friday 10:30 inventory-stage pipeline.
+          No predecessor dependency on the other normal inventory pipelines;
+          eligible for parallel execution.
+        failure_handling:
+          immediate_action:
+            - Notify owner of the failure reason
+            - Provide a proposed resolution or required owner action
+          friday_fallback: >
+            如果周报组装时库存模块仍未恢复，
+            继续创建包含收入等已完成模块的Outlook Draft。
+          inventory_section_representation_in_fallback_draft: >
+            保留“一、库存及售卖”模块标题，
+            并注明“库存数据处理失败，待补充”。
+
+    dataset_dependencies:
+      - dataset_id: DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+        query_asset_id: QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK
+        dataset_version_constraint: TBD
+        dependency_role: Non-patch product date-range inventory input
+        required: true
+        join_or_relationship_rule_id: TBD
+        acquisition_and_selection_rules:
+          source_of_truth: Dataset Readiness Matrix
+          automatic_rule_duplication_in_pipeline: false
+
+    historical_input_dependencies:
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT
+        role: Prior-week validated non-patch product inventory metrics
+        read_required_or_optional: required_when_referenced_by_metric
+        missing_data_recovery:
+          materiality_basis: Explicit Metric and Business Rule dependency only
+          non_material_missing_action: Ignore and continue
+          material_missing_action: >
+            自动执行一次对应上一周日期范围的Apollo补查，
+            验证后补写Metrics Store再继续。
+          max_automatic_repair_queries: 1
+          repair_failure_action: Notify owner and pause this Pipeline
+
+    execution:
+      schedule:
+        day_of_week: Friday
+        start_time: "10:30"
+        timezone: Asia/Shanghai
+      manual_trigger_allowed: true
+      query_invocations:
+        - invocation_id: INV_APOLLO_NON_PATCH_PRODUCT_INVENTORY_WEEKLY
+          query_count_per_run: 1
+          query_template: 非贴片分产品库存数据
+          date_parameters:
+            start_date: Friday execution date minus 7 days
+            end_date: Friday execution date minus 1 day
+          result_acquisition_method: CSV Export
+          expected_result_shape: Non-empty exported CSV result file
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids:
+        - MAP_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY_V1
+      ordered_rule_set_ids: []
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      result_contract_scope:
+        includes:
+          - Validated non-patch product inventory results
+        excludes:
+          - Full-site inventory results
+          - Patch inventory results
+          - Final sell-through results
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_inventory_section_consumption: true
+        owner_notification_required: true
+        notification_reason: Weekly Inventory Historical Metric Result Store persistence failed
+
+    failure_conditions:
+      - Query execution failed
+      - Query succeeded but exported Excel is empty
+    failure_action: Immediately notify owner and pause this Pipeline
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    cross_pipeline_dependencies:
+      upstream_pipeline_ids: []
+      downstream_consumers:
+        - pipeline_id: PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+          dependency_role: Non-patch product inventory input
+          registration_status: registry_initialized
+        - pipeline_id: PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+          dependency_role: Brand Moment available inventory denominator
+          registration_status: registry_initialized
+        - component: Weekly Report Inventory Section Assembly
+          behavior: Consume validated results only
+          may_calculate: false
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Dataset Inventory
+        - Dataset Readiness Matrix
+      change_reason: Initial Pipeline Registry definition
+
+  - pipeline_id: PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+    pipeline_name: 品牌时刻投放执行周度 Pipeline
+    business_domain: Advertising
+    business_line: Brand Moment
+    business_context_id: CTX_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+    trigger_type: Scheduled
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from Data Source and Dataset registries
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        通过Apollo奇胜执行收入模块执行“品牌时刻投放执行数据”查询，
+        获取指定周度日期范围的一行汇总结果。
+      includes:
+        - 选择品牌时刻投放执行数据查询模板
+        - 取消模板默认勾选的日期细分条件
+        - 执行指定周度日期范围查询
+        - 复制并验证单行周期汇总结果
+        - 执行后续已确认的数据标准化与投放执行指标计算
+        - 生成品牌时刻投放执行验证结果
+      end: Generate a validated Brand Moment delivery Result Contract
+      excludes:
+        - Brand Moment inventory calculation
+        - Brand Moment sell-through calculation
+        - Other product inventory processing
+        - Weekly Report Inventory Section Assembly
+        - Weekly Business Report Output Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: pipeline
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: required
+        failure_scope: Brand Moment sell-through result only
+        execution_order_or_dependency: >
+          Friday 10:30 inventory-stage supporting Pipeline.
+          Eligible to run in parallel with normal inventory acquisition Pipelines.
+        failure_handling:
+          immediate_action:
+            - Notify owner of the failure reason
+            - Block only the Brand Moment sell-through result
+          unaffected_outputs:
+            - Full-site inventory results
+            - Other product inventory and sell-through results
+            - Revenue section
+          inventory_section_brand_moment_representation:
+            retain_product_row: true
+            sell_through_field: blank
+            explanation: 品牌时刻投放数据获取失败，待补充
+
+    dataset_dependencies:
+      - dataset_id: DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+        query_asset_id: QRY_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+        dataset_version_constraint: TBD
+        dependency_role: Brand Moment date-range delivery input
+        required: true
+        join_or_relationship_rule_id: TBD
+        acquisition_and_selection_rules:
+          source_of_truth: Dataset Readiness Matrix
+          automatic_rule_duplication_in_pipeline: false
+
+    execution:
+      schedule:
+        day_of_week: Friday
+        start_time: "10:30"
+        timezone: Asia/Shanghai
+      manual_trigger_allowed: true
+      query_invocations:
+        - invocation_id: INV_APOLLO_BRAND_MOMENT_DELIVERY_WEEKLY
+          query_count_per_run: 1
+          query_template: 品牌时刻投放执行数据
+          post_template_selection_adjustments:
+            - detail_dimension: 日期
+              required_state: deselected
+          date_parameters:
+            start_date: Friday execution date minus 7 days
+            end_date: Friday execution date minus 1 day
+          result_acquisition_method: On-screen Result Copy
+          expected_result_shape: One aggregated row for selected date range
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids:
+        - MAP_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_V1
+      ordered_rule_set_ids: []
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+      result_contract_scope:
+        includes:
+          - Validated Brand Moment delivery execution results
+          - Validated Brand Moment exposure result
+        excludes:
+          - Inventory results
+          - Brand Moment sell-through result
+      downstream_metric_usage:
+        metric_concept: Brand Moment sell-through
+        exposure_role: Numerator
+        downstream_pipeline_id: PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_BRAND_MOMENT_DELIVERY
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_result_for_brand_moment_sell_through: true
+        notify_owner: true
+        block_current_week_calculation: false
+        notification_reason: Historical Metric Result Store write failure
+
+    failure_conditions:
+      - Query execution failed
+      - Date detail dimension could not be deselected
+      - Query returned no valid data row
+      - Query returned a shape other than one aggregated row
+    failure_action: Immediately notify owner and pause this Pipeline
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    cross_pipeline_dependencies:
+      upstream_pipeline_ids: []
+      downstream_consumers:
+        - pipeline_id: PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+          dependency_role: Brand Moment exposure input
+          registration_status: registry_initialized
+        - component: Weekly Report Inventory Section Assembly
+          dependency_role: Validated advertising context input only
+          may_calculate: false
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Dataset Inventory
+        - Dataset Readiness Matrix
+      change_reason: Initial Pipeline Registry definition
+
+  - pipeline_id: PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+    pipeline_name: 品牌时刻售卖率周度计算 Pipeline
+    business_domain: Inventory
+    business_line: Brand Moment
+    business_context_id: CTX_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+    trigger_type: Dependency-triggered
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from upstream Result Contracts
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        等待品牌时刻投放执行与非贴片分产品库存两个上游Pipeline
+        生成同一业务周期的Validated Result Contract。
+      includes:
+        - 读取品牌时刻曝光量验证结果作为分子输入
+        - 读取品牌时刻可用库存验证结果作为分母输入
+        - 验证两个上游结果的业务周期与Context兼容性
+        - 执行后续已确认的品牌时刻售卖率Metric Variant
+        - 验证并保存品牌时刻售卖率结果
+      end: Generate a validated Brand Moment weekly sell-through Result Contract
+      excludes:
+        - Direct Apollo query execution
+        - Raw Dataset field inference
+        - Other product sell-through calculation
+        - Weekly Report Inventory Section Assembly
+        - Weekly Business Report Output Assembly
+      minimum_execution_unit: pipeline
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: required
+        failure_scope: Brand Moment sell-through result only
+        execution_order_or_dependency: >
+          Run after both explicitly registered upstream Result Contracts pass validation.
+        failure_handling:
+          immediate_action:
+            - Notify owner of the failure reason
+            - Block only the Brand Moment sell-through result
+          inventory_section_brand_moment_representation:
+            retain_product_row: true
+            sell_through_field: blank
+            explanation: 品牌时刻售卖率计算失败，待补充
+
+    dataset_dependencies: []
+
+    result_contract_dependencies:
+      - producer_pipeline_id: PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+        result_contract_id: RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+        dependency_role: Brand Moment exposure numerator
+        required: true
+      - producer_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+        result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+        dependency_role: Brand Moment available inventory denominator
+        required: true
+
+    historical_input_dependencies:
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
+        role: Prior-week validated Brand Moment sell-through result
+        read_required_or_optional: required_when_referenced_by_metric
+        missing_data_recovery:
+          materiality_basis: Explicit Metric and Business Rule dependency only
+          non_material_missing_action: Ignore and continue
+          material_missing_action:
+            - Trigger prior-week PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+            - Trigger prior-week PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+            - Recalculate prior-week Brand Moment sell-through
+            - Persist validated repaired result before continuing
+          repair_failure_action: Notify owner and pause this derived Pipeline
+
+    execution:
+      schedule:
+        stage: Friday inventory stage
+        start_condition: Both required upstream Result Contracts validated
+        timezone: Asia/Shanghai
+      manual_trigger_allowed: true
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids: []
+      ordered_rule_set_ids: []
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+      result_contract_scope:
+        includes:
+          - Validated Brand Moment sell-through result
+        excludes:
+          - Raw exposure result
+          - Raw or standardized inventory result
+          - Other product sell-through results
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_result_into_inventory_section: true
+        notify_owner: true
+        block_weekly_report: false
+        notification_reason: Historical Metric Result Store write failure
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      upstream_rerun_required_only_if_contract_invalidated: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Pipeline Registry upstream contracts
+        - Confirmed Brand Moment sell-through business input roles
+      change_reason: Initial derived Pipeline definition
+
+  - pipeline_id: PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+    pipeline_name: 全平台DAU周度查询 Pipeline
+    business_domain:
+      - User Analytics
+      - Platform Operation
+    business_line: Full platform
+    business_context_id: CTX_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+    trigger_type: Scheduled
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from Data Source and Dataset registries
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        通过NovaBI固定自然语言查询模板，
+        获取指定周度日期范围的全平台分日DAU结果。
+      includes:
+        - 验证NovaBI查询账号与权限
+        - 生成参数化自然语言查询
+        - 获取并验证分日期多行DAU结果
+        - 执行后续已确认的数据标准化与DAU指标计算
+        - 生成全平台DAU验证结果
+      end: Generate a validated full-platform daily DAU Result Contract
+      excludes:
+        - Inventory Dataset processing
+        - Product inventory or sell-through calculation
+        - Weekly Report Inventory Section Assembly
+        - Weekly Business Report Output Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: pipeline
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: optional
+        failure_scope: Weekly Report DAU summary content only
+        execution_order_or_dependency: >
+          Friday 10:30 supporting Pipeline.
+          No dependency on Revenue or Inventory Domain Pipeline completion.
+        failure_handling:
+          query_or_access_failure:
+            - Notify owner
+            - Analyze the failure reason
+            - Leave DAU content blank
+            - Continue Workflow
+          block_workflow: false
+
+    dataset_dependencies:
+      - dataset_id: DS_NOVABI_PLATFORM_DAU
+        query_asset_id: QRY_NOVABI_DAU_QUERY
+        dataset_version_constraint: TBD
+        dependency_role: Full-platform daily DAU input
+        required: false
+        join_or_relationship_rule_id: TBD
+        acquisition_and_selection_rules:
+          source_of_truth: Dataset Readiness Matrix
+          automatic_rule_duplication_in_pipeline: false
+
+    historical_input_dependencies:
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_PLATFORM_DAU
+        role: Prior-week validated DAU result
+        read_required_or_optional: optional_repairable
+        missing_data_recovery:
+          material_missing_action: >
+            自动补查一次上一周NovaBI DAU数据，
+            验证并补写Store后继续。
+          max_automatic_repair_queries: 1
+          repair_failure_action:
+            - Notify owner
+            - Leave DAU content blank
+            - Continue Workflow
+
+    execution:
+      schedule:
+        day_of_week: Friday
+        start_time: "10:30"
+        timezone: Asia/Shanghai
+      manual_trigger_allowed: true
+      query_invocations:
+        - invocation_id: INV_NOVABI_PLATFORM_DAU_WEEKLY
+          query_count_per_run: 1
+          natural_language_template: >
+            从BI报表的核心数据表中，给我跑一下{start_date}-{end_date}的全平台分日DAU
+          date_parameters:
+            start_date: Friday execution date minus 7 days
+            end_date: Friday execution date minus 1 day
+          result_acquisition_method: On-screen Result Copy
+          expected_result_shape: Daily rows within selected date range
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids:
+        - MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1
+      ordered_rule_set_ids: []
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+      result_contract_scope:
+        includes:
+          - Validated daily full-platform DAU results
+        excludes:
+          - Inventory results
+          - Product sell-through results
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_PLATFORM_DAU
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_dau_content_consumption: true
+        owner_notification_required: true
+        notification_reason: Weekly User Analytics Historical Metric Result Store persistence failed
+
+    recovery:
+      retry_scope: pipeline_only
+      resume_from_failed_stage: true
+      downstream_impact_rule: explicit_dependency_graph_only
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Dataset Inventory
+        - Dataset Readiness Matrix
+      change_reason: Initial Pipeline Registry definition
+
+  - pipeline_id: PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+    pipeline_name: 分广告产品客户投放变化分析 Pipeline
+    business_domain: Advertising
+    business_line: Workflow-supplied advertising product
+    business_context_id: CTX_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+    trigger_type: Conditional
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from Data Source and Dataset registries
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        接收一个已经通过售卖率异常触发条件的明确广告产品，
+        以及当前周期和对比周期参数。
+      includes:
+        - 接收明确产品与周期参数
+        - 执行客户维度投放查询
+        - 执行后续已确认的客户变化筛选、排序与数量限制规则
+        - 生成并验证单产品客户投放变化分析结果
+      end: Generate one validated product-level customer change analysis Result Contract
+      excludes:
+        - Sell-through calculation
+        - Sell-through anomaly detection
+        - Product filter inference by name similarity
+        - Other product customer analysis within the same Pipeline Run
+        - Weekly Report Inventory Section Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: One product-scoped Pipeline Run
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: optional
+        failure_scope: Triggered product customer explanation only
+        execution_order_or_dependency: >
+          Run only after a validated product sell-through result satisfies
+          the explicitly configured anomaly trigger.
+        failure_handling:
+          query_failure:
+            - Notify owner
+            - Analyze technical failure reason
+            - Continue Workflow
+          zero_customer_rows:
+            - Notify owner
+            - Analyze zero-row reason
+            - Continue Workflow
+          block_workflow: false
+
+    trigger_contract:
+      producer_result_type: Validated product sell-through result
+      trigger_rule_id: TBD
+      confirmed_rule_input: abs(sell_through_rate_wow_change_pp) >= configured threshold
+      current_default_threshold: 10pp
+      product_override_supported: true
+      one_run_per_triggered_product: true
+      multiple_product_runs_may_execute_in_parallel: true
+
+    dataset_dependencies:
+      - dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+        query_asset_id: QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+        dataset_version_constraint: TBD
+        dependency_role: Product-customer delivery change input
+        required: false
+        join_or_relationship_rule_id: TBD
+
+    execution:
+      schedule:
+        stage: Friday inventory analysis stage
+        start_condition: Product-level anomaly trigger satisfied
+        timezone: Asia/Shanghai
+      manual_trigger_allowed: true
+      manual_trigger_additional_required_input:
+        - Explicit advertising product
+        - Current period
+        - Comparison period
+      query_invocations:
+        - invocation_id: INV_APOLLO_PRODUCT_CUSTOMER_CURRENT_WEEK
+          query_role: Current-week customer delivery summary
+          product_parameter: Explicit triggered product
+          date_parameters:
+            start_date: Friday execution date minus 7 days
+            end_date: Friday execution date minus 1 day
+          grouping_dimension: 广告主
+          detail_dimension_date: deselected
+          expected_result_shape: Customer-level period summary rows
+        - invocation_id: INV_APOLLO_PRODUCT_CUSTOMER_PREVIOUS_WEEK
+          query_role: Previous-week customer delivery summary
+          product_parameter: Same explicit triggered product
+          date_parameters:
+            start_date: Friday execution date minus 14 days
+            end_date: Friday execution date minus 8 days
+          grouping_dimension: 广告主
+          detail_dimension_date: deselected
+          expected_result_shape: Customer-level period summary rows
+      cross_period_comparison_input: Two independently validated weekly customer summaries
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids:
+        - MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1
+      ordered_rule_set_ids: []
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+      result_contract_cardinality: One result per triggered product Pipeline Run
+      output_mapping_ids: []
+      write_to_metrics_store: false
+
+    recovery:
+      retry_scope: One product-scoped Pipeline Run only
+      resume_from_failed_stage: true
+      downstream_impact_rule: Triggered product explanation only
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Dataset Inventory
+        - Dataset Readiness Matrix
+        - Confirmed historical Weekly Report customer-analysis rules
+      change_reason: Initial conditional Pipeline definition
+
+  - pipeline_id: PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+    pipeline_name: 分产品售卖率周度计算 Pipeline
+    business_domain: Inventory
+    business_line: Workflow-supplied product excluding Brand Moment
+    business_context_id: CTX_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+    trigger_type: Dependency-triggered
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from upstream Result Contracts
+    version: 0.1.0-draft
+    approval_status: registry_initialized
+
+    pipeline_boundary:
+      start: >
+        接收一个明确的非品牌时刻产品、业务周期、库存来源路由
+        以及已确认的Metric Variant。
+      includes:
+        - 根据显式产品路由读取一个库存上游Result Contract
+        - 验证产品、周期、Context与Metric Variant兼容性
+        - 执行该产品已确认的售卖率Metric Variant
+        - 验证并保存单产品售卖率结果
+      end: Generate one validated product-scoped weekly sell-through Result Contract
+      excludes:
+        - Brand Moment sell-through calculation
+        - Product membership inference by name
+        - Metric Variant selection by similarity or history
+        - Other product calculations within the same Pipeline Run
+        - Weekly Report Inventory Section Assembly
+        - Outlook Draft creation or sending
+      minimum_execution_unit: One product-scoped Pipeline Run
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_WEEKLY_BUSINESS_REPORT
+        required_or_optional: required_per_configured_report_product
+        failure_scope: Target product sell-through result only
+        execution_order_or_dependency: >
+          Run after the explicitly routed upstream inventory Result Contract
+          for the target product passes validation.
+        failure_handling:
+          immediate_action:
+            - Notify owner of the failure reason
+            - Block only the target product sell-through result
+          inventory_section_product_representation:
+            retain_product_row: true
+            sell_through_value: blank
+            annotation: 售卖率计算失败，待补充
+            other_products_continue: true
+            workflow_continues: true
+
+    dataset_dependencies: []
+
+    result_contract_dependency_routing:
+      routing_rule_id: TBD
+      confirmed_routes:
+        regular_patch_products:
+          producer_pipeline_id: PL_INVENTORY_PATCH_WEEKLY
+          result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+        all_products_except_regular_patch_and_brand_moment:
+          producer_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+          result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      brand_moment_excluded: true
+
+    historical_input_dependencies:
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH
+        role: Prior-week validated product sell-through result
+        product_dimension_required: true
+        read_required_or_optional: required_when_referenced_by_metric
+        missing_data_recovery:
+          materiality_basis: Explicit Metric and Business Rule dependency only
+          non_material_missing_action: Ignore and continue
+          material_missing_action: >
+            按目标产品显式路由补跑上一周库存上游，
+            重新计算并补写上一周产品售卖率后继续。
+          repair_failure_action: Notify owner and pause target product Pipeline Run
+
+    execution:
+      schedule:
+        stage: Friday inventory calculation stage
+        start_condition: Target product upstream inventory Result Contract validated
+        timezone: Asia/Shanghai
+      manual_trigger_allowed: true
+      manual_trigger_additional_required_input:
+        - Explicit product
+        - Target business period
+        - Explicit Metric Variant ID
+      one_run_per_product: true
+      multiple_product_runs_may_execute_in_parallel: true
+      stages:
+        - DATA_COLLECTION
+        - DATA_STANDARDIZATION
+        - BUSINESS_RULE_PROCESSING
+        - METRIC_CALCULATION
+        - VALIDATION
+      mapping_profile_ids: []
+      ordered_rule_set_ids: []
+      metric_variant_ids: []
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids:
+        - RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+      result_contract_cardinality: One result per product-scoped Pipeline Run
+      output_mapping_ids: []
+      write_to_metrics_store: true
+      metric_result_store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      metric_result_store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH
+      persistence_failure_result:
+        pipeline_status: COMPLETED_WITH_WARNING
+        validated_result_remains_usable: true
+        allow_result_into_inventory_section: true
+        notify_owner: true
+        notification_reason: Historical Metric Result Store write failure
+
+    downstream_consumers:
+      - pipeline_id: PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+        dependency_role: Validated sell-through anomaly trigger input
+        trigger_rule_id: TBD
+      - component: Weekly Report Inventory Section Assembly
+        behavior: Consume validated product result only
+        may_calculate: false
+
+    recovery:
+      retry_scope: One product-scoped Pipeline Run only
+      resume_from_failed_stage: true
+      upstream_rerun_required_only_if_contract_invalidated: true
+      downstream_impact_rule: Target product outputs only
+
+    governance:
+      effective_from: TBD
+      evidence_sources:
+        - Pipeline Registry upstream contracts
+        - Confirmed advertising product inventory source routing
+      change_reason: Initial parameterized derived Pipeline definition
+
+constraints:
+  dataset_dependencies_must_trace_to_active_data_sources: true
+  future_backlog_sources_cannot_create_pipelines: true
+  dependencies_must_be_explicit: true
+  auto_dependency_by_field_similarity: false
+  auto_dependency_by_name_match: false
+  auto_dependency_by_history: false
+  output_assembly_may_calculate: false
+  outlook_auto_send: false
+  pipeline_owner_for_all_current_and_future_pipelines: WORKFLOW_OWNER
+  business_approver_for_all_current_and_future_pipelines: WORKFLOW_OWNER
+  source_dataset_query_asset_owners_remain_in_source_registries: true
+  all_pipelines_allow_owner_manual_trigger: true
+  manual_trigger_default_scope: target_pipeline_only
+  manual_trigger_downstream_rerun: explicit_dependency_graph_only
+  manual_trigger_period_requirement:
+    required: true
+    accepted_business_period_inputs:
+      - Target Weekly Business Report period
+      - Revenue data cutoff date
+    missing_input_action: >
+      暂停手动触发并向Owner确认，
+      禁止根据当前日期自动推断业务周期。
+  regular_inventory_pipeline_history_strategy:
+    applies_to: All regular inventory Pipelines
+    excludes: Anomaly-triggered customer analysis Pipelines
+    normal_current_period_query_count: 1
+    prior_period_source: Weekly Inventory Historical Metric Result Store
+    non_material_missing_history_action: Ignore and continue
+    material_missing_history_action: >
+      自动补查一次对应缺失周，
+      验证并补写Metrics Store后继续。
+    repair_failure_action: Notify owner and pause affected Pipeline
+  advertising_product_inventory_source_routing:
+    regular_patch_products:
+      source_pipeline_id: PL_INVENTORY_PATCH_WEEKLY
+      exact_product_membership_rule_id: TBD
+    all_products_except_regular_patch:
+      source_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      exact_product_membership_rule_id: TBD
+    confirmed_specific_binding:
+      product: Brand Moment
+      source_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY

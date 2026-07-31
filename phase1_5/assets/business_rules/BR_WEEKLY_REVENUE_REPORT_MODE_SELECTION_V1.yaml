@@ -1,0 +1,109 @@
+config_type: business_rule
+rule_id: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+rule_name: Weekly收入模块常规周与季度切换首周判定
+rule_category: Business Calendar and Report Mode
+business_domains:
+  - Revenue
+applicable_workflow_ids:
+  - WF_WEEKLY_BUSINESS_REPORT
+applicable_pipeline_ids:
+  - PL_REVENUE_TECHNICAL_WEEKLY
+  - PL_REVENUE_CTV_WEEKLY
+  - PL_REVENUE_SMART_SPEAKER_WEEKLY
+  - PL_REVENUE_FAST_VERSION_WEEKLY
+business_context_ids:
+  - CTX_REVENUE_WEEKLY_REPORT_MODE
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-07-31
+
+purpose: >
+  基于明确的目标收入截止日期与上一期成功周报收入截止日期，
+  确定收入模块使用regular_week或quarter_transition_week业务上下文。
+
+calendar_definition:
+  calendar_type: Gregorian calendar quarters
+  fiscal_year_matches_calendar_year: true
+  fiscal_quarters:
+    Q1: { start_month_day: "01-01", end_month_day: "03-31" }
+    Q2: { start_month_day: "04-01", end_month_day: "06-30" }
+    Q3: { start_month_day: "07-01", end_month_day: "09-30" }
+    Q4: { start_month_day: "10-01", end_month_day: "12-31" }
+
+inputs:
+  required_context_fields:
+    - target_report_period
+    - current_revenue_cutoff_date
+    - previous_successful_report_revenue_cutoff_date
+  required_standard_fields: []
+  required_result_contract_ids: []
+
+conditions:
+  quarter_transition_week:
+    expression_semantics: >
+      fiscal_quarter(current_revenue_cutoff_date) differs from
+      fiscal_quarter(previous_successful_report_revenue_cutoff_date)
+  regular_week:
+    expression_semantics: >
+      fiscal_quarter(current_revenue_cutoff_date) equals
+      fiscal_quarter(previous_successful_report_revenue_cutoff_date)
+  automatic_days_from_quarter_start_fallback_allowed: false
+
+actions:
+  on_quarter_transition_week:
+    set_context:
+      report_mode: quarter_transition_week
+    affected_scope:
+      - Weekly Report Revenue Section
+    unaffected_scope:
+      - Weekly Report Inventory Section
+      - DAU content
+      - Other non-Revenue modules
+  on_regular_week:
+    set_context:
+      report_mode: regular_week
+  on_missing_previous_successful_report:
+    - pause_revenue_section
+    - notify_owner
+    - request_owner_confirmation
+    - continue_non_revenue_pipelines
+  on_ambiguous_or_missing_calendar_configuration:
+    - block_revenue_section_only
+    - notify_owner
+    - continue_non_revenue_pipelines
+    - if_unresolved_by_friday_create_partial_draft
+    - retain_revenue_section_title
+    - annotate_revenue_section_as: 收入数据处理失败，待补充
+
+manual_execution:
+  manual_trigger_or_rerun_allowed: true
+  required_inputs:
+    - explicit_target_report_period
+    - explicit_revenue_cutoff_date
+  actual_execution_date_must_not_override_target_context: true
+
+validation:
+  deterministic: true
+  missing_input_behavior: pause_revenue_section_and_request_owner_confirmation
+  ambiguous_result_behavior: block_revenue_section_only_and_notify_owner
+  owner_notification_required: true
+  allowed_output_values:
+    - regular_week
+    - quarter_transition_week
+
+governance:
+  evidence_sources:
+    - Owner confirmations in Business Rule Initialization
+    - phase1_5/discovery/Historical_Weekly_Report_Context_Extraction.md
+    - phase1_5/assets/pipelines/pipeline_registry.yaml
+  change_reason: Initial approved revenue report-mode rule
+
+constraints:
+  applies_only_to_revenue_module_mode: true
+  automatic_field_inference_allowed: false
+  automatic_rule_completion_allowed: false
+  metric_formula_allowed: false
+  output_formatting_allowed: false
+  unknown_decisions_remain_tbd: true

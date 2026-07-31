@@ -1,0 +1,63 @@
+schema_version: "0.1"
+matrix_scope: Weekly Revenue Historical Metric Result Store
+assessment_date: 2026-07-29
+
+readiness_records:
+  - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+    store_name: Weekly Revenue Historical Metric Result Store
+    asset_initialization_gate: Pass
+    runtime_execution_gate: Not Evaluated
+    runtime_gate_reason: >
+      Field Mapping、Business Rule、Metric与Pipeline尚未进入初始化阶段。
+      当前Gate仅确认存储资产边界、历史有效范围、写入契约及失败处理，
+      不代表公式与自动执行能力已经可运行。
+
+    shared_readiness:
+      asset_classification_confirmed: true
+      active_storage_location_confirmed: true
+      source_and_dataset_boundary_confirmed: true
+      business_date_semantics_confirmed: true
+      active_history_boundary_confirmed: true
+      append_policy_confirmed: true
+      partial_row_completion_policy_confirmed: true
+      duplicate_and_conflict_policy_confirmed: true
+      idempotency_policy_confirmed: true
+      formula_storage_pattern_confirmed: true
+      formula_business_definitions_confirmed: false
+      row_format_policy_confirmed: true
+      new_quarter_separator_policy_confirmed: true
+      pre_write_validation_confirmed: true
+      persistence_failure_policy_confirmed: true
+      post_write_verification_confirmed: true
+      success_notification_confirmed: true
+      backup_required: false
+
+    store_assets:
+      - store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
+        workbook_name: 技术线历史整体数据存档.xlsx
+        initialization_readiness: Pass
+        regular_week_required_range: A:L
+        confirmed_exception:
+          - Quarter-transition first-week weekly executed revenue WoW remains blank
+        historical_date_sequence_status: Pass
+
+      - store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
+        workbook_name: CTV线历史整体数据存档.xlsx
+        initialization_readiness: Pass
+        regular_week_required_range: A:F
+        historical_date_sequence_status: Pass after confirmed corrections
+        retained_missing_history:
+          business_date: 20250618
+          handling: Date retained; all result fields blank; excluded from calculations
+
+    deferred_to_later_asset_stages:
+      - Exact field-to-column mapping contract
+      - Confirmed Business Rules for each calculated field
+      - Metric and Metric Variant definitions
+      - Formula definitions and validation tolerances
+      - Pipeline execution configuration
+
+gate_conclusion: >
+  Weekly Revenue Historical Metric Result Store通过本轮资产初始化Readiness Gate。
+  该结论允许其作为已登记的持久化业务资产进入后续资产阶段，
+  但在公式、规则与Pipeline完成确认前，不得视为可自动执行。

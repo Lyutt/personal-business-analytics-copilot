@@ -1,0 +1,220 @@
+config_type: data_source_inventory
+inventory_version: 0.1.2
+status: complete
+owner: ${OUTLOOK_MAILBOX_ADDRESS_LOCAL_ONLY}
+
+data_sources:
+  - source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+    source_name: Corporate Outlook Mailbox - Primary User
+    source_type: Outlook Email
+    business_purpose: >-
+      用于获取多个业务线收入相关数据，支持Weekly Business Report Revenue模块及
+      Customer Revenue Detail Workflow的数据输入，并为历史同期收入比较提供
+      原始邮件附件来源。
+    criticality: High
+    asset_priority: P0
+    business_domains:
+      - Revenue
+    source_system_or_mailbox: ${OUTLOOK_MAILBOX_ADDRESS_LOCAL_ONLY}
+
+    access:
+      access_method: Manual Outlook Email Access
+      access_location: Outlook Desktop Client (Company Email)
+      permission_owner: Self (${OUTLOOK_MAILBOX_ADDRESS_LOCAL_ONLY})
+      credential_reference: managed_externally
+      manual_steps_reference: TBD
+      historical_attachment_archives:
+        - archive_id: ARCHIVE_REVENUE_ROLLING_DECK_PRIOR_YEAR
+          access_location: '${LOCAL_WORKFLOW_DATA_ROOT}\分业务线同期业绩收入数据-存档'
+          access_role: Historical email attachment retrieval cache
+          original_source: Corporate Outlook Mailbox - Primary User
+          original_sender: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY} (${REVENUE_SOURCE_CONTACT_EMAIL_LOCAL_ONLY})
+          curation_method: Owner manually archives email attachments
+          maintenance_mode: Continuously supplemented by Owner
+          completeness_status: Partial and incrementally maintained
+          is_independent_data_source: false
+
+    schedule:
+      update_frequency: Mixed frequency (multiple email streams)
+      expected_available_time: TBD
+      timezone: Asia/Shanghai
+      allowed_delay: TBD
+
+    acquisition:
+      supported_methods:
+        - Manual Outlook Email Access
+        - Manual Historical Attachment Archive Access
+      default_method_for_mvp: Manual Outlook Email Access
+      file_or_payload_formats: []
+      source_selection_rule: TBD
+      no_match_policy: create_exception
+      multiple_match_policy: block_and_confirm
+
+    governance:
+      business_owner: Email sender / originating business team (TBD)
+      data_owner: Email sender / originating business team (TBD)
+      evidence_sources:
+        - Historical Outlook emails
+        - Historical email attachments
+        - Revenue email templates
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+
+    security_and_retention:
+      contains_sensitive_data: TBD
+      raw_copy_allowed: TBD
+      temporary_storage_allowed: TBD
+      retention_period: TBD
+      credentials_stored_in_config: false
+
+    notes: >-
+      This Outlook mailbox contains multiple revenue-related email streams with
+      different sending frequencies. Detailed email streams, attachments,
+      datasets and business rules will be defined in later asset stages. The
+      local prior-year attachment archive is an alternate retrieval location
+      for attachments originally received from this mailbox; it is not an
+      independent Data Source and does not change source provenance.
+
+  - source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    source_name: Company Data Platform Apollo
+    source_type: Internal Data Platform
+    business_purpose: >-
+      用于获取公司内部业务数据，支持收入、库存、广告、用户行为、订单等业务分析。
+    criticality: Critical
+    asset_priority: P0
+    business_domains:
+      - Revenue
+      - Inventory
+      - Advertising
+      - User Analytics
+      - Order
+    source_system_or_mailbox: Apollo
+
+    access:
+      access_method: Manual Web Query and Export
+      access_location: Apollo Web Console (Internal Network + Account Login Required)
+      permission_owner: Business Data Team Owner
+      credential_reference: managed_externally
+      manual_steps_reference: TBD
+
+    schedule:
+      update_frequency: Mixed frequency (dataset-specific)
+      expected_available_time: >-
+        Platform generally available during normal access; dataset-specific
+        availability TBD
+      timezone: Asia/Shanghai
+      allowed_delay: TBD
+
+    acquisition:
+      supported_methods:
+        - Manual Web Query and Export
+      default_method_for_mvp: Manual Web Query and Export
+      file_or_payload_formats:
+        - CSV (.csv, UTF-8 BOM)
+      export_contract:
+        downloaded_file_format: CSV
+        filename_is_dataset_identifier: false
+        filename_characteristics: >
+          文件名通常只包含Apollo模块名称和导出时间等通用信息，
+          不能据此独立判断所属Dataset。
+        dataset_attribution_rule: >
+          必须依据本次显式执行的Query Asset、查询模板和Dataset上下文登记
+          下载文件归属。
+        automatic_attribution_by_filename_or_schema_similarity_allowed: false
+      source_selection_rule: Explicit Query Asset and query-template execution context
+      no_match_policy: create_exception
+      multiple_match_policy: block_and_confirm
+
+    governance:
+      business_owner: Business Data Team Owner (Platform Level)
+      data_owner: Business Data Team Owner (Platform Level)
+      evidence_sources:
+        - Apollo platform screenshots
+        - Historical exported CSV datasets
+        - Apollo query page URLs
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+
+    security_and_retention:
+      contains_sensitive_data: TBD
+      raw_copy_allowed: TBD
+      temporary_storage_allowed: TBD
+      retention_period: TBD
+      credentials_stored_in_config: false
+
+    notes: >-
+      Apollo is a shared internal data platform. Multiple business datasets and
+      query assets will be defined separately in Dataset Inventory. Specific
+      query URLs, query conditions, fields and calculation logic are not defined
+      at Data Source level.
+
+  - source_id: SRC_INTERNAL_PLATFORM_NOVABI
+    source_name: NovaBI
+    source_type: Internal Data Platform
+    business_purpose: >-
+      用于获取平台用户行为及运营分析相关数据，支持Weekly Business Report库存模块
+      中的用户活跃指标，以及未来平台流量、用户行为、人群分析等业务分析需求。
+    criticality: High
+    asset_priority: P0
+    business_domains:
+      - User Analytics
+      - Platform Operation
+    source_system_or_mailbox: NovaBI
+
+    access:
+      access_method: Manual Web Query using Natural Language Query
+      access_location: NovaBI Web Console (Browser Access)
+      permission_owner: BI Team
+      credential_reference: managed_externally
+      manual_steps_reference: TBD
+
+    schedule:
+      update_frequency: Mixed frequency (dataset-specific)
+      expected_available_time: >-
+        Platform generally available anytime during normal access;
+        dataset-specific availability TBD
+      timezone: Asia/Shanghai
+      allowed_delay: TBD
+
+    acquisition:
+      supported_methods:
+        - Manual Web Query using Natural Language Query
+      default_method_for_mvp: Manual Web Query using Natural Language Query
+      file_or_payload_formats: []
+      source_selection_rule: TBD
+      no_match_policy: create_exception
+      multiple_match_policy: block_and_confirm
+
+    governance:
+      business_owner: Business Team
+      data_owner: BI Team
+      evidence_sources:
+        - NovaBI platform screenshots
+        - Historical exported DAU/user datasets
+        - NovaBI page URLs
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+
+    security_and_retention:
+      contains_sensitive_data: TBD
+      raw_copy_allowed: TBD
+      temporary_storage_allowed: TBD
+      retention_period: TBD
+      credentials_stored_in_config: false
+
+    notes: >-
+      NovaBI is an independent internal data platform separate from Apollo.
+      Different datasets may have different refresh frequencies. Specific query
+      assets, data tables and metrics will be defined in Dataset and Metric
+      stages. DAU report placement does not change its User Analytics business
+      domain.
+
+constraints:
+  active_source_requires_current_workflow_use_or_confirmed_near_term_plan: true
+  speculative_company_platforms_belong_in_future_backlog: true
+  auto_create_dataset_dependency: false
+  auto_match_by_name_or_schema: false
+  credentials_allowed: false

@@ -1,0 +1,121 @@
+config_type: business_rule
+rule_id: BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+rule_name: 技术线单计硬广收入记录纳入规则
+rule_category: Revenue Record Eligibility
+business_domains:
+  - Revenue
+applicable_workflow_ids:
+  - WF_WEEKLY_BUSINESS_REPORT
+applicable_pipeline_ids:
+  - PL_REVENUE_TECHNICAL_WEEKLY
+business_context_ids:
+  - CTX_REVENUE_TECHNICAL_SINGLE_COUNT
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-07-31
+
+purpose: >
+  从Rolling Deck标准化记录中确定技术线单计硬广收入的有效记录集合，
+  供后续签单金额与已执行金额Metric Variant共同使用。
+
+inputs:
+  required_standard_fields:
+    - business_line_level_1
+    - fiscal_quarter
+    - performance_revenue_amount
+    - executed_revenue_amount
+  required_context_fields:
+    - target_fiscal_quarter
+    - report_mode
+  required_result_contract_ids: []
+
+applicability:
+  report_modes:
+    - regular_week
+    - quarter_transition_week
+  data_roles:
+    - current_quarter_qtd
+    - quarter_transition_previous_quarter_final
+    - prior_year_comparable
+
+conditions:
+  include_when_all:
+    - field: business_line_level_1
+      operator: exact_equals
+      value: 硬广
+    - field: fiscal_quarter
+      operator: exact_equals
+      context_value: target_fiscal_quarter
+  fiscal_quarter_format:
+    pattern_semantics: YYYYQ[1-4]
+  explicitly_unused_fields:
+    - field: business_type
+      reason: 业务类型表示业务广告产品，与业务线分类无关
+    - field: double_counting_flag
+      reason: 当前技术线收入采用单计版本，双计标记不参与
+
+actions:
+  on_match:
+    - include_record_in_technical_single_count_set
+    - preserve_signed_amount_original_sign
+    - preserve_executed_amount_original_sign
+  on_non_target_valid_business_line:
+    - exclude_record
+  on_blank_or_nontext_business_line:
+    - exclude_record
+    - add_to_consolidated_owner_notification
+  on_quarter_mismatch:
+    - exclude_record
+    - add_to_consolidated_owner_notification
+  on_blank_or_invalid_quarter:
+    - exclude_record
+    - add_to_consolidated_owner_notification
+
+shared_record_set_consumers:
+  - metric_input_role: Technical QTD signed amount eligible records
+    value_field: performance_revenue_amount
+  - metric_input_role: Technical QTD executed amount eligible records
+    value_field: executed_revenue_amount
+
+record_handling:
+  duplicate_or_adjustment_rows:
+    retain_all_rows: true
+    deduplicate: false
+  negative_amount_adjustment:
+    retain_record: true
+    absolute_value_conversion_allowed: false
+  amount_aggregation_defined_here: false
+
+notification:
+  mode: consolidated_per_pipeline_run
+  include_reason_counts:
+    - blank_or_nontext_business_line
+    - fiscal_quarter_mismatch
+    - blank_or_invalid_fiscal_quarter
+  per_row_repeated_notification: false
+
+validation:
+  deterministic: true
+  exact_business_line_match_required: true
+  fuzzy_or_similarity_match_allowed: false
+  fiscal_quarter_format_validation_required: true
+  excluded_record_must_not_enter_metric_input: true
+  missing_input_behavior: exclude_affected_record_and_notify_owner
+  ambiguous_result_behavior: exclude_affected_record_and_notify_owner
+  owner_notification_required: true
+
+governance:
+  evidence_sources:
+    - Owner confirmations in Business Rule Initialization
+    - MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+  change_reason: Initial approved technical-line single-count eligibility rule
+
+constraints:
+  automatic_field_inference_allowed: false
+  automatic_rule_completion_allowed: false
+  metric_formula_allowed: false
+  output_formatting_allowed: false
+  double_counting_logic_enabled: false
+  unknown_decisions_remain_tbd: true

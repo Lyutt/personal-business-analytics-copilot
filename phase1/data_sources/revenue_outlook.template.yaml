@@ -1,0 +1,68 @@
+config_type: data_source
+
+identity:
+  source_id: SRC_REVENUE_OUTLOOK
+  source_name: 收入 Outlook 邮件
+  business_domain: revenue
+  source_type: outlook_email_attachment
+  version: 0.1.0-draft
+  status: draft
+  owner: TBD
+
+access:
+  mailbox_scope: TBD
+  folder: TBD
+  permission_owner: TBD
+  credential_reference: managed_externally
+
+schedule_and_freshness:
+  workflow_expected_time: "Thursday 17:30"
+  expected_email_arrival_window: TBD
+  timezone: Asia/Shanghai
+  allowed_delay: TBD
+  late_arrival_policy: wait_and_create_exception
+
+email_selection:
+  allowed_senders: []
+  sender_domain_rule: TBD
+  subject_pattern: TBD
+  body_keyword_rules: []
+  received_time_window: TBD
+  unread_only: false
+  expected_email_count: 1
+  multiple_match_policy: block_and_confirm
+  no_match_policy: wait_or_create_exception
+
+attachment_selection:
+  required: true
+  expected_attachment_count: TBD
+  filename_pattern: TBD
+  allowed_formats:
+    - xlsx
+  worksheet_names: []
+  password_protected_allowed: false
+  multiple_match_policy: block_and_confirm
+
+period_binding:
+  period_source: TBD
+  period_field_or_filename_token: TBD
+  mismatch_policy: block
+
+quality_checks:
+  - check_id: REV_SRC_001
+    check_type: sender_authorization
+    rule: TBD
+    severity: blocking
+  - check_id: REV_SRC_002
+    check_type: attachment_format
+    rule: allowed_formats_only
+    severity: blocking
+  - check_id: REV_SRC_003
+    check_type: reporting_period_match
+    rule: TBD
+    severity: blocking
+
+retention:
+  save_raw_attachment_copy: TBD
+  temporary_storage_allowed: TBD
+  retention_period: TBD

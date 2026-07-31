@@ -1,0 +1,66 @@
+config_type: data_source
+
+identity:
+  source_id: TBD
+  source_name: TBD
+  business_domain: TBD
+  source_type: TBD
+  version: 0.1.0-draft
+  status: draft
+  owner: TBD
+
+access:
+  access_method: TBD
+  access_location: TBD
+  permission_owner: TBD
+  credential_reference: managed_externally
+  manual_steps_reference: TBD
+  api_available: TBD
+
+schedule_and_freshness:
+  expected_update_frequency: TBD
+  expected_available_time: TBD
+  timezone: Asia/Shanghai
+  allowed_delay: TBD
+  freshness_field: TBD
+  stale_data_policy: create_exception
+
+selection:
+  date_window: TBD
+  name_or_subject_pattern: TBD
+  sender_or_system: TBD
+  expected_item_count: TBD
+  multiple_match_policy: block_and_confirm
+  no_match_policy: wait_or_create_exception
+
+file_or_payload:
+  expected_format: TBD
+  encoding: TBD
+  worksheet_or_object_name: TBD
+  filename_pattern: TBD
+  header_row: TBD
+  expected_columns_reference: knowledge_pack_field_mapping
+
+data_contract:
+  reporting_period_field: TBD
+  record_grain: TBD
+  unique_key_fields: []
+  required_standard_fields: []
+  optional_standard_fields: []
+
+quality_checks:
+  - check_id: TBD
+    check_type: TBD
+    rule: TBD
+    severity: TBD
+
+retention:
+  raw_copy_required: TBD
+  temporary_storage_allowed: TBD
+  retention_period: TBD
+  deletion_or_archive_policy: TBD
+
+lineage:
+  capture_source_timestamp: true
+  capture_source_reference: true
+  capture_config_version: true

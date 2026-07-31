@@ -1,0 +1,280 @@
+config_type: field_mapping_profile
+mapping_profile_id: MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1
+mapping_profile_name: Apollo分广告产品客户投放变化字段映射
+dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+dataset_version_constraint: TBD
+source_id: SRC_INTERNAL_PLATFORM_APOLLO
+query_asset_id: QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+business_domains:
+  - Advertising Operation
+  - Revenue Analysis
+  - Inventory Analysis
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-07-30
+approval_record:
+  approved_by: WORKFLOW_OWNER
+  approved_at: 2026-07-30
+  approval_scope: Product-filtered advertiser-level period result mapping
+  approval_note: Owner confirmed mapped fields, lookup reuse, contextual key and row-level anomaly handling
+
+scope:
+  asset_scope: On-screen advertiser-level date-range aggregate result table
+  source_object_or_sheet: Apollo奇胜执行收入客户维度查询结果
+  source_header_row: 1
+  header_structure: Single row
+  expected_raw_field_count: 8
+  mapped_result_field_count: 3
+  not_mapped_in_v1_field_count: 5
+  query_context_field_count: 3
+  record_grain_reference: Dataset Inventory
+
+evidence:
+  evidence_sources:
+    - Owner-provided Apollo product-filtered advertiser result screenshot
+  inspected_sample_count: 1
+  observed_sample_period:
+    start_date: 2026-07-17
+    end_date: 2026-07-23
+  schema_observation_status: completed
+
+source_schema:
+  structure_type: Web query result table
+  expected_field_count: 8
+  field_order_is_contractual: false
+  mapped_field_match_method: exact_header_name_after_trim
+  missing_mapped_field_policy: notify_owner_and_skip_invalid_rows_without_blocking_workflow
+  missing_not_mapped_in_v1_field_policy: ignore
+  unknown_source_field_policy: notify_and_request_owner_confirmation_without_blocking_confirmed_field_processing
+
+record_identity:
+  contextual_business_key:
+    - target_ad_product_name
+    - period_start_date
+    - period_end_date
+    - customer_id
+  key_source:
+    target_ad_product_name: explicit_query_context
+    period_start_date: explicit_query_context
+    period_end_date: explicit_query_context
+    customer_id: mapped_source_field
+  duplicate_key_policy:
+    retain_all_rows: true
+    automatic_merge_allowed: false
+    notify_owner: true
+  automatic_key_inference_allowed: false
+
+raw_field_inventory:
+  - {raw_field_inventory_id: RF001, raw_column_position_observed: 1, raw_field_name: 广告主, observed_raw_storage_type: text, source_value_origin: query_result, mapping_status: mapped_with_lookup}
+  - {raw_field_inventory_id: RF002, raw_column_position_observed: 2, raw_field_name: 广告主ID, observed_raw_storage_type: identifier_text, source_value_origin: query_result, mapping_status: mapped}
+  - {raw_field_inventory_id: RF003, raw_column_position_observed: 3, raw_field_name: 曝光量, observed_raw_storage_type: formatted_numeric, source_value_origin: query_result, mapping_status: mapped}
+  - {raw_field_inventory_id: RF004, raw_column_position_observed: 4, raw_field_name: 点击量, observed_raw_storage_type: numeric_candidate, source_value_origin: query_result, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF005, raw_column_position_observed: 5, raw_field_name: 点击率, observed_raw_storage_type: percentage_candidate, source_value_origin: query_result, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF006, raw_column_position_observed: 6, raw_field_name: 执行收入, observed_raw_storage_type: numeric_candidate, source_value_origin: query_result, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF007, raw_column_position_observed: 7, raw_field_name: 校准金额, observed_raw_storage_type: numeric_candidate, source_value_origin: query_result, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF008, raw_column_position_observed: 8, raw_field_name: 校准后执行收入, observed_raw_storage_type: numeric_candidate, source_value_origin: query_result, mapping_status: not_mapped_in_v1}
+
+query_context_fields:
+  - context_field_id: QCF001
+    source_parameter_name: product_filter
+    standard_field_id: target_ad_product_name
+    standard_field_name: 目标广告产品
+    standard_data_type: string
+    semantic_role: query_context_product
+    required: true
+    nullable: false
+    invalid_value_handling: notify_owner_and_skip_product_scoped_analysis_without_blocking_workflow
+    value_source: explicit_query_parameter
+
+  - context_field_id: QCF002
+    source_parameter_name: period_start_date
+    standard_field_id: period_start_date
+    standard_field_name: 统计开始日期
+    standard_data_type: date
+    semantic_role: query_context_period_start
+    required: true
+    nullable: false
+    output_format: YYYY-MM-DD
+    invalid_value_handling: notify_owner_and_skip_product_scoped_analysis_without_blocking_workflow
+    value_source: explicit_query_parameter
+
+  - context_field_id: QCF003
+    source_parameter_name: period_end_date
+    standard_field_id: period_end_date
+    standard_field_name: 统计结束日期
+    standard_data_type: date
+    semantic_role: query_context_period_end
+    required: true
+    nullable: false
+    output_format: YYYY-MM-DD
+    invalid_value_handling: notify_owner_and_skip_product_scoped_analysis_without_blocking_workflow
+    value_source: explicit_query_parameter
+
+field_mappings:
+  - mapping_entry_id: FM001
+    raw_field_inventory_id: RF001
+    raw_field_name: 广告主
+    intermediate_standard_field_id: raw_advertiser_name
+    intermediate_standard_field_name: 原始广告主
+    standard_field_id: customer_name
+    standard_field_name: 广告主
+    standard_data_type: string
+    semantic_role: customer_dimension
+    required: true
+    nullable: false
+    transformation: explicit_lookup_mapping
+    lookup_requirement_id: LKP_AD_PRODUCT_ADVERTISER_TO_CUSTOMER_GROUP
+    blank_value_handling: skip_row_and_notify_owner
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM002
+    raw_field_inventory_id: RF002
+    raw_field_name: 广告主ID
+    standard_field_id: customer_id
+    standard_field_name: 广告主ID
+    standard_data_type: string
+    semantic_role: customer_identifier
+    required: true
+    nullable: false
+    read_as_text: true
+    blank_value_handling: skip_row_without_notification
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM003
+    raw_field_inventory_id: RF003
+    raw_field_name: 曝光量
+    standard_field_id: impression_count
+    standard_field_name: 曝光量
+    standard_data_type: integer
+    semantic_role: delivery_measure
+    required: true
+    nullable: false
+    unit: impression
+    formatted_numeric_cast:
+      thousands_separator_allowed: true
+      integer_conversion: round_half_up_to_nearest_integer
+    blank_value_handling: skip_row_and_notify_owner
+    zero_value_handling: retain_row
+    negative_value_handling: retain_row_and_notify_owner
+    nonnumeric_value_handling: skip_row_and_notify_owner
+    mapping_status: owner_confirmed
+
+derived_lookup_mapping_requirements:
+  - requirement_id: LKP_AD_PRODUCT_ADVERTISER_TO_CUSTOMER_GROUP
+    input_raw_field_name: 广告主
+    input_intermediate_standard_field_id: raw_advertiser_name
+    output_standard_field_id: customer_name
+    output_standard_field_name: 广告主
+    output_business_meaning: 经广告主归属映射后的客户/集团名称
+    reference_mapping_asset_id: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX
+    reference_mapping_asset:
+      source_path: '${LOCAL_WORKFLOW_DATA_ROOT}\匹配表\广告主名称归属index.csv'
+      input_column: A
+      input_column_name: 广告主名称
+      output_column: C
+      output_column_name: 广告主
+      review_marker_column: D
+      review_marker_column_name: 映射审查标记
+      source_encoding: GB18030_or_GBK
+    exact_match_or_normalization_rule:
+      non_destructive: true
+      preserve_source_values: true
+      normalization_steps:
+        - trim_leading_and_trailing_whitespace
+        - remove_leading_and_trailing_carriage_return_or_line_feed
+        - unicode_nfkc_compatibility_normalization
+      match_method: exact_match_after_normalization
+      automatic_fuzzy_or_similarity_matching: false
+    unmatched_value_policy:
+      temporary_output: retain_original_advertiser_name_as_customer_name
+      collect_weekly_unmatched_list: true
+      notify_owner: true
+      owner_adjustment_overrides_temporary_output: true
+      writeback_only_after_owner_confirmation: true
+    automatic_name_similarity_matching_allowed: false
+    status: owner_confirmed_ready_for_use
+
+explicit_ignored_fields:
+  status: not_mapped_in_v1
+  missing_field_handling: ignore
+  raw_field_inventory_ids:
+    - RF004
+    - RF005
+    - RF006
+    - RF007
+    - RF008
+
+validation:
+  required_standard_fields:
+    - target_ad_product_name
+    - period_start_date
+    - period_end_date
+    - customer_name
+    - customer_id
+    - impression_count
+  query_context_validation:
+    target_product_required: true
+    dates_required: true
+    period_order_rule: period_start_date_must_not_be_after_period_end_date
+    failure_behavior:
+      notify_owner: true
+      skip_product_scoped_analysis: true
+      block_workflow: false
+  duplicate_contextual_key_validation:
+    required: true
+    duplicate_behavior:
+      retain_all_rows: true
+      automatic_merge_allowed: false
+      notify_owner: true
+  customer_id_blank_behavior:
+    skip_row: true
+    notify_owner: false
+  customer_name_blank_behavior:
+    skip_row: true
+    notify_owner: true
+  impression_value_validation:
+    integer_conversion_policy: round_half_up_to_nearest_integer
+    zero_allowed: true
+    blank_or_nonnumeric_behavior:
+      skip_row: true
+      notify_owner: true
+    negative_behavior:
+      retain_row: true
+      notify_owner: true
+  zero_result_row_behavior:
+    notify_owner: true
+    analyze_zero_row_reason: true
+    block_workflow: false
+  new_raw_field_policy:
+    notify_owner: true
+    owner_confirmation_required_before_registration: true
+    automatic_registration_allowed: false
+    automatic_mapping_allowed: false
+    block_confirmed_field_processing: false
+    temporary_status: unmapped_new_field
+  duplicate_standard_target_allowed: false
+  validation_rule_ids: []
+
+standardization_exclusions:
+  cross_period_change_calculated_in_mapping: false
+  customer_ranking_calculated_in_mapping: false
+  anomaly_threshold_evaluated_in_mapping: false
+  report_text_generated_in_mapping: false
+
+governance:
+  evidence_required_for_approval: true
+  owner_confirmation_required: true
+  change_reason: Approved V1 field mapping for product-scoped advertiser delivery results
+  notes: >
+    本Profile只标准化目标产品及周期上下文、广告主、广告主ID和曝光量。
+    当前周与对比周均复用同一Profile。客户变化、排序、数量限制及异常阈值不在
+    Field Mapping中定义。原始广告主为空时忽略该行并通知Owner。
+
+constraints:
+  profile_cannot_define_metric_formula: true
+  profile_cannot_define_business_rule: true
+  profile_cannot_create_dataset_or_pipeline_dependency: true
+  profile_cannot_auto_approve_unknown_field: true
+  profile_must_reference_registered_dataset: true

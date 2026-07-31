@@ -1,0 +1,774 @@
+config_type: field_mapping_profile
+mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+mapping_profile_name: 销售业务线Rolling Deck季度累计业绩收入字段映射
+dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+dataset_version_constraint: TBD
+source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+business_domains:
+  - Revenue
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-07-30
+approval_record:
+  approved_by: WORKFLOW_OWNER
+  approved_at: 2026-07-30
+  approval_scope: P0 primary analysis sheet only
+  approval_note: Owner confirmed all 43 field mappings and validation handling rules
+
+scope:
+  asset_scope: P0 primary analysis sheet only
+  source_object_or_sheet_pattern: "{Year}年执行单类型"
+  inspected_source_object_or_sheet: 2026年执行单类型
+  source_header_row: 1
+  header_structure: Single row
+  expected_raw_field_count: 43
+  other_workbook_sheets_status: unmapped_tbd
+  record_grain_reference: Dataset Inventory
+
+evidence:
+  evidence_sources:
+    - '${LOCAL_WORKFLOW_DATA_ROOT}\{Year}年执行单类型最新模版.xlsx'
+    - phase1_5/discovery/DS_REVENUE_SALES_ROLLING_DECK_QTD_Field_Structure_Inspection.md
+  inspected_sample_count: 1
+  sample_periods:
+    - 2026Q3
+  schema_observation_status: completed
+
+source_schema:
+  structure_type: Excel worksheet table
+  observed_used_range: A1:AQ68533
+  observed_merged_range_count: 0
+  expected_field_count: 43
+  field_order_is_contractual: TBD
+  duplicate_header_policy: block_and_confirm
+  missing_required_field_policy: block_affected_pipeline
+  unknown_source_field_policy: create_exception_and_request_owner_confirmation
+
+record_identity:
+  natural_unique_key_status: not_confirmed
+  non_unique_business_match_fields:
+    - 订单项_id
+    - 业绩金额
+  exact_duplicate_combination_allowed: true
+  duplicate_rows_retained: true
+  automatic_deduplication_allowed: false
+  duplicate_combination_runtime_effect: non_blocking
+  owner_confirmed_later_rule_candidate: 多条记录的业绩金额参与后续加总
+  later_rule_stage: Business Rules
+
+raw_field_inventory:
+  - {raw_field_inventory_id: RF001, raw_column: A, raw_field_name: 提审区域, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF002, raw_column: B, raw_field_name: 下单日期, observed_raw_storage_type: excel_date_serial, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF003, raw_column: C, raw_field_name: 丘比特订单号, observed_raw_storage_type: text_identifier, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF004, raw_column: D, raw_field_name: 合同类型, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF005, raw_column: E, raw_field_name: 合同编号, observed_raw_storage_type: text_identifier, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF006, raw_column: F, raw_field_name: 代理公司名称, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF007, raw_column: G, raw_field_name: 广告主公司名称, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF008, raw_column: H, raw_field_name: 品牌名称, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF009, raw_column: I, raw_field_name: 所属行业, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF010, raw_column: J, raw_field_name: 渠道销售, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF011, raw_column: K, raw_field_name: 直客销售, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF012, raw_column: L, raw_field_name: TV销售, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF013, raw_column: M, raw_field_name: 投放收入, observed_raw_storage_type: numeric, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF014, raw_column: N, raw_field_name: 其他收入, observed_raw_storage_type: numeric_nullable, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF015, raw_column: O, raw_field_name: 合同金额, observed_raw_storage_type: numeric, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF016, raw_column: P, raw_field_name: 执行开始日期, observed_raw_storage_type: excel_date_serial, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF017, raw_column: Q, raw_field_name: 执行结束日期, observed_raw_storage_type: excel_date_serial, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF018, raw_column: R, raw_field_name: 资源类型, observed_raw_storage_type: text, source_value_origin: source_derived_formula_result, ingestion_behavior: read_current_cell_result, agent_recalculation_allowed: false, mapping_status: mapped}
+  - {raw_field_inventory_id: RF019, raw_column: S, raw_field_name: 业务类型, observed_raw_storage_type: text, source_value_origin: source_derived_formula_result, ingestion_behavior: read_current_cell_result, agent_recalculation_allowed: false, mapping_status: mapped}
+  - {raw_field_inventory_id: RF020, raw_column: T, raw_field_name: 归属季度, observed_raw_storage_type: text_period, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF021, raw_column: U, raw_field_name: 业绩金额, observed_raw_storage_type: numeric, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF022, raw_column: V, raw_field_name: 业务线1, observed_raw_storage_type: text, source_value_origin: source_derived_formula_result, ingestion_behavior: read_current_cell_result, agent_recalculation_allowed: false, mapping_status: mapped}
+  - {raw_field_inventory_id: RF023, raw_column: W, raw_field_name: 业务线2, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF024, raw_column: X, raw_field_name: 已执行收入, observed_raw_storage_type: numeric, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF025, raw_column: Y, raw_field_name: 二级行业, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF026, raw_column: Z, raw_field_name: 三级行业, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF027, raw_column: AA, raw_field_name: 订单项_id, observed_raw_storage_type: text_identifier, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF028, raw_column: AB, raw_field_name: 订单项, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF029, raw_column: AC, raw_field_name: 广告位, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF030, raw_column: AD, raw_field_name: 投放类型, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF031, raw_column: AE, raw_field_name: 展示类型, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF032, raw_column: AF, raw_field_name: 售卖类型, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF033, raw_column: AG, raw_field_name: 广告产品（不包含会员卡）, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF034, raw_column: AH, raw_field_name: 选中平台, observed_raw_storage_type: text_multivalue, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF035, raw_column: AI, raw_field_name: 资源类型一级, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF036, raw_column: AJ, raw_field_name: 资源类型二级, observed_raw_storage_type: text, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF037, raw_column: AK, raw_field_name: 项目名称, observed_raw_storage_type: text_nullable, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF038, raw_column: AL, raw_field_name: 内容来源, observed_raw_storage_type: text_nullable, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF039, raw_column: AM, raw_field_name: 所属剧场, observed_raw_storage_type: text_nullable, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF040, raw_column: AN, raw_field_name: 所属频道, observed_raw_storage_type: text_nullable, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF041, raw_column: AO, raw_field_name: 身份, observed_raw_storage_type: text_nullable, source_value_origin: source_value, mapping_status: mapped}
+  - {raw_field_inventory_id: RF042, raw_column: AP, raw_field_name: 双计, observed_raw_storage_type: text_nullable, source_value_origin: source_derived_formula_result, ingestion_behavior: read_current_cell_result, agent_recalculation_allowed: false, mapping_status: mapped}
+  - {raw_field_inventory_id: RF043, raw_column: AQ, raw_field_name: 备注, observed_raw_storage_type: text_nullable, source_value_origin: source_derived_formula_result, ingestion_behavior: read_current_cell_result, agent_recalculation_allowed: false, mapping_status: mapped}
+
+field_mappings:
+  - mapping_entry_id: FM001
+    raw_field_inventory_id: RF023
+    raw_field_name: 业务线2
+    standard_field_id: business_line_level_1
+    standard_field_name: 一级业务线
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM002
+    raw_field_inventory_id: RF022
+    raw_field_name: 业务线1
+    standard_field_id: business_line_level_2
+    standard_field_name: 二级业务线
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM003
+    raw_field_inventory_id: RF006
+    raw_field_name: 代理公司名称
+    standard_field_id: agency_name
+    standard_field_name: 代理公司名称
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM004
+    raw_field_inventory_id: RF007
+    raw_field_name: 广告主公司名称
+    standard_field_id: advertiser_name
+    standard_field_name: 广告主名称
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM005
+    raw_field_inventory_id: RF008
+    raw_field_name: 品牌名称
+    standard_field_id: order_name
+    standard_field_name: 订单名称
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM006
+    raw_field_inventory_id: RF003
+    raw_field_name: 丘比特订单号
+    standard_field_id: order_id
+    standard_field_name: 订单ID
+    standard_data_type: string
+    semantic_role: business_identifier
+    ingestion_behavior: preserve_source_text
+    numeric_cast_allowed: false
+    preserve_leading_zeros: true
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM007
+    raw_field_inventory_id: RF005
+    raw_field_name: 合同编号
+    standard_field_id: contract_id
+    standard_field_name: 合同编号
+    standard_data_type: string
+    semantic_role: business_identifier
+    ingestion_behavior: preserve_source_text
+    numeric_cast_allowed: false
+    preserve_leading_zeros: true
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM008
+    raw_field_inventory_id: RF027
+    raw_field_name: 订单项_id
+    standard_field_id: order_item_id
+    standard_field_name: 订单项ID
+    standard_data_type: string
+    semantic_role: business_identifier
+    ingestion_behavior: preserve_source_text
+    numeric_cast_allowed: false
+    preserve_leading_zeros: true
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM009
+    raw_field_inventory_id: RF002
+    raw_field_name: 下单日期
+    standard_field_id: order_date
+    standard_field_name: 下单日期
+    standard_data_type: date
+    semantic_role: business_date
+    date_normalization:
+      output_format: YYYY-MM-DD
+      blank_value_handling: preserve_blank
+      invalid_nonblank_date_handling: preserve_source_value_without_anomaly_or_notification
+      source_value_mutation_allowed: false
+    currently_used_in_calculation: false
+    required: TBD
+    nullable: TBD
+    format_or_cast_rule_id: CAST_SOURCE_DATE_TO_ISO_DATE
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM010
+    raw_field_inventory_id: RF016
+    raw_field_name: 执行开始日期
+    standard_field_id: execution_start_date
+    standard_field_name: 执行开始日期
+    standard_data_type: date
+    semantic_role: business_date
+    date_normalization:
+      output_format: YYYY-MM-DD
+      blank_value_handling: preserve_blank
+      invalid_nonblank_date_handling: preserve_source_value_without_anomaly_or_notification
+      source_value_mutation_allowed: false
+    currently_used_in_calculation: false
+    required: TBD
+    nullable: TBD
+    format_or_cast_rule_id: CAST_SOURCE_DATE_TO_ISO_DATE
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM011
+    raw_field_inventory_id: RF017
+    raw_field_name: 执行结束日期
+    standard_field_id: execution_end_date
+    standard_field_name: 执行结束日期
+    standard_data_type: date
+    semantic_role: business_date
+    date_normalization:
+      output_format: YYYY-MM-DD
+      blank_value_handling: preserve_blank
+      invalid_nonblank_date_handling: preserve_source_value_without_anomaly_or_notification
+      source_value_mutation_allowed: false
+    currently_used_in_calculation: false
+    required: TBD
+    nullable: TBD
+    format_or_cast_rule_id: CAST_SOURCE_DATE_TO_ISO_DATE
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM012
+    raw_field_inventory_id: RF020
+    raw_field_name: 归属季度
+    standard_field_id: fiscal_quarter
+    standard_field_name: 归属季度
+    standard_data_type: string
+    semantic_role: business_period
+    value_handling: preserve_source_text_no_format_normalization
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM013
+    raw_field_inventory_id: RF013
+    raw_field_name: 投放收入
+    standard_field_id: delivery_revenue_amount
+    standard_field_name: 投放收入
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    unit: CNY_yuan
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    invalid_nonblank_numeric_handling: mark_data_anomaly_and_continue
+    owner_notification_required: false
+    pipeline_blocking_behavior: continue
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM014
+    raw_field_inventory_id: RF014
+    raw_field_name: 其他收入
+    standard_field_id: other_revenue_amount
+    standard_field_name: 其他收入
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    unit: CNY_yuan
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    invalid_nonblank_numeric_handling: mark_data_anomaly_and_continue
+    owner_notification_required: false
+    pipeline_blocking_behavior: continue
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM015
+    raw_field_inventory_id: RF015
+    raw_field_name: 合同金额
+    standard_field_id: contract_amount
+    standard_field_name: 合同金额
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    unit: CNY_yuan
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    invalid_nonblank_numeric_handling: mark_data_anomaly_and_continue
+    owner_notification_required: false
+    pipeline_blocking_behavior: continue
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM016
+    raw_field_inventory_id: RF021
+    raw_field_name: 业绩金额
+    standard_field_id: performance_revenue_amount
+    standard_field_name: 签单金额
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    unit: CNY_yuan
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    invalid_nonblank_numeric_handling: mark_data_anomaly_and_notify_owner
+    owner_notification_required: true
+    pipeline_blocking_behavior: pause_pending_owner_confirmation
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM017
+    raw_field_inventory_id: RF024
+    raw_field_name: 已执行收入
+    standard_field_id: executed_revenue_amount
+    standard_field_name: 已执行金额
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    unit: CNY_yuan
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    invalid_nonblank_numeric_handling: mark_data_anomaly_and_notify_owner
+    owner_notification_required: true
+    pipeline_blocking_behavior: pause_pending_owner_confirmation
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM018
+    raw_field_inventory_id: RF009
+    raw_field_name: 所属行业
+    standard_field_id: industry_level_1
+    standard_field_name: 行业
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM019
+    raw_field_inventory_id: RF025
+    raw_field_name: 二级行业
+    standard_field_id: industry_level_2
+    standard_field_name: 二级行业
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM020
+    raw_field_inventory_id: RF026
+    raw_field_name: 三级行业
+    standard_field_id: industry_level_3
+    standard_field_name: 三级行业
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM021
+    raw_field_inventory_id: RF010
+    raw_field_name: 渠道销售
+    standard_field_id: channel_sales_name
+    standard_field_name: 渠道销售
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM022
+    raw_field_inventory_id: RF011
+    raw_field_name: 直客销售
+    standard_field_id: direct_sales_name
+    standard_field_name: 直客销售
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM023
+    raw_field_inventory_id: RF012
+    raw_field_name: TV销售
+    standard_field_id: tv_sales_name
+    standard_field_name: TV销售
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM024
+    raw_field_inventory_id: RF028
+    raw_field_name: 订单项
+    standard_field_id: order_item_name
+    standard_field_name: 订单项
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM025
+    raw_field_inventory_id: RF029
+    raw_field_name: 广告位
+    standard_field_id: ad_placement_name
+    standard_field_name: 广告位
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM026
+    raw_field_inventory_id: RF033
+    raw_field_name: 广告产品（不包含会员卡）
+    standard_field_id: ad_product_name
+    standard_field_name: 广告产品
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM027
+    raw_field_inventory_id: RF034
+    raw_field_name: 选中平台
+    standard_field_id: platform_name
+    standard_field_name: 平台
+    standard_data_type: string
+    semantic_role: business_dimension
+    value_handling: preserve_full_source_text
+    automatic_split_allowed: false
+    currently_used_in_calculation: false
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM028
+    raw_field_inventory_id: RF018
+    raw_field_name: 资源类型
+    standard_field_id: resource_type
+    standard_field_name: 资源类型
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    source_value_origin: source_derived_formula_result
+    ingestion_behavior: read_current_cell_result
+    agent_recalculation_allowed: false
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM029
+    raw_field_inventory_id: RF001
+    raw_field_name: 提审区域
+    standard_field_id: submission_region
+    standard_field_name: 提审区域
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM030
+    raw_field_inventory_id: RF004
+    raw_field_name: 合同类型
+    standard_field_id: contract_type
+    standard_field_name: 合同类型
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM031
+    raw_field_inventory_id: RF019
+    raw_field_name: 业务类型
+    standard_field_id: business_type
+    standard_field_name: 业务类型
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    source_value_origin: source_derived_formula_result
+    ingestion_behavior: read_current_cell_result
+    agent_recalculation_allowed: false
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM032
+    raw_field_inventory_id: RF030
+    raw_field_name: 投放类型
+    standard_field_id: delivery_type
+    standard_field_name: 投放类型
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM033
+    raw_field_inventory_id: RF031
+    raw_field_name: 展示类型
+    standard_field_id: display_type
+    standard_field_name: 展示类型
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM034
+    raw_field_inventory_id: RF032
+    raw_field_name: 售卖类型
+    standard_field_id: sales_type
+    standard_field_name: 售卖类型
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM035
+    raw_field_inventory_id: RF035
+    raw_field_name: 资源类型一级
+    standard_field_id: resource_type_level_1
+    standard_field_name: 一级资源类型
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    relationship_to_resource_type: none
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM036
+    raw_field_inventory_id: RF036
+    raw_field_name: 资源类型二级
+    standard_field_id: resource_type_level_2
+    standard_field_name: 二级资源类型
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    relationship_to_resource_type: none
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM037
+    raw_field_inventory_id: RF037
+    raw_field_name: 项目名称
+    standard_field_id: project_name
+    standard_field_name: 项目名称
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM038
+    raw_field_inventory_id: RF038
+    raw_field_name: 内容来源
+    standard_field_id: content_source
+    standard_field_name: 内容来源
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM039
+    raw_field_inventory_id: RF039
+    raw_field_name: 所属剧场
+    standard_field_id: theater_name
+    standard_field_name: 所属剧场
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM040
+    raw_field_inventory_id: RF040
+    raw_field_name: 所属频道
+    standard_field_id: channel_name
+    standard_field_name: 所属频道
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM041
+    raw_field_inventory_id: RF041
+    raw_field_name: 身份
+    standard_field_id: identity
+    standard_field_name: 身份
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: TBD
+    nullable: TBD
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM042
+    raw_field_inventory_id: RF042
+    raw_field_name: 双计
+    standard_field_id: double_counting_flag
+    standard_field_name: 双计
+    standard_data_type: string_flag
+    semantic_role: classification_flag
+    required: TBD
+    nullable: TBD
+    source_value_origin: source_derived_formula_result
+    ingestion_behavior: read_current_cell_result
+    agent_recalculation_allowed: false
+    value_semantics:
+      marked_value: 硬广
+      marked_business_meaning: 业务线非硬广投放项在双计时按硬广归类
+      unmarked_value: blank
+      unmarked_business_meaning: 双计时仍按内容营销归类，不计为硬广
+      automatic_boolean_conversion_allowed_in_field_mapping: false
+      classification_calculation_stage: Business_Rule
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM043
+    raw_field_inventory_id: RF043
+    raw_field_name: 备注
+    standard_field_id: remarks
+    standard_field_name: 备注
+    standard_data_type: string
+    semantic_role: descriptive_attribute
+    required: TBD
+    nullable: TBD
+    source_value_origin: source_derived_formula_result
+    ingestion_behavior: read_current_cell_result
+    agent_recalculation_allowed: false
+    mapping_status: owner_confirmed
+
+derived_lookup_mapping_requirements:
+  - requirement_id: LKP_REVENUE_ADVERTISER_TO_CUSTOMER_GROUP
+    input_standard_field_id: advertiser_name
+    input_business_meaning: 广告主下单公司名
+    output_standard_field_id: customer_name
+    output_standard_field_name: 广告主
+    output_business_meaning: 经广告主归属映射后的客户/集团名称
+    reference_mapping_asset_id: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX
+    reference_mapping_asset_candidate:
+      source_path: '${LOCAL_WORKFLOW_DATA_ROOT}\匹配表\广告主名称归属index.csv'
+      input_column: A
+      input_column_name: 广告主名称
+      output_column: C
+      output_column_name: 广告主
+      review_marker_column: D
+      review_marker_column_name: 映射审查标记
+      review_marker_value: 可能冲突
+      source_encoding: GB18030_or_GBK
+      quality_review_status: owner_confirmed_and_cleaned
+      quality_review_record: phase1_5/discovery/Advertiser_Name_Ownership_Mapping_Audit_2026-07-30.md
+      possible_conflict_review:
+        review_record: phase1_5/discovery/Advertiser_Name_Possible_Conflict_Flagging_2026-07-30.md
+        flagged_row_count: 4793
+        marker_is_advisory: true
+        marker_blocks_exact_lookup: false
+        automatic_customer_mapping_change_allowed: false
+    exact_match_or_normalization_rule:
+      source_decode: GB18030_or_GBK
+      non_destructive: true
+      preserve_source_values: true
+      normalization_steps:
+        - trim_leading_and_trailing_whitespace
+        - remove_leading_and_trailing_carriage_return_or_line_feed
+        - unicode_nfkc_compatibility_normalization
+      match_method: exact_match_after_normalization
+      automatic_fuzzy_or_similarity_matching: false
+    unmatched_value_policy:
+      temporary_output: retain_original_advertiser_name_as_customer_name
+      collect_weekly_unmatched_list: true
+      notify_owner: true
+      owner_adjustment_overrides_temporary_output: true
+      writeback_only_after_owner_confirmation: true
+    automatic_name_similarity_matching_allowed: false
+    status: owner_confirmed_ready_for_use
+
+standardization_policies:
+  text_fields:
+    non_destructive: true
+    preserve_source_values: true
+    normalization_steps:
+      - trim_leading_and_trailing_whitespace
+      - remove_leading_and_trailing_carriage_return_or_line_feed
+    preserve_internal_whitespace: true
+    preserve_character_case: true
+    preserve_punctuation: true
+
+  source_derived_formula_result_fields:
+    applicable_raw_field_inventory_ids:
+      - RF018
+      - RF019
+      - RF022
+      - RF042
+      - RF043
+    ingestion_behavior: read_current_cell_result
+    blank_result_handling: preserve_blank_without_missing_field_anomaly
+    excel_error_values:
+      - '#N/A'
+      - '#VALUE!'
+      - '#REF!'
+      - '#DIV/0!'
+      - '#NAME?'
+      - '#NUM!'
+      - '#NULL!'
+    excel_error_handling: mark_data_anomaly_and_continue
+    owner_notification_required: false
+    agent_formula_recalculation_allowed: false
+    pipeline_blocking_behavior: continue
+
+validation:
+  required_standard_fields: []
+  field_missing_validation_required: false
+  missing_field_behavior: accept_without_validation_failure
+  entry_level_required_flags_evaluated: false
+  type_validation_required: true
+  unknown_field_validation_required: true
+  new_raw_field_policy:
+    notify_owner: true
+    owner_confirmation_required_before_registration: true
+    automatic_registration_allowed: false
+    automatic_mapping_allowed: false
+    block_existing_field_processing: false
+    temporary_status: unmapped_new_field
+  duplicate_standard_target_allowed: false
+  validation_rule_ids: []
+
+governance:
+  evidence_required_for_approval: true
+  owner_confirmation_required: true
+  change_reason: Approved V1 field mapping for P0 primary analysis sheet
+  notes: >
+    当前43个原始字段均已完成Owner确认的标准字段映射。
+    字段缺失不触发验证失败；金额空值按0处理；文本字段执行非破坏性标准化。
+    执行级阻断与恢复策略以Pipeline Registry为准，不在本Mapping Profile重复定义。
+
+constraints:
+  profile_cannot_define_metric_formula: true
+  profile_cannot_define_business_rule: true
+  profile_cannot_create_dataset_or_pipeline_dependency: true
+  profile_cannot_auto_approve_unknown_field: true
+  profile_must_reference_registered_dataset: true

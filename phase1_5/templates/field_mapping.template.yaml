@@ -1,0 +1,96 @@
+config_type: field_mapping_profile
+template_version: 0.1.0
+template_status: approved_for_initialization
+
+instructions:
+  one_profile_per_dataset: true
+  raw_to_standard_mapping_only: true
+  unknown_fields_must_remain_tbd: true
+  automatic_field_matching_allowed: false
+  infer_business_meaning_from_field_name_allowed: false
+  examples_are_real_configuration: false
+
+mapping_profile:
+  mapping_profile_id: TBD
+  mapping_profile_name: TBD
+  dataset_id: TBD
+  dataset_version_constraint: TBD
+  source_id: TBD
+  business_domains: []
+  owner: WORKFLOW_OWNER
+  business_approver: WORKFLOW_OWNER
+  version: 0.1.0-draft
+  approval_status: draft
+  effective_from: TBD
+
+  scope:
+    asset_scope: TBD
+    source_object_or_sheet: TBD
+    source_header_row: TBD
+    record_grain_reference: Dataset Inventory
+    excluded_objects_or_sheets: []
+
+  evidence:
+    evidence_sources: []
+    inspected_sample_count: 0
+    sample_periods: []
+    schema_observation_status: not_started
+
+  source_schema:
+    structure_type: TBD
+    expected_field_count: TBD
+    field_order_is_contractual: TBD
+    duplicate_header_policy: block_and_confirm
+    missing_required_field_policy: block_affected_pipeline
+    unknown_source_field_policy: create_exception_and_request_owner_confirmation
+
+  raw_field_inventory:
+    - raw_field_inventory_id: TBD
+      source_object_or_sheet: TBD
+      raw_column: TBD
+      raw_field_name: TBD
+      observed_raw_storage_type: TBD
+      source_value_origin: TBD
+      mapping_status: pending_mapping
+
+  field_mappings:
+    - mapping_entry_id: TBD
+      source_object_or_sheet: TBD
+      raw_field_name: TBD
+      raw_field_position: TBD
+      raw_data_type: TBD
+      sample_values: []
+      standard_field_id: TBD
+      standard_field_name: TBD
+      standard_data_type: TBD
+      semantic_role: TBD
+      required: TBD
+      nullable: TBD
+      unit: TBD
+      allowed_values: []
+      format_or_cast_rule_id: TBD
+      business_definition_status: TBD
+      mapping_status: TBD
+      notes: TBD
+
+  explicit_ignored_fields: []
+
+  validation:
+    required_standard_fields: []
+    type_validation_required: true
+    unknown_field_validation_required: true
+    duplicate_standard_target_allowed: false
+    validation_rule_ids: []
+
+  governance:
+    evidence_required_for_approval: true
+    owner_confirmation_required: true
+    change_reason: Initial Field Mapping Profile
+    notes: TBD
+
+constraints:
+  profile_cannot_define_metric_formula: true
+  profile_cannot_define_business_rule: true
+  profile_cannot_create_dataset_or_pipeline_dependency: true
+  profile_cannot_auto_approve_unknown_field: true
+  profile_must_reference_registered_dataset: true
