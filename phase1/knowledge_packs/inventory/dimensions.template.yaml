@@ -1,0 +1,32 @@
+config_type: business_dimensions
+knowledge_pack: inventory
+version: 0.1.0-draft
+status: draft
+owner: TBD
+
+record_grain:
+  definition: TBD
+  unique_key_fields: []
+  snapshot_time_field: TBD
+  confirmation_status: pending
+
+dimensions:
+  - dimension_id: DIM_PRODUCT_RESOURCE
+    name: 产品或资源
+    standard_field: TBD
+    business_definition: TBD
+    hierarchy: []
+    required: true
+    unknown_value_policy: create_exception
+    owner: TBD
+    status: draft
+
+  - dimension_id: DIM_INVENTORY_OTHER_001
+    name: 其他待盘点维度
+    standard_field: TBD
+    business_definition: TBD
+    hierarchy: []
+    required: false
+    unknown_value_policy: create_exception
+    owner: TBD
+    status: draft

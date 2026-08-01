@@ -1,0 +1,74 @@
+config_type: field_mapping_readiness_gate
+gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+assessment_date: 2026-07-31
+status: passed
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+
+scope:
+  registered_dataset_count: 10
+  weekly_workflow_in_scope_dataset_count: 9
+  out_of_scope_dataset_count: 1
+  out_of_scope_datasets:
+    - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+      reason: Quarterly and Annual Revenue Analysis only
+
+coverage:
+  approved_mapping_profile_count: 9
+  dataset_inventory_explicit_reference_count: 9
+  pipeline_registry_explicit_reference_count: 9
+  missing_in_scope_mapping_profile_count: 0
+  unknown_mapping_profile_reference_count: 0
+  unreferenced_approved_mapping_profile_count: 0
+
+consistency_checks:
+  - check_id: CHK_MAPPING_PROFILE_UNIQUENESS
+    result: passed
+    evidence: 9 unique Mapping Profile IDs for 9 in-scope Datasets
+  - check_id: CHK_PROFILE_DATASET_MATCH
+    result: passed
+    evidence: Every Mapping Profile dataset_id matches its Dataset Inventory reference
+  - check_id: CHK_DATASET_PIPELINE_REFERENCE
+    result: passed
+    evidence: Every in-scope raw-data Pipeline explicitly references the approved Mapping Profile
+  - check_id: CHK_STANDARD_FIELD_SEMANTIC_CONSISTENCY
+    result: passed
+    evidence:
+      parsed_standard_field_definition_count: 98
+      conflicting_standard_field_id_count: 0
+  - check_id: CHK_STAGE_RESPONSIBILITY_BOUNDARY
+    result: passed
+    evidence:
+      metric_formula_defined_in_mapping_count: 0
+      business_rule_defined_in_mapping_count: 0
+      automatic_unknown_field_mapping_allowed_count: 0
+  - check_id: CHK_WORKFLOW_SCOPE_BOUNDARY
+    result: passed
+    evidence: Quarter-close Dataset remains not_in_scope and has no Weekly Pipeline or Mapping requirement
+
+non_blocking_deferred_items:
+  - item: Dataset version constraints remain TBD
+    rationale: Version constraints are governance metadata and do not alter confirmed v1 field contracts
+  - item: Rolling Deck field-level required and nullable flags remain TBD
+    rationale: Owner explicitly confirmed that this workbook does not require field-missing validation in v1
+  - item: Some observed sample periods and field-order contractual flags remain TBD
+    rationale: Confirmed header-based matching and explicit validation policies do not depend on these values
+  - item: Product filter Rule ID, Metric formulas and Output Mapping remain unregistered
+    rationale: These belong to later Business Rule, Metric Library and Output Mapping stages
+
+gate_decision:
+  field_mapping_initialization_complete: true
+  blocking_issue_count: 0
+  warning_count: 0
+  allow_next_asset_stage: true
+  recommended_next_asset_stage: Business Rule Initialization
+  code_implementation_authorized: false
+
+constraints:
+  unknown_business_rules_remain_tbd: true
+  no_metric_formula_in_field_mapping: true
+  no_output_logic_in_field_mapping: true
+  no_automatic_dependency_inference: true
+  no_automatic_field_similarity_mapping: true
+  outlook_auto_send: false

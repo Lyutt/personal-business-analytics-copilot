@@ -1,0 +1,213 @@
+config_type: dataset_readiness_matrix
+matrix_version: 0.3.2
+status: completed_with_pending_mapping_delta
+assessment_workflow_id: WF_WEEKLY_BUSINESS_REPORT
+last_synced_with_pipeline_registry: 2026-07-30
+last_synced_with_field_mapping_gate: 2026-07-31
+assessment_summary:
+  dataset_count: 10
+  pipeline_registry_allow_count: 9
+  pipeline_registry_hold_count: 0
+  blocking_readiness_item_count: 1
+
+field_mapping_readiness_gate:
+  gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
+  status: passed_for_original_scope
+  assessment_date: 2026-07-31
+  in_scope_dataset_count: 9
+  approved_mapping_profile_count: 9
+  blocking_issue_count: 0
+  out_of_scope_dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+  gate_artifact: phase1_5/assets/field_mappings/field_mapping_readiness_gate.yaml
+  post_gate_usage_change:
+    detected_at: 2026-07-31
+    primary_dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+    change_type: additional_sheet_usage
+    source_object: 业务线 Sheet
+    new_usage_role: quarter_transition_previous_quarter_complete_result_primary
+    delta_gate_status: pending
+    fallback_dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+    fallback_usage_role: fallback_candidate
+    fallback_policy_status: pending_owner_confirmation
+
+standardization_baseline:
+  registration_status_means_boundary_confirmed_only: true
+  business_domains_target_type: list
+  result_acquisition_methods_target_type: list
+  expected_formats_target_type: list
+  parameters_or_filters_target_type: object_list
+  ambiguous_update_frequency_target:
+    - source_data_refresh_frequency
+    - dataset_update_frequency
+    - planned_acquisition_frequency
+    - query_execution_frequency
+  dataset_workflow_relationship_location: readiness_matrix_and_pipeline_registry
+
+dataset_readiness:
+  - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+    source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+    query_asset_id: null
+    registration_status: confirmed
+    workflow_usage: { usage_role: required, report_section_or_usage: Weekly Business Report Revenue Section }
+    readiness:
+      status: pending_field_mapping_delta
+      blocking_tbd_items:
+        - 业务线 Sheet中技术线与CTV上季度完整收入结果的增量Field Mapping
+      non_blocking_tbd_items:
+        - Secondary validation mismatch triggers warning and user confirmation
+        - Multiple matches use the latest sent email and require an output notice
+    standardization: { status: completed, exceptions: [] }
+    gate:
+      pipeline_registry_eligible: allow
+      decision_reason: Required dataset; acquisition selection and failure-handling rules are confirmed
+      quarter_transition_previous_quarter_result_eligible: hold_pending_mapping_delta
+      owner: Originating business team (Contact: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY})
+
+  - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+    source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+    query_asset_id: null
+    registration_status: confirmed
+    workflow_usage:
+      usage_role: fallback_candidate
+      report_section_or_usage: Weekly Business Report Quarter Transition Revenue Section fallback
+      execution_condition: >-
+        Primary weekly Rolling Deck 业务线 Sheet is unavailable or invalid, and
+        fallback policy has been confirmed by Owner
+      regular_week_behavior: Dataset instance is not required
+    readiness:
+      status: pending_fallback_policy
+      blocking_tbd_items: []
+      non_blocking_tbd_items:
+        - Whether fallback acquisition is automatic or requires Owner confirmation
+        - Fallback workbook Sheet and field mapping
+        - Exact initial-version fallback notification behavior
+    standardization: { status: completed, exceptions: [] }
+    gate:
+      pipeline_registry_eligible: not_required_for_primary_path
+      decision_reason: Dataset is retained as a fallback candidate and does not block the confirmed primary path
+      owner: Originating business team (Contact: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY})
+
+  - dataset_id: DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
+    source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+    query_asset_id: null
+    registration_status: confirmed
+    workflow_usage: { usage_role: required, report_section_or_usage: Weekly Business Report Revenue Section }
+    readiness:
+      status: conditional
+      blocking_tbd_items: []
+      non_blocking_tbd_items:
+        - Subject year token has been parameterized for future years
+        - Multiple matches use the latest sent email and require an output notice
+    standardization: { status: completed, exceptions: [] }
+    gate: { pipeline_registry_eligible: allow, decision_reason: Required dataset; acquisition selection and failure-handling rules are confirmed, owner: Advertising Data System Team }
+
+  - dataset_id: DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_QISHENG_EXECUTION_REVENUE
+    registration_status: confirmed
+    workflow_usage: { usage_role: required, report_section_or_usage: Weekly Business Report Revenue Section }
+    readiness:
+      status: conditional
+      blocking_tbd_items: []
+      non_blocking_tbd_items:
+        - Apollo UI automation must verify deselecting the date detail dimension after template selection
+    standardization: { status: completed, exceptions: [] }
+    gate: { pipeline_registry_eligible: allow, decision_reason: Required dataset; query parameters and failure-handling rules are confirmed, owner: Advertising Data Team }
+
+  - dataset_id: DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_INVENTORY_WEEKLY_FULL_SITE_STOCK
+    registration_status: confirmed
+    workflow_usage: { usage_role: required, report_section_or_usage: Weekly Business Report Inventory Section }
+    readiness:
+      status: conditional
+      blocking_tbd_items: []
+      non_blocking_tbd_items:
+        - Workbook primary analysis object remains TBD for later data-structure review
+    standardization: { status: completed, exceptions: [] }
+    gate: { pipeline_registry_eligible: allow, decision_reason: Required dataset; query period and failure-handling rules are confirmed, owner: Advertising Data Team }
+
+  - dataset_id: DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_INVENTORY_PATCH_STOCK
+    registration_status: confirmed
+    workflow_usage: { usage_role: required, report_section_or_usage: Weekly Business Report Inventory Section }
+    readiness:
+      status: conditional
+      blocking_tbd_items: []
+      non_blocking_tbd_items:
+        - Exact dimension combination and unique business key remain TBD for later data-structure review
+    standardization: { status: completed, exceptions: [] }
+    gate: { pipeline_registry_eligible: allow, decision_reason: Required dataset; query period and failure-handling rules are confirmed, owner: Advertising Data Team }
+
+  - dataset_id: DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK
+    registration_status: confirmed
+    workflow_usage: { usage_role: required, report_section_or_usage: Weekly Business Report Inventory Section }
+    readiness:
+      status: conditional
+      blocking_tbd_items: []
+      non_blocking_tbd_items:
+        - Exact dimension combination and unique business key remain TBD for later data-structure review
+    standardization: { status: completed, exceptions: [] }
+    gate: { pipeline_registry_eligible: allow, decision_reason: Required dataset; query period and failure-handling rules are confirmed, owner: Advertising Data Team }
+
+  - dataset_id: DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+    registration_status: confirmed
+    workflow_usage: { usage_role: required, report_section_or_usage: Weekly Business Report Inventory Section - Brand Moment sell-through exposure input }
+    readiness:
+      status: conditional
+      blocking_tbd_items: []
+      non_blocking_tbd_items:
+        - Apollo UI automation must verify deselecting the date detail dimension after template selection
+        - Exact business unique key remains TBD for later data-structure review
+    standardization: { status: completed, exceptions: [] }
+    gate: { pipeline_registry_eligible: allow, decision_reason: Required dataset; one-row acquisition override and failure-handling rules are confirmed, owner: Advertising Data Team }
+
+  - dataset_id: DS_NOVABI_PLATFORM_DAU
+    source_id: SRC_INTERNAL_PLATFORM_NOVABI
+    query_asset_id: QRY_NOVABI_DAU_QUERY
+    registration_status: confirmed
+    workflow_usage: { usage_role: optional, report_section_or_usage: Weekly Business Report Inventory Section - Overall DAU change }
+    readiness:
+      status: conditional
+      blocking_tbd_items: []
+      non_blocking_tbd_items:
+        - NovaBI account switching may require manual action
+        - Missing DAU output is allowed and may remain blank
+    standardization: { status: completed, exceptions: [] }
+    gate: { pipeline_registry_eligible: allow, decision_reason: Optional dataset with confirmed blank-and-continue fallback, owner: BI Team }
+
+  - dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+    registration_status: confirmed
+    workflow_usage:
+      usage_role: conditional_optional
+      report_section_or_usage: Weekly Business Report Inventory Diagnosis - Product customer delivery change analysis
+      execution_condition: Refer to PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS trigger_contract
+      no_trigger_behavior: No dataset instance is expected
+    readiness:
+      status: conditional
+      blocking_tbd_items: []
+      non_blocking_tbd_items:
+        - No dataset instance when the anomaly trigger is not met
+        - Formal trigger Rule ID and product override rules remain deferred to Business Rules
+        - Runtime product input must be explicit; no product inference is allowed
+        - Query failure is non-blocking and requires a technical failure-reason analysis
+        - Zero-row result is non-blocking and requires a reason analysis
+    standardization: { status: completed, exceptions: [] }
+    gate:
+      pipeline_registry_eligible: allow
+      decision_reason: Conditional optional Pipeline and explicit trigger contract are registered; formal Rule IDs remain a non-blocking later-stage asset
+      owner: 广告数据团队
+
+constraints:
+  matrix_does_not_bind_dataset_to_single_workflow: true
+  workflow_usage_is_many_to_many: true
+  registration_confirmed_does_not_mean_operationally_ready: true
+  unknown_business_decisions_remain_tbd: true
+  no_field_rule_metric_or_pipeline_logic: true

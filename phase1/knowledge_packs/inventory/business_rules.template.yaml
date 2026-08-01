@@ -1,0 +1,24 @@
+config_type: business_rules
+knowledge_pack: inventory
+version: 0.1.0-draft
+status: draft
+
+rules:
+  - rule_id: INV_RULE_001
+    rule_name: TBD
+    business_purpose: TBD
+    applies_when: TBD
+    input_fields: []
+    action: TBD
+    priority: TBD
+    blocking_if_failed: TBD
+    effective_from: TBD
+    effective_to: null
+    evidence_source: TBD
+    owner: TBD
+    approval_status: pending
+    test_case_reference: TBD
+
+conflict_policy:
+  default_action: create_exception
+  allow_agent_to_guess: false

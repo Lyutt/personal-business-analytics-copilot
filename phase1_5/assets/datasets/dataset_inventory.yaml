@@ -1,0 +1,1513 @@
+config_type: dataset_inventory
+inventory_version: 0.2.1
+status: active
+owner: ${OUTLOOK_MAILBOX_ADDRESS_LOCAL_ONLY}
+
+datasets:
+  - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+    dataset_name: 销售业务线Rolling Deck季度累计业绩收入数据
+    business_domains:
+      - Revenue
+    business_purpose: >-
+      用于获取销售业务线Rolling Deck季度累计业绩收入数据，并从业务线Sheet
+      读取过去季度的完整业绩收入结果，支持Weekly Business Report收入模块及
+      其他收入相关业务分析。
+    asset_role: Raw Analytical Input
+    source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+    query_asset_id: null
+
+    acquisition:
+      acquisition_role: Email Attachment Acquisition
+      source_object_or_attachment_rule:
+        source_scope: Corporate Outlook Mailbox中的销售业务线业绩收入邮件
+        sender:
+          display_name: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY}
+          email: ${REVENUE_SOURCE_CONTACT_EMAIL_LOCAL_ONLY}
+        subject_pattern: "FY{Year}Q{Quarter}销售业务线Rolling Deck @{Date}"
+        attachment_pattern: "销售业务线Rolling Deck-FY{Year}Q{Quarter}@{Date}"
+        attachment_name_example: "销售业务线Rolling Deck-FY26Q3@Jul23 2026"
+        historical_comparison_access:
+          archive_id: ARCHIVE_REVENUE_ROLLING_DECK_PRIOR_YEAR
+          access_location: '${LOCAL_WORKFLOW_DATA_ROOT}\分业务线同期业绩收入数据-存档'
+          purpose: Retrieve manually archived prior-year Rolling Deck attachments for YoY calculation
+          original_source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+          original_sender:
+            display_name: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY}
+            email: ${REVENUE_SOURCE_CONTACT_EMAIL_LOCAL_ONLY}
+          provenance_preserved: true
+          archive_is_independent_source: false
+          coverage_status: Partial and continuously supplemented by Owner
+        email_selection_scope: >-
+          当前Dataset仅包含用于周度业务分析的季度累计Rolling Deck邮件，
+          该邮件流通常每周四发送。
+        excluded_email_scope: >-
+          同一发件人发送的季度结算或确认版本邮件，包括季度初发送的上季度
+          整体收入、初版或终版确认邮件，不属于本Dataset；相关资产如需启用，
+          必须另行登记。
+        executable_version_selection_rule:
+          status: partially_confirmed
+          primary_classification:
+            weekly_body_pattern: >-
+              截至{Body_Date}销售部品牌广告各业务线收入概况如下，具体请参考附件内容
+            quarter_close_body_pattern: >-
+              附件为{Version_Label}{Year}Q{Quarter}各业务线收入完成情况
+            required_classification: weekly_body_pattern
+          secondary_validation:
+            expected_weekday: Thursday
+            expected_received_time: 17:00-18:00 Asia/Shanghai
+            subject_date_relation: Subject date equals email sent date
+          observed_weekly_example:
+            subject: FY26Q3销售业务线Rolling Deck @2026/7/9
+            sent_at: 2026/7/9 17:06 Asia/Shanghai
+            classification: weekly
+          conflict_policy:
+            primary_body_match_takes_precedence: true
+            classification_result: weekly
+            secondary_validation_failure_action: warn_and_require_user_confirmation
+            resume_requires_user_confirmation: true
+          no_match_policy:
+            initial_action: pause_workflow
+            retry_delay_minutes: 30
+            retry_attempts: 1
+            after_retry_no_match_action:
+              - notify_user
+              - keep_workflow_blocked
+          multiple_match_selection_rule:
+            sort_by: email_sent_at
+            sort_order: descending
+            select: first
+            output_notice_required: true
+            output_notice_content:
+              - multiple_matching_weekly_emails_found
+              - selected_email_sent_at
+              - selected_email_subject
+      parameters_or_filters: []
+      expected_format:
+        - Excel (.xlsx)
+      asset_scope: Entire Sales Business Line Rolling Deck Excel Workbook
+      primary_analysis_object: "{Year}年执行单类型 Sheet"
+      other_object_usage: >-
+        业务线 Sheet用于季度切换首周读取目标上季度的完整业绩收入结果；
+        具体行列映射与异常处理规则待增量Field Mapping确认。
+
+    data_contract:
+      record_grain: >-
+        Provisional：每行暂定代表订单项层级的业绩收入记录，基于
+        “{Year}年执行单类型”Sheet初步判断。精确粒度、业务唯一键及是否存在
+        多Sheet粒度差异，待后续数据结构盘点确认。
+      primary_or_business_key: []
+      snapshot_or_period_type: 季度累计收入快照
+      period_semantics:
+        year_definition: Fiscal Year
+        quarter_definition: Fiscal Quarter
+        cumulative_window: >-
+          当年当季度开始至邮件发送日前一天累计产生的业绩收入数据。
+        subject_date_format: TBD
+        attachment_date_format: TBD
+        attachment_date_format_observed_example: "{Month}{Day} {Year}"
+      business_date_field: TBD
+      expected_update_time: 每周四17:00-18:00（Asia/Shanghai）
+      schema_profile_id: TBD
+      mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+      required_fields: []
+
+    context:
+      supported_business_context_candidates:
+        - Weekly Business Report Revenue Analysis
+        - Sales Performance Analysis
+        - Customer Revenue Analysis
+        - Advertising Revenue Analysis
+        - Quarterly Business Review
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: "Originating business team (Contact: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY})"
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+      evidence_sources:
+        - Recurring weekly revenue emails from Outlook
+        - Revenue email Excel attachments
+        - Sales Business Line Rolling Deck Excel template
+
+    notes: >-
+      该Dataset来源于固定发件人的Rolling Deck收入邮件附件。邮件每周更新，
+      但内容为季度累计收入快照，而非单周新增收入。Dataset覆盖完整Workbook；
+      “{Year}年执行单类型”是当前主要明细分析Sheet；“业务线”Sheet已确认
+      作为季度切换首周读取上季度完整业绩收入结果的主来源，其增量字段映射
+      尚待确认。去年同期附件可从Owner维护的本地历史归档目录读取，但其原始
+      来源仍为同一Outlook邮件流，不形成新的Dataset或Data Source。本阶段
+      不包含字段映射、收入计算规则、指标逻辑或Pipeline设计。
+
+  - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+    dataset_name: 销售业务线Rolling Deck季度结算收入确认数据
+    business_domains:
+      - Revenue
+    business_purpose: >-
+      用于获取销售业务线季度整体收入确认数据，支持季度收入分析、季度经营
+      复盘和历史收入结果确认；在Weekly Business Report季度切换首周中仅作为
+      上季度完整结果的备选来源。
+    asset_role: Raw Analytical Input
+    source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+    query_asset_id: null
+
+    acquisition:
+      acquisition_role: Email Attachment Acquisition
+      source_object_or_attachment_rule:
+        source_scope: Corporate Outlook Mailbox中的销售业务线季度结算相关收入邮件
+        sender:
+          display_name: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY}
+          email: ${REVENUE_SOURCE_CONTACT_EMAIL_LOCAL_ONLY}
+        subject_pattern: "FY{Year}Q{Quarter}销售业务线Rolling Deck @{Date}"
+        attachment_pattern: "销售业务线Rolling Deck-FY{Year}Q{Quarter}@{Date}"
+        email_context_reference:
+          - 附件为初版2026Q2各业务线收入完成情况
+          - 附件为终版2026Q1各业务线收入完成情况
+        executable_selection_rule:
+          status: partially_confirmed
+          primary_classification:
+            quarter_close_body_pattern: >-
+              附件为{Version_Label}{Year}Q{Quarter}各业务线收入完成情况
+            weekly_body_pattern: >-
+              截至{Body_Date}销售部品牌广告各业务线收入概况如下，具体请参考附件内容
+            required_classification: quarter_close_body_pattern
+          secondary_validation:
+            expected_send_period: Beginning of the following quarter
+            subject_date_relation: >-
+              Subject date differs from email sent date and represents the final
+              day of the previous quarter
+          observed_quarter_close_example:
+            subject: FY26Q2销售业务线Rolling Deck @2026/6/30
+            sent_at: 2026/7/2 14:39 Asia/Shanghai
+            classification: quarter_close
+          conflict_policy: TBD
+          no_match_policy:
+            initial_action: pause_workflow
+            retry_delay_minutes: 30
+            retry_attempts: 1
+            after_retry_no_match_action:
+              - notify_user
+              - keep_workflow_blocked
+          multiple_match_selection_rule:
+            sort_by: email_sent_at
+            sort_order: descending
+            select: first
+            output_notice_required: true
+            output_notice_content:
+              - multiple_matching_ctv_emails_found
+              - selected_email_sent_at
+              - selected_email_subject
+      parameters_or_filters: []
+      expected_format:
+        - Excel (.xlsx)
+      asset_scope: Entire Rolling Deck Excel Workbook
+      primary_analysis_object: TBD
+      other_object_usage: TBD
+
+    data_contract:
+      record_grain: TBD
+      primary_or_business_key: []
+      snapshot_or_period_type: 季度整体收入确认数据
+      dataset_update_frequency: Quarterly, potentially multiple versions
+      version_scope: >-
+        本Dataset包含同一季度的季度收入确认版本，包括但不限于初版收入确认
+        文件、终版收入确认文件及其他季度确认版本。各版本作为同一Dataset下
+        的不同版本或快照管理。当前不定义有效版本选择规则。
+      period_semantics:
+        year_definition: Fiscal Year
+        quarter_definition: Fiscal Quarter
+        cumulative_window: 已结束财务季度的整体收入结果
+        subject_date_format: TBD
+        attachment_date_format: TBD
+        attachment_date_format_observed_example: TBD
+      business_date_field: TBD
+      expected_update_time: >-
+        Around the beginning of the following quarter; exact date and time TBD
+      schema_profile_id: TBD
+      mapping_profile_id: TBD
+      required_fields: []
+
+    context:
+      supported_business_context_candidates:
+        - Weekly Business Report Quarter Transition Revenue Analysis (Fallback Candidate)
+        - Quarterly Business Review
+        - Revenue Performance Analysis
+        - Sales Performance Analysis
+        - Customer Revenue Analysis
+        - Advertising Revenue Analysis
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: "Originating business team (Contact: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY})"
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+      evidence_sources:
+        - Historical quarterly revenue confirmation emails from Outlook
+        - Quarterly revenue email attachments
+        - Sales Business Line Rolling Deck Excel files
+
+    notes: >-
+      本Dataset与销售业务线Rolling Deck季度累计业绩收入Dataset来自同一
+      Active Outlook Source，但业务用途、期间状态和版本语义不同，因此独立
+      登记。本Dataset不用于常规周收入计算；在Weekly Business Report季度切换
+      首周中，主来源调整为周度Rolling Deck Workbook的“业务线”Sheet，本Dataset
+      仅保留为备选来源。是否自动启用备选、Sheet结构、字段映射及精确版本回退
+      策略保持TBD。
+
+  - dataset_id: DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
+    dataset_name: CTV（不含植入）季度累计业绩收入数据
+    business_domains:
+      - Revenue
+    business_purpose: >-
+      用于生成Weekly Business Report收入模块中的CTV业务线收入指标。
+    asset_role: Raw Analytical Input
+    source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+    query_asset_id: null
+
+    acquisition:
+      acquisition_role: Email Attachment Acquisition
+      source_object_or_attachment_rule:
+        source_scope: Corporate Outlook Mailbox中的CTV业务线收入邮件
+        sender:
+          email: ${CTV_SOURCE_SYSTEM_EMAIL_LOCAL_ONLY}
+        subject_pattern: "{Year}-Q{Quarter}执行清单{Subject_Date}"
+        subject_pattern_year_scope: Parameterized Year token, applicable to future years
+        subject_date_format: YYYY-MM-DD
+        observed_subject_example: 2026-Q3执行清单2026-07-02
+        attachment_pattern: 订单分季度收入.xlsx
+        email_frequency: Daily
+        desired_selection_scope: >-
+          获取邮件标题日期与Workflow执行日期一致的邮件。
+        executable_selection_rule:
+          status: confirmed
+          primary_condition: Subject date equals Workflow execution date
+          subject_date_format: YYYY-MM-DD
+          no_match_policy:
+            initial_action: pause_workflow
+            retry_delay_minutes: 30
+            retry_attempts: 1
+            after_retry_no_match_action:
+              - notify_user
+              - keep_workflow_blocked
+          multiple_match_selection_rule:
+            sort_by: email_sent_at
+            sort_order: descending
+            select: first
+            output_notice_required: true
+            output_notice_content:
+              - multiple_matching_ctv_emails_found
+              - selected_email_sent_at
+              - selected_email_subject
+      parameters_or_filters: []
+      expected_format:
+        - Excel (.xlsx)
+      asset_scope: TBD
+      primary_analysis_object: TBD
+      other_object_usage: TBD
+
+    data_contract:
+      record_grain: >-
+        每条记录代表一个订单维度的季度累计收入记录，对应一个订单ID及其关联
+        客户、销售、执行周期和季度收入信息。
+      primary_or_business_key:
+        - 订单ID
+      snapshot_or_period_type: 季度累计收入快照
+      dataset_update_frequency: Daily
+      version_scope: >-
+        每封邮件代表当前季度的最新累计收入状态。有效邮件按已确认的标题日期
+        与Workflow执行日期一致规则识别；多封匹配时选择发送时间最新的一封并提醒。
+      period_semantics:
+        year_definition: TBD
+        quarter_definition: TBD
+        cumulative_window: 当前季度开始日至邮件发送日前一天的累计收入
+        data_cutoff_rule: 收入数据截止时间为邮件发送日前一天
+        subject_date_format: YYYY-MM-DD
+        attachment_date_format: not_present_in_confirmed_attachment_pattern
+        attachment_date_format_observed_example: not_applicable
+      business_date_field: TBD
+      expected_update_time: >-
+        Daily around 17:00 Asia/Shanghai, with possible delay.
+      schema_profile_id: TBD
+      mapping_profile_id: MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1
+      required_fields:
+        - order_id
+        - qtd_executed_revenue_amount
+        - qtd_signed_amount
+        - qtd_ctv_signed_amount
+
+    context:
+      supported_business_context_candidates:
+        - Weekly Business Report Revenue Analysis
+        - CTV Revenue Analysis
+        - Customer Revenue Analysis
+        - Quarterly Business Review
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: Advertising Data System Team
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+      evidence_sources:
+        - Historical CTV revenue emails from Outlook
+        - Daily revenue email attachments
+        - 订单分季度收入.xlsx dataset samples
+        - Excel template / structure samples
+        - Email screenshots
+
+    notes: >-
+      本Dataset来自adssystem发送的CTV业务线收入邮件，与销售业务线Rolling
+      Deck Dataset保持独立。当前确认其订单级季度累计快照边界及邮件发送日前
+      一天的数据截止语义。P0字段键及字段映射已由
+      MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1定义；财务期间定义、计算规则
+      和Metric不在Field Mapping阶段定义。
+
+  - dataset_id: DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+    dataset_name: Apollo细分业务线日期区间收入汇总数据
+    business_domains:
+      - Revenue
+    business_purpose: >-
+      用于生成Weekly Business Report收入模块中的智能音箱和极速版业务线收入
+      指标，同时支持相关业务线经营分析。
+    asset_role: Prepared Analytical Dataset
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_QISHENG_EXECUTION_REVENUE
+
+    acquisition:
+      acquisition_role: Manual Web Query Result Acquisition
+      source_object_or_attachment_rule:
+        source_scope: Apollo奇胜执行收入查询模块
+        query_template_scope:
+          - 智能音箱收入查询模板
+          - 极速版收入查询模板
+        template_compatibility: >-
+          两个模板的输出结构、收入口径、汇总粒度和日期参数语义当前确认一致；
+          模板差异主要用于选择业务线。后续如发生变化，重新评估Dataset边界。
+        current_workflow_parameter_profile:
+          workflow_usage: Weekly Business Report
+          execution_weekday: Thursday
+          start_date_rule: Workflow execution date minus 7 days
+          end_date_rule: Workflow execution date minus 1 day
+          post_template_adjustment:
+            detail_dimension_date_selected_by_template: true
+            required_action: Deselect date detail dimension before query execution
+            template_definition_is_modified: false
+      parameters_or_filters:
+        - parameter_name: business_line_query_template
+        - parameter_name: date_range
+        - parameter_name: detail_dimension_date
+      result_acquisition_method:
+        - On-screen Result Copy
+      expected_format:
+        - Web Query Result Table
+      source_data_refresh_frequency: Daily update
+      query_availability: Available during normal Apollo access
+      planned_acquisition_frequency: Weekly
+      asset_scope: On-screen single-row date-range aggregate result table
+      primary_analysis_object: 执行收入结果
+      other_object_usage: TBD
+
+    data_contract:
+      record_grain: >-
+        每条记录代表一个查询模板、一个业务线及一个日期范围下的投放执行汇总
+        结果。
+      primary_or_business_key:
+        - business_line_query_template
+        - period_start_date
+        - period_end_date
+      snapshot_or_period_type: Date-range aggregated performance result
+      period_result_grain: Single aggregate row for selected date range
+      dataset_update_frequency: Weekly
+      version_scope: TBD
+      period_semantics:
+        year_definition: TBD
+        quarter_definition: TBD
+        cumulative_window: 指定日期范围，结果汇总为一行
+        data_cutoff_rule: >-
+          Apollo底层业务数据每日更新前一日及之前数据；具体就绪校验保持TBD。
+        subject_date_format: not_applicable
+        attachment_date_format: not_applicable
+        attachment_date_format_observed_example: not_applicable
+      business_date_field: TBD
+      expected_update_time: TBD
+      schema_profile_id: TBD
+      mapping_profile_id: MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1
+      required_fields:
+        - business_line_query_template
+        - period_start_date
+        - period_end_date
+        - adjusted_executed_revenue_amount
+
+    context:
+      supported_business_context_candidates:
+        - Weekly Business Report Revenue Analysis
+        - Business Line Revenue Analysis
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: Advertising Data Team
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+      evidence_sources:
+        - Apollo查询页面截图
+        - Apollo查询页面链接
+        - 历史查询结果截图
+        - 历史导出数据
+
+    notes: >-
+      本Dataset定义为通用日期区间收入汇总数据。季度累计收入只是当前Weekly
+      Business Report使用场景之一，不限制Dataset能力。历史CSV导出仅作为
+      证据，当前MVP通过复制页面查询结果获取收入值。P0字段映射已由
+      MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1定义；季度累计计算、
+      Metric和Business Rule不在Field Mapping阶段定义。
+
+  - dataset_id: DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+    dataset_name: 广告库存整体汇总数据
+    business_domains:
+      - Inventory
+    business_purpose: >-
+      用于生成Weekly Business Report库存模块中的整体库存指标。
+    asset_role: Prepared Analytical Dataset
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_INVENTORY_WEEKLY_FULL_SITE_STOCK
+
+    acquisition:
+      acquisition_role: Manual Web Query and CSV Export
+      source_object_or_attachment_rule:
+        source_scope: Apollo库存查询页面
+        query_template: 周报全站库存
+        date_range_capability: Custom date range
+        current_workflow_usage: 按Weekly Business Report统计周期执行查询
+        current_workflow_parameter_profile:
+          execution_weekday: Friday
+          start_date_rule: Workflow execution date minus 7 days
+          end_date_rule: Workflow execution date minus 1 day
+          observed_example:
+            execution_date: "2026-07-24"
+            date_range: "2026-07-17 to 2026-07-23"
+      parameters_or_filters:
+        - parameter_name: query_template
+        - parameter_name: date_range
+      result_acquisition_method:
+        - CSV Export
+      expected_format:
+        - CSV (.csv, UTF-8 BOM)
+      source_data_refresh_frequency: Daily
+      query_availability: Available during normal Apollo access
+      planned_acquisition_frequency: Weekly
+      asset_scope: Entire exported CSV result file
+      primary_analysis_object: TBD
+      other_object_usage: TBD
+
+    data_contract:
+      record_grain: >-
+        每条记录代表一个广告位与VIP属性组合在指定日期范围内的库存汇总结果。
+      primary_or_business_key:
+        - ad_placement_id
+        - vip_flag_id
+      snapshot_or_period_type: 日期范围内的库存汇总结果
+      period_result_grain: >-
+        Each row aggregates the full selected date range for one advertising
+        placement and its attribute combination; no daily expansion.
+      dataset_update_frequency: Weekly
+      version_scope: TBD
+      period_semantics:
+        year_definition: not_applicable
+        quarter_definition: not_applicable
+        cumulative_window: 所选查询日期范围
+        data_cutoff_rule: TBD
+        subject_date_format: not_applicable
+        attachment_date_format: TBD
+        attachment_date_format_observed_example: TBD
+      business_date_field: TBD
+      expected_update_time: TBD
+      schema_profile_id: TBD
+      mapping_profile_id: MAP_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY_V1
+      required_fields:
+        - period_start_date
+        - period_end_date
+        - ad_placement_id
+        - ad_placement_name
+        - vip_flag_id
+        - vip_flag
+        - brand_delivery_inventory_quantity
+        - disabled_inventory_quantity
+        - total_inventory_quantity
+
+    context:
+      supported_business_context_candidates:
+        - Weekly Business Report Inventory Analysis
+        - Inventory Availability Analysis
+        - Advertising Resource Operation Analysis
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: Advertising Data Team
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+      evidence_sources:
+        - Apollo查询页面截图
+        - Apollo查询页面链接
+        - 历史导出CSV数据
+
+    notes: >-
+      本Dataset来自Apollo库存查询模块，当前用于Weekly Business Report整体
+      库存指标，但Dataset本身保持通用日期范围能力。Dataset覆盖完整导出
+      CSV结果文件。不按平台、产品或广告位拆分Dataset。日期结果展开方式、
+      字段映射、库存与售卖率规则、Metric及Business Rule按对应阶段管理。
+
+  - dataset_id: DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
+    dataset_name: 贴片广告库存数据
+    business_domains:
+      - Inventory
+    business_purpose: >-
+      用于计算贴片资源的库存指标，同时支持Weekly Business Report库存模块及
+      其他贴片资源经营分析场景。
+    asset_role: Prepared Analytical Dataset
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_INVENTORY_PATCH_STOCK
+
+    acquisition:
+      acquisition_role: Manual Web Query and CSV Export
+      source_object_or_attachment_rule:
+        source_scope: Apollo数据查询-库存-库存模块
+        query_template: 贴片库存计算
+        date_range_capability: 根据分析周期调整
+        platform_filter_required: false
+        platform_output_scope: 模板默认输出全部细分平台库存结果
+      parameters_or_filters:
+        - parameter_name: query_template
+        - parameter_name: date_range
+      result_acquisition_method:
+        - CSV Export
+      expected_format:
+        - CSV (.csv, UTF-8 BOM)
+      source_data_refresh_frequency: Daily
+      query_availability: Available during normal Apollo access
+      planned_acquisition_frequency: Workflow-dependent
+      asset_scope: Entire exported CSV result file
+      primary_analysis_object: TBD
+      other_object_usage: TBD
+
+    data_contract:
+      record_grain: >-
+        每条记录代表一个时间片与细分平台组合在指定日期范围内的贴片库存汇总
+        结果。
+      primary_or_business_key:
+        - time_slot_id
+        - platform_id
+      snapshot_or_period_type: 日期范围对应的库存状态汇总结果
+      period_result_grain: One aggregate row per time-slot and platform combination
+      dataset_update_frequency: Workflow-dependent
+      version_scope: TBD
+      period_semantics:
+        year_definition: not_applicable
+        quarter_definition: not_applicable
+        cumulative_window: 指定查询日期范围
+        data_cutoff_rule: TBD
+        subject_date_format: not_applicable
+        attachment_date_format: TBD
+        attachment_date_format_observed_example: TBD
+      business_date_field: TBD
+      expected_update_time: TBD
+      schema_profile_id: TBD
+      mapping_profile_id: MAP_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY_V1
+      required_fields:
+        - period_start_date
+        - period_end_date
+        - time_slot_id
+        - time_slot
+        - platform_id
+        - platform_name
+        - brand_delivery_inventory_quantity
+        - disabled_inventory_quantity
+        - total_inventory_quantity
+        - performance_delivery_inventory_quantity
+
+    context:
+      supported_business_context_candidates:
+        - Weekly Business Report Inventory Analysis
+        - Patch Resource Inventory Analysis
+        - Advertising Resource Operation Analysis
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: Advertising Data Team
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+      evidence_sources:
+        - Apollo查询页面截图
+        - Apollo查询页面链接
+        - 历史导出CSV数据
+
+    notes: >-
+      本Dataset来自Apollo库存查询模块，通过独立“贴片库存计算”模板获取。
+      它与广告库存整体汇总Dataset在查询模板、输出结构、粒度和业务用途上不同，
+      因此独立登记。平台是分析维度，不构成Dataset拆分边界。Dataset不绑定
+      单一Workflow；具体执行频率由各Workflow配置。CSV范围、字段映射及
+      Weekly Pipeline已经登记；库存与售卖率Business Rule及Metric由后续阶段管理。
+
+  - dataset_id: DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+    dataset_name: 非贴片分产品库存数据
+    business_domains:
+      - Inventory
+    business_purpose: >-
+      用于除贴片外的其他广告产品的库存数据计算与分析。
+    asset_role: Prepared Analytical Dataset
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK
+
+    acquisition:
+      acquisition_role: Manual Web Query and CSV Export
+      source_object_or_attachment_rule:
+        source_scope: Apollo数据查询-库存-库存模块
+        query_template: 非贴片分产品库存数据
+        date_range_capability: 根据分析周期调整
+        product_filter_required: false
+        platform_filter_required: false
+        advertising_type_filter_required: false
+        template_output_scope: 默认输出非贴片广告产品相关库存结果
+      parameters_or_filters:
+        - parameter_name: query_template
+        - parameter_name: date_range
+      result_acquisition_method:
+        - CSV Export
+      expected_format:
+        - CSV (.csv, UTF-8 BOM)
+      source_data_refresh_frequency: Daily
+      query_availability: Available during normal Apollo access
+      planned_acquisition_frequency: Workflow-dependent
+      asset_scope: Entire exported CSV result file
+      primary_analysis_object: TBD
+      other_object_usage: TBD
+
+    data_contract:
+      record_grain: >-
+        每条记录代表一个广告位、站点、平台及广告类型名称组合在指定日期范围
+        内的非贴片库存汇总结果。
+      primary_or_business_key:
+        - ad_placement_name
+        - site_name
+        - platform_name
+        - ad_type_name
+      snapshot_or_period_type: 日期范围对应的库存状态汇总结果
+      period_result_grain: One aggregate row per confirmed business-name dimension combination
+      dataset_update_frequency: Workflow-dependent
+      version_scope: TBD
+      period_semantics:
+        year_definition: not_applicable
+        quarter_definition: not_applicable
+        cumulative_window: 指定查询日期范围
+        data_cutoff_rule: TBD
+        subject_date_format: not_applicable
+        attachment_date_format: TBD
+        attachment_date_format_observed_example: TBD
+      business_date_field: TBD
+      expected_update_time: TBD
+      schema_profile_id: TBD
+      mapping_profile_id: MAP_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY_V1
+      required_fields:
+        - period_start_date
+        - period_end_date
+        - ad_placement_id
+        - ad_placement_name
+        - site_id
+        - site_name
+        - platform_id
+        - platform_name
+        - ad_type_id
+        - ad_type_name
+        - brand_delivery_inventory_quantity
+        - disabled_inventory_quantity
+        - total_inventory_quantity
+        - performance_delivery_inventory_quantity
+
+    context:
+      supported_business_context_candidates:
+        - Weekly Business Report Inventory Analysis
+        - Non-Patch Product Inventory Analysis
+        - Advertising Resource Operation Analysis
+        - Product Inventory Operation Analysis
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: Advertising Data Team
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+      evidence_sources:
+        - Apollo查询页面截图
+        - Apollo查询页面链接
+        - 历史导出CSV数据
+
+    notes: >-
+      本Dataset通过独立“非贴片分产品库存数据”查询模板获取，与广告库存整体
+      汇总Dataset及贴片广告库存Dataset在查询模板、输出结构、粒度和业务用途
+      上不同，因此独立登记。产品、平台和广告类型不需要额外选择，作为输出中
+      的分析维度管理。Dataset不绑定单一Workflow；当前周报场景按周执行，
+      其他Workflow可采用不同频率。CSV范围、字段映射及Weekly Pipeline已经
+      登记；库存与售卖率Business Rule及Metric由后续阶段管理。
+
+  - dataset_id: DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+    dataset_name: 品牌时刻投放执行数据
+    business_domains:
+      - Advertising
+    business_purpose: >-
+      用于分析广告产品-品牌时刻的投放执行情况。
+    asset_role: Prepared Analytical Dataset
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+
+    acquisition:
+      acquisition_role: Manual Web Query Result Acquisition
+      source_object_or_attachment_rule:
+        source_scope: Apollo数据查询-奇胜执行收入模块
+        query_template: 品牌时刻投放执行数据
+        date_range_capability: 根据分析周期调整
+        additional_filter_required: false
+      parameters_or_filters:
+        - parameter_name: query_template
+        - parameter_name: date_range
+        - parameter_name: detail_dimension_date
+      result_acquisition_method:
+        - On-screen Result Copy
+      expected_format:
+        - Web Query Result Table
+      source_data_refresh_frequency: Daily
+      query_availability: Available during normal Apollo access
+      planned_acquisition_frequency: Workflow-dependent
+      asset_scope: On-screen single-row date-range aggregate result table
+      primary_analysis_object: 曝光量
+      other_object_usage: TBD
+
+    data_contract:
+      record_grain: >-
+        单产品“品牌时刻”在指定日期范围内的一行投放执行汇总结果。
+      primary_or_business_key:
+        - query_template_name
+        - period_start_date
+        - period_end_date
+      snapshot_or_period_type: Date-range aggregated performance result
+      period_result_grain: One aggregated row for the selected date range
+      dataset_update_frequency: Workflow-dependent
+      version_scope: TBD
+      period_semantics:
+        year_definition: not_applicable
+        quarter_definition: not_applicable
+        cumulative_window: 指定查询日期范围内的品牌时刻累计投放执行表现
+        data_cutoff_rule: TBD
+        subject_date_format: not_applicable
+        attachment_date_format: TBD
+        attachment_date_format_observed_example: TBD
+      business_date_field: TBD
+      expected_update_time: TBD
+      schema_profile_id: TBD
+      mapping_profile_id: MAP_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_V1
+      required_fields:
+        - query_template_name
+        - period_start_date
+        - period_end_date
+        - impression_count
+
+    context:
+      supported_business_context_candidates:
+        - Weekly Business Report Advertising Analysis
+        - Brand Moment Delivery Analysis
+        - Advertising Product Operation Analysis
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: Advertising Data Team
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+      evidence_sources:
+        - Apollo查询页面截图
+        - Apollo查询页面链接
+        - 历史查询结果截图
+        - 历史导出CSV数据
+
+    notes: >-
+      本Dataset通过独立“品牌时刻投放执行数据”查询模板获取。虽然查询结果被
+      描述为包含曝光量、点击量、点击率、执行收入、校准金额及校准后执行收入等
+      内容，但当前v1仅将曝光量登记为正式映射字段，其余字段保持未映射。
+      Dataset不绑定单一Workflow，具体采集频率由各Workflow配置。Field Mapping
+      及Weekly Pipeline已经登记；品牌时刻售卖率Metric与计算规则由后续阶段管理。
+
+  - dataset_id: DS_NOVABI_PLATFORM_DAU
+    dataset_name: 平台用户活跃数据（DAU）
+    business_domains:
+      - User Analytics
+      - Platform Operation
+    business_purpose: >-
+      用于分析平台用户活跃情况，支持DAU趋势分析、平台运营分析及相关业务
+      分析场景。
+    asset_role: Prepared Analytical Dataset
+    source_id: SRC_INTERNAL_PLATFORM_NOVABI
+    query_asset_id: QRY_NOVABI_DAU_QUERY
+
+    acquisition:
+      acquisition_role: Natural Language Web Query Result Acquisition
+      source_object_or_attachment_rule:
+        source_scope: NovaBI网页自然语言查询
+        query_capability: 固定DAU查询模板，日期参数可调整
+      parameters_or_filters:
+        - parameter_name: start_date
+        - parameter_name: end_date
+      result_acquisition_method:
+        - On-screen Result Copy
+      expected_format:
+        - Web Query Result Table
+      source_data_refresh_frequency: Daily
+      query_availability: Available during normal NovaBI access
+      planned_acquisition_frequency: Workflow-dependent
+      asset_scope: On-screen daily DAU query result table
+      primary_analysis_object: 全平台分日DAU查询结果
+      other_object_usage: TBD
+
+    data_contract:
+      record_grain: >-
+        每条记录代表指定日期下的全平台DAU数据，粒度为日期×全平台范围。
+        业务唯一键为activity_date。
+      primary_or_business_key:
+        - activity_date
+      snapshot_or_period_type: Daily Snapshot
+      period_result_grain: Daily rows within selected date range
+      dataset_update_frequency: Workflow-dependent
+      version_scope: TBD
+      period_semantics:
+        year_definition: not_applicable
+        quarter_definition: not_applicable
+        cumulative_window: 查询指定日期范围内的每日全平台DAU快照
+        data_cutoff_rule: >-
+          当前Weekly默认参数配置以查询日前一天为结束日期；其他分析场景的
+          截止规则保持TBD。
+        subject_date_format: not_applicable
+        attachment_date_format: not_applicable
+        attachment_date_format_observed_example: not_applicable
+      business_date_field: activity_date
+      expected_update_time: TBD
+      schema_profile_id: TBD
+      mapping_profile_id: MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1
+      required_fields:
+        - period_start_date
+        - period_end_date
+        - activity_date
+        - dau_count
+
+    context:
+      supported_business_context_candidates:
+        - Weekly Business Report User Activity Analysis
+        - Platform User Activity Analysis
+        - User Analytics Analysis
+        - Platform Operation Analysis
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: BI Team
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+      evidence_sources:
+        - NovaBI平台截图
+        - NovaBI查询页面链接
+        - 历史DAU查询结果
+        - 历史DAU导出数据
+
+    notes: >-
+      本Dataset用于用户活跃及平台运营分析。虽然当前Weekly Business Report在
+      库存模块展示相关用户活跃结果，其业务归属仍为User Analytics和Platform
+      Operation，不归属于Inventory。Dataset不绑定单一Workflow。当前Query
+      Asset只代表DAU查询能力；未来UV、流量、时长或人群分析必须另行登记
+      Dataset及Query Asset。DAU字段映射、异常回退及Weekly Pipeline已经登记；
+      DAU环比Metric和Output Mapping由后续阶段管理。
+
+  - dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+    dataset_name: 分广告产品客户投放变化分析数据
+    business_domains:
+      - Advertising Operation
+      - Revenue Analysis
+      - Inventory Analysis
+    business_purpose: >-
+      用于分析广告产品在客户维度上的投放变化情况，支持广告产品库存、售卖率及
+      收入变化原因分析，并为客户维度的投放变化归因提供分析数据。
+    asset_role: Analytical Dataset
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_asset_id: QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+
+    acquisition:
+      acquisition_role: Dynamic Web Query Result Acquisition
+      source_object_or_attachment_rule:
+        source_scope: Apollo数据查询-奇胜执行收入模块
+        fixed_query_template_available: false
+        query_generation_mode: >-
+          根据外部提供的目标广告产品筛选条件及分析周期动态生成查询条件。
+        grouping_dimension: 广告主
+      parameters_or_filters:
+        - parameter_name: product_filter
+        - parameter_name: current_period
+        - parameter_name: comparison_period
+        - parameter_name: advertiser_grouping
+      result_acquisition_method:
+        - On-screen Result Copy
+        - CSV Export
+      expected_format:
+        - Web Query Result Table
+        - CSV (.csv, UTF-8 BOM)
+      source_data_refresh_frequency: Daily
+      query_availability: Available during normal Apollo access
+      planned_acquisition_frequency: Event-driven
+      asset_scope: On-screen advertiser-level date-range aggregate result table
+      primary_analysis_object: 客户维度投放执行查询结果
+      other_object_usage: TBD
+
+    data_contract:
+      record_grain: >-
+        单广告产品×单客户×指定日期周期的投放执行数据。
+      primary_or_business_key:
+        - target_ad_product_name
+        - period_start_date
+        - period_end_date
+        - customer_id
+      snapshot_or_period_type: Period Aggregated Performance Result
+      period_result_grain: 单广告产品×单客户×指定日期周期
+      dataset_update_frequency: Event-driven
+      version_scope: TBD
+      period_semantics:
+        year_definition: not_applicable
+        quarter_definition: not_applicable
+        cumulative_window: 指定查询日期周期
+        data_cutoff_rule: TBD
+        subject_date_format: not_applicable
+        attachment_date_format: TBD
+        attachment_date_format_observed_example: TBD
+      business_date_field: TBD
+      expected_update_time: TBD
+      schema_profile_id: TBD
+      mapping_profile_id: MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1
+      required_fields:
+        - target_ad_product_name
+        - period_start_date
+        - period_end_date
+        - customer_name
+        - customer_id
+        - impression_count
+
+    context:
+      supported_business_context_candidates:
+        - Weekly Business Report Inventory Diagnosis
+        - Advertising Product Operation Analysis
+        - Customer Delivery Change Analysis
+        - Revenue Change Attribution Analysis
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: 广告数据团队
+      version: 0.1.0
+      approval_status: confirmed
+      effective_from: TBD
+      evidence_sources:
+        - Apollo奇胜执行收入查询页面截图
+        - Apollo查询页面链接
+        - 客户维度投放查询结果
+        - 历史CSV导出数据
+
+    notes: >-
+      本Dataset是按需生成的客户维度投放执行分析数据，不负责发现异常、判断
+      阈值、选择有效产品筛选条件、计算变化或生成报告文本。当前v1正式映射
+      广告主、广告主ID和曝光量，其余查询结果字段保持未映射。Field Mapping及
+      事件触发Pipeline已经登记；产品筛选Business Rule、异常触发阈值、涨跌
+      分析、客户排名、Metric及Output Generation由后续阶段管理。
+
+query_assets:
+  - query_asset_id: QRY_APOLLO_QISHENG_EXECUTION_REVENUE
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_or_export_name: 奇胜执行收入查询
+    query_description_or_manual_steps: >-
+      打开Apollo奇胜执行收入查询模块；点击自定义查询模板；选择智能音箱收入
+      查询模板或极速版收入查询模板；修改日期范围；取消模板默认勾选的细分条件
+      “日期”；执行查询；复制页面单行汇总结果。该操作不修改查询模板本身。
+    query_parameter_logic:
+      capability: Custom date range
+      weekly_business_report_profile:
+        execution_weekday: Thursday
+        start_date_rule: Query date minus 7 days
+        end_date_rule: Query date minus 1 day
+        post_template_adjustment:
+          parameter_name: detail_dimension_date
+          required_value: deselected
+          purpose: Return one aggregate row for the selected date range
+    result_handling:
+      empty_result_policy:
+        action:
+          - notify_user
+          - block_workflow
+      query_execution_failure_policy:
+        action:
+          - notify_user
+          - block_workflow
+    output_dataset_id: DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+    parameters_or_filters:
+      - parameter_name: business_line_query_template
+        confirmed_options:
+          - 智能音箱收入查询模板
+          - 极速版收入查询模板
+      - parameter_name: date_range
+        capability: Custom date range
+        weekly_business_report_value:
+          start_date_rule: Query date minus 7 days
+          end_date_rule: Query date minus 1 day
+      - parameter_name: detail_dimension_date
+        template_default_value: selected
+        required_runtime_value: deselected
+    result_acquisition_method:
+      - On-screen Result Copy
+    expected_format:
+      - Web Query Result Table
+    expected_output_grain: >-
+      Provisional：一个查询模板和业务线在所选日期范围内返回一行汇总结果。
+    source_data_refresh_frequency: Daily update
+    query_availability: Available during normal Apollo access
+    planned_acquisition_frequency: Weekly
+    query_execution_frequency: Weekly
+    owner: Advertising Data Team
+    version: 0.1.0
+    approval_status: confirmed
+
+  - query_asset_id: QRY_APOLLO_INVENTORY_WEEKLY_FULL_SITE_STOCK
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_or_export_name: 周报全站库存查询
+    query_description_or_manual_steps: >-
+      打开Apollo库存查询页面；点击自定义查询模板；选择“周报全站库存”查询
+      模板；修改日期范围；执行查询；点击“下载数据”按钮获取CSV结果文件。
+    query_parameter_logic:
+      capability: Custom date range
+      weekly_business_report_profile:
+        execution_weekday: Friday
+        start_date_rule: Query date minus 7 days
+        end_date_rule: Query date minus 1 day
+    result_handling:
+      empty_result_policy:
+        action:
+          - notify_user
+          - block_workflow
+      query_execution_failure_policy:
+        action:
+          - notify_user
+          - block_workflow
+    output_dataset_id: DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+    parameters_or_filters:
+      - parameter_name: query_template
+        confirmed_value: 周报全站库存
+      - parameter_name: date_range
+        capability: Custom date range
+        current_workflow_usage: Weekly Business Report统计周期
+        weekly_business_report_value:
+          start_date_rule: Query date minus 7 days
+          end_date_rule: Query date minus 1 day
+    result_acquisition_method:
+      - CSV Export
+    expected_format:
+      - CSV (.csv, UTF-8 BOM)
+    expected_output_grain: >-
+      每行代表一个广告位及其属性组合在整个所选日期范围内的库存汇总结果，
+      不按日期展开。
+    source_data_refresh_frequency: Daily
+    query_availability: Available during normal Apollo access
+    planned_acquisition_frequency: Weekly
+    query_execution_frequency: Weekly
+    owner: Advertising Data Team
+    version: 0.1.0
+    approval_status: confirmed
+
+  - query_asset_id: QRY_APOLLO_INVENTORY_PATCH_STOCK
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_or_export_name: 贴片库存计算
+    query_description_or_manual_steps: >-
+      打开Apollo库存查询页面；进入“数据查询-库存-库存”模块；点击“自定义查询
+      模板”；选择“贴片库存计算”查询模板；修改日期范围；执行查询；点击下载
+      数据按钮获取CSV结果文件。
+    query_parameter_logic:
+      capability: Custom date range
+      weekly_business_report_profile:
+        execution_weekday: Friday
+        start_date_rule: Query date minus 7 days
+        end_date_rule: Query date minus 1 day
+        observed_example:
+          query_date: 2026-07-24
+          start_date: 2026-07-17
+          end_date: 2026-07-23
+    result_handling:
+      empty_result_policy:
+        action:
+          - notify_user
+          - block_workflow
+      query_execution_failure_policy:
+        action:
+          - notify_user
+          - block_workflow
+    output_dataset_id: DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
+    parameters_or_filters:
+      - parameter_name: query_template
+        confirmed_value: 贴片库存计算
+      - parameter_name: date_range
+        capability: Custom date range
+        workflow_value:
+          weekly_business_report:
+            start_date_rule: Query date minus 7 days
+            end_date_rule: Query date minus 1 day
+      - parameter_name: platform
+        selection_required: false
+        template_behavior: 默认输出全部细分平台库存结果
+    result_acquisition_method:
+      - CSV Export
+    expected_format:
+      - CSV (.csv, UTF-8 BOM)
+    expected_output_grain: >-
+      Provisional：一个细分平台及贴片资源属性组合对应一个库存汇总结果；
+      精确输出粒度保持TBD。
+    source_data_refresh_frequency: Daily
+    query_availability: Available during normal Apollo access
+    planned_acquisition_frequency: Workflow-dependent
+    query_execution_frequency: Workflow-dependent
+    owner: Advertising Data Team
+    version: 0.1.0
+    approval_status: confirmed
+
+  - query_asset_id: QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_or_export_name: 非贴片分产品库存数据
+    query_description_or_manual_steps: >-
+      打开Apollo库存查询页面；进入“数据查询-库存-库存”模块；点击“自定义查询
+      模板”；选择“非贴片分产品库存数据”查询模板；修改日期范围；执行查询；
+      点击下载数据按钮获取CSV结果文件。
+    query_parameter_logic:
+      capability: Custom date range
+      weekly_business_report_profile:
+        execution_weekday: Friday
+        start_date_rule: Query date minus 7 days
+        end_date_rule: Query date minus 1 day
+        observed_example:
+          query_date: 2026-07-24
+          start_date: 2026-07-17
+          end_date: 2026-07-23
+    result_handling:
+      empty_result_policy:
+        action:
+          - notify_user
+          - block_workflow
+      query_execution_failure_policy:
+        action:
+          - notify_user
+          - block_workflow
+    output_dataset_id: DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+    parameters_or_filters:
+      - parameter_name: query_template
+        confirmed_value: 非贴片分产品库存数据
+      - parameter_name: date_range
+        capability: Custom date range
+        workflow_value:
+          weekly_business_report:
+            start_date_rule: Query date minus 7 days
+            end_date_rule: Query date minus 1 day
+      - parameter_name: product
+        selection_required: false
+      - parameter_name: platform
+        selection_required: false
+      - parameter_name: advertising_type
+        selection_required: false
+        template_behavior: 默认输出非贴片广告产品相关库存结果
+    result_acquisition_method:
+      - CSV Export
+    expected_format:
+      - CSV (.csv, UTF-8 BOM)
+    expected_output_grain: >-
+      Provisional：一个非贴片广告产品在广告位、站点、平台及广告类型等属性
+      组合下对应一个库存汇总结果；精确输出粒度保持TBD。
+    source_data_refresh_frequency: Daily
+    query_availability: Available during normal Apollo access
+    planned_acquisition_frequency: Workflow-dependent
+    query_execution_frequency: Workflow-dependent
+    owner: Advertising Data Team
+    version: 0.1.0
+    approval_status: confirmed
+
+  - query_asset_id: QRY_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_or_export_name: 品牌时刻投放执行数据
+    query_description_or_manual_steps: >-
+      打开Apollo数据查询页面；进入“数据查询-奇胜执行收入”模块；点击自定义
+      查询模板；选择“品牌时刻投放执行数据”查询模板；取消模板默认勾选的
+      “日期”细分条件；修改日期范围；执行查询；复制页面中的单行周期汇总结果。
+    query_parameter_logic:
+      capability: Custom date range
+      weekly_business_report_profile:
+        execution_weekday: Friday
+        start_date_rule: Query date minus 7 days
+        end_date_rule: Query date minus 1 day
+        observed_example:
+          query_date: 2026-07-24
+          start_date: 2026-07-17
+          end_date: 2026-07-23
+        post_template_selection_adjustments:
+          - adjustment_type: deselect_detail_dimension
+            dimension_name: 日期
+            required_value: deselected
+            purpose: Return one aggregate row for the selected date range
+        shared_template_modified: false
+    result_handling:
+      empty_result_policy:
+        normalized_condition: Query succeeds but the on-screen result contains no valid data row
+        action:
+          - notify_user
+          - block_workflow
+      query_execution_failure_policy:
+        action:
+          - notify_user
+          - block_workflow
+    output_dataset_id: DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+    parameters_or_filters:
+      - parameter_name: query_template
+        confirmed_value: 品牌时刻投放执行数据
+      - parameter_name: date_range
+        capability: Custom date range
+        workflow_value:
+          weekly_business_report:
+            start_date_rule: Query date minus 7 days
+            end_date_rule: Query date minus 1 day
+      - parameter_name: additional_filters
+        selection_required: false
+      - parameter_name: detail_dimension_date
+        template_default_value: selected
+        weekly_business_report_required_value: deselected
+    result_acquisition_method:
+      - On-screen Result Copy
+    expected_format:
+      - Web Query Result Table
+    expected_output_grain: One aggregated row for Brand Moment within the selected date range
+    source_data_refresh_frequency: Daily
+    query_availability: Available during normal Apollo access
+    planned_acquisition_frequency: Workflow-dependent
+    query_execution_frequency: Workflow-dependent
+    owner: Advertising Data Team
+    version: 0.1.0
+    approval_status: confirmed
+
+  - query_asset_id: QRY_NOVABI_DAU_QUERY
+    source_id: SRC_INTERNAL_PLATFORM_NOVABI
+    query_or_export_name: DAU查询
+    query_description_or_manual_steps: >-
+      登录NovaBI网页；确认当前账号具备NovaBI查询权限；输入固定格式自然语言
+      查询语句；根据查询日期调整开始和结束日期参数；提交查询；获取全平台
+      分日DAU查询结果。
+    access_requirement:
+      login_account: ${NOVABI_LOGIN_ACCOUNT_LOCAL_ONLY}
+      credential_reference: managed_externally
+      credentials_stored_in_config: false
+      authentication_note: >-
+        NovaBI登录账号与其他业务平台账号独立。
+      operational_fallback_note: >-
+        如果当前登录账号不正确导致查询失败，需要提醒用户切换NovaBI账号，
+        或由用户手动提供查询结果；具体异常处理机制不在本阶段配置。
+    default_query_template: >-
+      从BI报表的核心数据表中，给我跑一下{start_date}-{end_date}的全平台分日DAU
+    query_parameter_logic:
+      capability: Parameterized date range
+      default_profile_name: Weekly previous seven complete days
+      query_period_rule: 查询日前一周
+      start_date_rule: 查询日前7天
+      end_date_rule: 查询日前1天
+      date_format: YYMMDD
+      weekly_business_report_profile:
+        execution_weekday: Friday
+        start_date_rule: Query date minus 7 days
+        end_date_rule: Query date minus 1 day
+      observed_example:
+        query_date: "260724"
+        query_period: "260717-260723"
+        rendered_query: 从BI报表的核心数据表中，给我跑一下260717-260723的全平台分日DAU
+    result_handling:
+      unavailable_result_policy:
+        applies_to:
+          - account_switch_required
+          - query_execution_failure
+          - empty_result
+        action:
+          - notify_user
+          - leave_report_content_blank
+          - continue_workflow
+        block_workflow: false
+    output_dataset_id: DS_NOVABI_PLATFORM_DAU
+    parameters_or_filters:
+      - parameter_name: start_date
+        runtime_value: Workflow-dependent
+        weekly_business_report_value: Query date minus 7 days
+      - parameter_name: end_date
+        runtime_value: Workflow-dependent
+        weekly_business_report_value: Query date minus 1 day
+    result_acquisition_method:
+      - On-screen Result Copy
+    expected_format:
+      - Web Query Result Table
+    expected_output_grain: 每个日期对应一条全平台DAU结果
+    source_data_refresh_frequency: Daily
+    query_availability: Available during normal NovaBI access
+    planned_acquisition_frequency: Workflow-dependent
+    query_execution_frequency: Workflow-dependent
+    owner: BI Team
+    version: 0.1.0
+    approval_status: confirmed
+
+  - query_asset_id: QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+    source_id: SRC_INTERNAL_PLATFORM_APOLLO
+    query_or_export_name: 分广告产品客户投放变化分析查询
+    query_description_or_manual_steps: >-
+      进入Apollo奇胜执行收入查询模块；接收外部提供的目标广告产品筛选条件；
+      将细分条件设置为广告主；分别设置当前周期与对比周期；执行查询；获取客户
+      维度的投放执行结果。异常识别、产品Mapping计算及结果排名不属于本Query
+      Asset的执行步骤。
+    access_requirement: TBD
+    default_query_template: none
+    query_parameter_logic:
+      generation_mode: Dynamic
+      product_filter_source: external_dependency_candidate
+      current_period_value: Workflow-dependent
+      comparison_period_value: Workflow-dependent
+      grouping_dimension: 广告主
+    result_handling:
+      query_execution_failure_policy:
+        action:
+          - notify_user
+          - analyze_technical_failure_reason
+          - continue_workflow
+        block_workflow: false
+        diagnostic_scope: Query acquisition and execution failure only
+      empty_result_policy:
+        normalized_condition: Query succeeds but returns zero customer-data rows
+        action:
+          - notify_user
+          - analyze_zero_row_reason
+          - continue_workflow
+        block_workflow: false
+        diagnostic_scope: Query parameters, filters, period, source availability, and result acquisition
+    external_dependency_candidates:
+      - asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+        asset_type: Business Rule
+        registration_status: unregistered
+        usage: 为product_filter参数提供Apollo筛选条件
+    output_dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+    parameters_or_filters:
+      - parameter_name: product_filter
+        runtime_value: TBD
+      - parameter_name: current_period
+        runtime_value: Workflow-dependent
+      - parameter_name: comparison_period
+        runtime_value: Workflow-dependent
+      - parameter_name: grouping_dimension
+        confirmed_value: 广告主
+    result_acquisition_method:
+      - On-screen Result Copy
+      - CSV Export
+    expected_format:
+      - Web Query Result Table
+      - CSV (.csv, UTF-8 BOM)
+    expected_output_grain: 单广告产品×单客户×指定日期周期
+    source_data_refresh_frequency: Daily
+    query_availability: Available during normal Apollo access
+    planned_acquisition_frequency: Event-driven
+    query_execution_frequency: Event-driven
+    owner: 广告数据团队
+    version: 0.1.0
+    approval_status: confirmed
+
+constraints:
+  source_id_must_reference_active_data_source: true
+  future_backlog_sources_cannot_create_datasets: true
+  one_source_may_provide_multiple_datasets: true
+  auto_share_mapping_between_datasets: false
+  auto_infer_dataset_role: false
+  unknown_fields_remain_tbd: true

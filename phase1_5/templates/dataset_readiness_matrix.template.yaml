@@ -1,0 +1,59 @@
+config_type: dataset_readiness_matrix
+matrix_version: 0.2.0-draft
+status: draft
+
+readiness_definitions:
+  registration_status:
+    confirmed: Dataset身份与边界已确认
+  workflow_usage_role:
+    allowed_values:
+      - required
+      - conditional_required
+      - optional
+      - diagnostic
+      - planned
+      - not_in_scope
+      - TBD
+  readiness_status:
+    allowed_values:
+      - not_assessed
+      - blocked
+      - conditional
+      - ready
+  pipeline_gate:
+    allowed_values:
+      - hold
+      - allow
+      - TBD
+
+dataset_readiness:
+  - dataset_id: TBD
+    source_id: TBD
+    query_asset_id: TBD
+    registration_status: confirmed
+
+    workflow_usage:
+      workflow_id: WF_WEEKLY_BUSINESS_REPORT
+      usage_role: TBD
+      report_section_or_usage: TBD
+
+    readiness:
+      status: not_assessed
+      blocking_tbd_items: []
+      non_blocking_tbd_items: []
+
+    standardization:
+      status: pending
+      exceptions: []
+
+    gate:
+      pipeline_registry_eligible: TBD
+      decision_reason: TBD
+      owner: TBD
+
+constraints:
+  matrix_does_not_bind_dataset_to_single_workflow: true
+  workflow_usage_is_many_to_many: true
+  registration_confirmed_does_not_mean_operationally_ready: true
+  unknown_business_decisions_remain_tbd: true
+  no_field_rule_metric_or_pipeline_logic: true

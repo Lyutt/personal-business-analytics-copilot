@@ -1,0 +1,198 @@
+config_type: field_mapping_profile
+mapping_profile_id: MAP_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_V1
+mapping_profile_name: Apollo品牌时刻投放执行字段映射
+dataset_id: DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+dataset_version_constraint: TBD
+source_id: SRC_INTERNAL_PLATFORM_APOLLO
+query_asset_id: QRY_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+business_domains:
+  - Advertising
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-07-30
+approval_record:
+  approved_by: WORKFLOW_OWNER
+  approved_at: 2026-07-30
+  approval_scope: Brand Moment single-row result and exposure mapping
+  approval_note: Owner confirmed mapping scope and result-level readiness gate
+
+scope:
+  asset_scope: On-screen single-row date-range aggregate result table
+  source_object_or_sheet: Apollo品牌时刻投放执行页面结果
+  source_header_row: 1
+  header_structure: Single row
+  expected_result_row_count: 1
+  expected_raw_field_count: 6
+  mapped_result_field_count: 1
+  not_mapped_in_v1_field_count: 5
+  query_context_field_count: 3
+  record_grain_reference: Dataset Inventory
+
+evidence:
+  evidence_sources:
+    - Owner-provided Apollo single-row Brand Moment result screenshot
+    - phase1_5/discovery/DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_Field_Structure_Inspection.md
+  excluded_non_dependency_evidence:
+    - '${LOCAL_WORKFLOW_DATA_ROOT}\数据查询-奇胜执行收入 - 2026-07-30T211432.887.csv'
+  inspected_sample_count: 1
+  sample_periods:
+    - TBD
+  schema_observation_status: completed
+
+source_schema:
+  structure_type: Web query result table
+  expected_result_row_count: 1
+  expected_field_count: 6
+  field_order_is_contractual: false
+  mapped_field_match_method: exact_header_name_after_trim
+  missing_mapped_field_policy: notify_owner_and_block_brand_moment_sell_through_only
+  missing_not_mapped_in_v1_field_policy: ignore
+  unknown_source_field_policy: notify_and_request_owner_confirmation_without_blocking
+
+record_identity:
+  contextual_key:
+    - query_template_name
+    - period_start_date
+    - period_end_date
+  key_source: explicit_query_context
+  automatic_key_inference_allowed: false
+
+raw_field_inventory:
+  - {raw_field_inventory_id: RF001, raw_column_position_observed: 1, raw_field_name: 曝光量, observed_raw_storage_type: formatted_integer, source_value_origin: query_result, mapping_status: mapped}
+  - {raw_field_inventory_id: RF002, raw_column_position_observed: 2, raw_field_name: 点击量, observed_raw_storage_type: numeric_candidate, source_value_origin: query_result, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF003, raw_column_position_observed: 3, raw_field_name: 点击率, observed_raw_storage_type: percentage_candidate, source_value_origin: query_result, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF004, raw_column_position_observed: 4, raw_field_name: 执行收入, observed_raw_storage_type: numeric_candidate, source_value_origin: query_result, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF005, raw_column_position_observed: 5, raw_field_name: 校准金额, observed_raw_storage_type: numeric_candidate, source_value_origin: query_result, mapping_status: not_mapped_in_v1}
+  - {raw_field_inventory_id: RF006, raw_column_position_observed: 6, raw_field_name: 校准后执行收入, observed_raw_storage_type: numeric_candidate, source_value_origin: query_result, mapping_status: not_mapped_in_v1}
+
+query_context_fields:
+  - context_field_id: QCF001
+    source_parameter_name: query_template
+    standard_field_id: query_template_name
+    standard_field_name: 查询模板名称
+    standard_data_type: string
+    semantic_role: query_context_dimension
+    required: true
+    nullable: false
+    allowed_values:
+      - 品牌时刻投放执行数据
+    invalid_value_handling: notify_owner_and_block_brand_moment_sell_through_only
+    value_source: explicit_query_parameter
+
+  - context_field_id: QCF002
+    source_parameter_name: start_date
+    standard_field_id: period_start_date
+    standard_field_name: 统计开始日期
+    standard_data_type: date
+    semantic_role: query_context_period_start
+    required: true
+    nullable: false
+    output_format: YYYY-MM-DD
+    invalid_value_handling: notify_owner_and_block_brand_moment_sell_through_only
+    value_source: explicit_query_parameter
+
+  - context_field_id: QCF003
+    source_parameter_name: end_date
+    standard_field_id: period_end_date
+    standard_field_name: 统计结束日期
+    standard_data_type: date
+    semantic_role: query_context_period_end
+    required: true
+    nullable: false
+    output_format: YYYY-MM-DD
+    invalid_value_handling: notify_owner_and_block_brand_moment_sell_through_only
+    value_source: explicit_query_parameter
+
+field_mappings:
+  - mapping_entry_id: FM001
+    raw_field_inventory_id: RF001
+    raw_field_name: 曝光量
+    standard_field_id: impression_count
+    standard_field_name: 曝光量
+    standard_data_type: integer
+    semantic_role: delivery_measure
+    required: true
+    nullable: false
+    unit: impression
+    formatted_numeric_cast:
+      thousands_separator_allowed: true
+      integer_conversion: round_half_up_to_nearest_integer
+    blank_value_handling: notify_owner_and_block_brand_moment_sell_through_only
+    zero_value_handling: notify_owner_and_block_brand_moment_sell_through_only
+    negative_value_handling: notify_owner_and_block_brand_moment_sell_through_only
+    nonnumeric_value_handling: notify_owner_and_block_brand_moment_sell_through_only
+    mapping_status: owner_confirmed
+
+explicit_ignored_fields:
+  status: not_mapped_in_v1
+  missing_field_handling: ignore
+  raw_field_inventory_ids:
+    - RF002
+    - RF003
+    - RF004
+    - RF005
+    - RF006
+
+validation:
+  required_standard_fields:
+    - query_template_name
+    - period_start_date
+    - period_end_date
+    - impression_count
+  result_row_count_validation:
+    expected: 1
+    mismatch_behavior:
+      notify_owner: true
+      failure_scope: Brand Moment sell-through result only
+  query_context_validation:
+    allowed_query_template_values_enforced: true
+    dates_required: true
+    date_format_validation_required: true
+    period_order_rule: period_start_date_must_not_be_after_period_end_date
+    failure_behavior:
+      notify_owner: true
+      failure_scope: Brand Moment sell-through result only
+  mapped_field_type_validation_required: true
+  mapped_field_positive_value_required: true
+  mapped_field_failure_behavior:
+    notify_owner: true
+    upstream_pipeline_id: PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+    blocked_downstream_result: Brand Moment sell-through result
+    unaffected_outputs:
+      - Other inventory results
+      - Other sell-through results
+      - Revenue section
+  integer_conversion_policy: round_half_up_to_nearest_integer
+  unknown_field_validation_required: true
+  new_raw_field_policy:
+    notify_owner: true
+    owner_confirmation_required_before_registration: true
+    automatic_registration_allowed: false
+    automatic_mapping_allowed: false
+    block_confirmed_field_processing: false
+    temporary_status: unmapped_new_field
+  duplicate_standard_target_allowed: false
+  validation_rule_ids: []
+
+standardization_exclusions:
+  brand_moment_sell_through_calculated_in_mapping: false
+  inventory_data_included_in_mapping: false
+  csv_download_required_by_workflow: false
+
+governance:
+  evidence_required_for_approval: true
+  owner_confirmation_required: true
+  change_reason: Approved V1 field mapping for Brand Moment delivery exposure
+  notes: >
+    Workflow采用页面单行结果复制，不依赖下载CSV。本Profile只标准化曝光量
+    与显式查询上下文，不计算品牌时刻售卖率。任何目标值或结构异常只阻断
+    品牌时刻售卖率结果。
+
+constraints:
+  profile_cannot_define_metric_formula: true
+  profile_cannot_define_business_rule: true
+  profile_cannot_create_dataset_or_pipeline_dependency: true
+  profile_cannot_auto_approve_unknown_field: true
+  profile_must_reference_registered_dataset: true

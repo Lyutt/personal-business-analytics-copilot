@@ -1,0 +1,62 @@
+config_type: data_source
+
+identity:
+  source_id: SRC_INVENTORY_PLATFORM
+  source_name: 公司库存数据平台
+  business_domain: inventory
+  source_type: company_data_platform
+  version: 0.1.0-draft
+  status: draft
+  owner: TBD
+
+access:
+  platform_name: TBD
+  access_location: TBD
+  permission_owner: TBD
+  authentication_method: TBD
+  credential_reference: managed_externally
+  access_method_for_mvp: TBD
+  api_available: TBD
+  manual_export_steps_reference: TBD
+
+schedule_and_freshness:
+  workflow_expected_time: "Friday 10:30"
+  platform_update_schedule: TBD
+  timezone: Asia/Shanghai
+  freshness_field: TBD
+  maximum_data_age: TBD
+  stale_data_policy: block_or_confirm
+
+export:
+  export_method: TBD
+  report_or_dataset_name: TBD
+  filters_required: []
+  expected_format: TBD
+  filename_pattern: TBD
+  worksheet_name: TBD
+  header_row: TBD
+  expected_file_count: 1
+
+period_binding:
+  snapshot_or_period_type: TBD
+  reporting_date_field: TBD
+  mismatch_policy: block
+
+quality_checks:
+  - check_id: INV_SRC_001
+    check_type: freshness
+    rule: TBD
+    severity: blocking
+  - check_id: INV_SRC_002
+    check_type: file_format
+    rule: TBD
+    severity: blocking
+  - check_id: INV_SRC_003
+    check_type: expected_scope
+    rule: TBD
+    severity: blocking
+
+retention:
+  save_raw_export_copy: TBD
+  temporary_storage_allowed: TBD
+  retention_period: TBD

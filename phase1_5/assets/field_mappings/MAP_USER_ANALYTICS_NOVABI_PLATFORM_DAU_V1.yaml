@@ -1,0 +1,187 @@
+config_type: field_mapping_profile
+mapping_profile_id: MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1
+mapping_profile_name: NovaBI全平台分日DAU字段映射
+dataset_id: DS_NOVABI_PLATFORM_DAU
+dataset_version_constraint: TBD
+source_id: SRC_INTERNAL_PLATFORM_NOVABI
+query_asset_id: QRY_NOVABI_DAU_QUERY
+business_domains:
+  - User Analytics
+  - Platform Operation
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-07-30
+approval_record:
+  approved_by: WORKFLOW_OWNER
+  approved_at: 2026-07-30
+  approval_scope: NovaBI daily full-platform DAU result mapping
+  approval_note: Owner confirmed two-column schema, daily uniqueness and non-blocking failure scope
+
+scope:
+  asset_scope: On-screen daily DAU query result table
+  source_object_or_sheet: NovaBI全平台分日DAU页面结果
+  source_header_row: 1
+  header_structure: Single row
+  expected_raw_field_count: 2
+  mapped_result_field_count: 2
+  query_context_field_count: 2
+  record_grain_reference: Dataset Inventory
+
+evidence:
+  evidence_sources:
+    - Owner-provided NovaBI daily DAU result screenshot
+  inspected_sample_count: 1
+  observed_sample_period:
+    start_date: 2026-07-17
+    end_date: 2026-07-23
+  schema_observation_status: completed
+
+source_schema:
+  structure_type: Web query result table
+  expected_field_count: 2
+  field_order_is_contractual: false
+  mapped_field_match_method: exact_header_name_after_trim
+  missing_mapped_field_policy: leave_dau_content_blank_notify_owner_and_continue_workflow
+  unknown_source_field_policy: notify_and_request_owner_confirmation_without_blocking_confirmed_field_processing
+
+record_identity:
+  primary_key:
+    - activity_date
+  key_source: mapped_source_field
+  uniqueness_requirement: exactly_one_row_per_calendar_date_within_requested_period
+  automatic_key_inference_allowed: false
+
+raw_field_inventory:
+  - {raw_field_inventory_id: RF001, raw_column_position_observed: 1, raw_field_name: 日期, observed_raw_storage_type: date_text, source_value_origin: query_result, mapping_status: mapped}
+  - {raw_field_inventory_id: RF002, raw_column_position_observed: 2, raw_field_name: DAU, observed_raw_storage_type: formatted_integer, source_value_origin: query_result, mapping_status: mapped}
+
+query_context_fields:
+  - context_field_id: QCF001
+    source_parameter_name: start_date
+    standard_field_id: period_start_date
+    standard_field_name: 统计开始日期
+    standard_data_type: date
+    semantic_role: query_context_period_start
+    required: true
+    nullable: false
+    output_format: YYYY-MM-DD
+    invalid_value_handling: leave_dau_content_blank_notify_owner_and_continue_workflow
+    value_source: explicit_query_parameter
+
+  - context_field_id: QCF002
+    source_parameter_name: end_date
+    standard_field_id: period_end_date
+    standard_field_name: 统计结束日期
+    standard_data_type: date
+    semantic_role: query_context_period_end
+    required: true
+    nullable: false
+    output_format: YYYY-MM-DD
+    invalid_value_handling: leave_dau_content_blank_notify_owner_and_continue_workflow
+    value_source: explicit_query_parameter
+
+field_mappings:
+  - mapping_entry_id: FM001
+    raw_field_inventory_id: RF001
+    raw_field_name: 日期
+    standard_field_id: activity_date
+    standard_field_name: 数据日期
+    standard_data_type: date
+    semantic_role: business_date
+    required: true
+    nullable: false
+    accepted_input_format:
+      - YYYY-MM-DD
+    output_format: YYYY-MM-DD
+    blank_value_handling: leave_dau_content_blank_notify_owner_and_continue_workflow
+    invalid_date_value_handling: leave_dau_content_blank_notify_owner_and_continue_workflow
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM002
+    raw_field_inventory_id: RF002
+    raw_field_name: DAU
+    standard_field_id: dau_count
+    standard_field_name: 全平台日活跃用户数
+    standard_data_type: integer
+    semantic_role: activity_measure
+    required: true
+    nullable: false
+    unit: user
+    formatted_numeric_cast:
+      thousands_separator_allowed: true
+      integer_conversion: exact_integer
+    blank_value_handling: leave_dau_content_blank_and_continue_workflow
+    zero_value_handling: leave_dau_content_blank_and_continue_workflow
+    negative_value_handling: leave_dau_content_blank_and_continue_workflow
+    nonnumeric_value_handling: leave_dau_content_blank_and_continue_workflow
+    owner_notification_for_value_anomaly: required
+    mapping_status: owner_confirmed
+
+validation:
+  required_standard_fields:
+    - period_start_date
+    - period_end_date
+    - activity_date
+    - dau_count
+  requested_period_coverage_validation:
+    expected: exactly_one_row_per_calendar_date_from_period_start_date_through_period_end_date
+    missing_date_behavior:
+      notify_owner: true
+      leave_dau_content_blank: true
+      block_workflow: false
+    duplicate_date_behavior:
+      notify_owner: true
+      leave_dau_content_blank: true
+      block_workflow: false
+  query_context_validation:
+    dates_required: true
+    date_format_validation_required: true
+    period_order_rule: period_start_date_must_not_be_after_period_end_date
+    failure_behavior:
+      notify_owner: true
+      leave_dau_content_blank: true
+      block_workflow: false
+  mapped_field_type_validation_required: true
+  dau_value_failure_behavior:
+    applies_to:
+      - blank
+      - zero
+      - negative
+      - nonnumeric
+    notify_owner: true
+    leave_dau_content_blank: true
+    block_workflow: false
+  row_order_is_contractual: false
+  unknown_field_validation_required: true
+  new_raw_field_policy:
+    notify_owner: true
+    owner_confirmation_required_before_registration: true
+    automatic_registration_allowed: false
+    automatic_mapping_allowed: false
+    block_confirmed_field_processing: false
+    temporary_status: unmapped_new_field
+  duplicate_standard_target_allowed: false
+  validation_rule_ids: []
+
+standardization_exclusions:
+  dau_comparison_calculated_in_mapping: false
+  weekly_report_text_generated_in_mapping: false
+  metric_result_store_write_performed_in_mapping: false
+
+governance:
+  evidence_required_for_approval: true
+  owner_confirmation_required: true
+  change_reason: Approved V1 field mapping for NovaBI full-platform daily DAU
+  notes: >
+    本Profile只将NovaBI页面返回的日期与DAU标准化，并验证请求周期内每日恰好
+    一条记录。任何已确认的结构或数值异常均不阻断Weekly Workflow，而是将
+    DAU内容留空，并同步通知Owner。
+
+constraints:
+  profile_cannot_define_metric_formula: true
+  profile_cannot_define_business_rule: true
+  profile_cannot_create_dataset_or_pipeline_dependency: true
+  profile_cannot_auto_approve_unknown_field: true
+  profile_must_reference_registered_dataset: true

@@ -1,0 +1,13 @@
+config_type: metric_manifest
+knowledge_pack: revenue
+version: 0.1.0-draft
+status: draft
+
+metrics:
+  - metric_id: TBD
+    required_for_weekly_report: true
+    display_order: 1
+    output_locations:
+      - revenue_excel
+      - outlook_draft
+    minimum_status: active

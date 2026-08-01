@@ -1,0 +1,343 @@
+schema_version: "0.1"
+registry_scope: Personal Business Analytics Copilot
+asset_type: Metric Result Store
+
+metric_result_stores:
+  - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+    store_name: Weekly Revenue Historical Metric Result Store
+    business_domain:
+      - Revenue
+    business_purpose: >
+      保存技术线与CTV业务线经过验证的分周收入计算结果，
+      支持Weekly Business Report收入模块的历史结果读取、
+      环比与同比计算，以及当周验证结果的持续沉淀。
+    classification_status: Confirmed
+    lifecycle_status: Registered
+    readiness_status: In Progress
+    storage_type: Excel Workbooks in Fixed Directory
+    storage_location: '${LOCAL_WORKFLOW_DATA_ROOT}\分周分业务线业绩收入汇总-存档'
+    data_source_boundary: >
+      本Store不是独立Data Source或Raw Dataset。
+      原始数据来源及其Dataset身份保持在现有Data Source Inventory和Dataset Inventory中。
+    workflow_dependency_boundary: >
+      Workflow读取已验证的历史指标结果，不将本Store视为原始业务数据入口。
+    write_policy:
+      storage_pattern: >
+        延续现有工作簿的数据存储方式。
+        基础收入金额写入经过验证的数值；
+        同比、环比等衍生字段保留并写入Excel公式，
+        不将所有结果固化为静态数值。
+      formula_definition_source: >
+        具体公式必须来自后续明确确认的Metric或Business Rule配置，
+        不得仅根据相邻单元格自动猜测或复制未验证公式。
+      new_week_row_policy: >
+        工作簿仅保存已发生周的数据，不预建未来周记录。
+        如果当周截止日期尚不存在，
+        则在当前季度数据序列末尾新增一行，
+        并写入当周截止日期、基础金额及适用的已确认公式。
+      new_quarter_separator_policy: >
+        新季度首周延续现有工作簿格式：
+        在上一季度末尾保留一个完全空白的分隔行，
+        再写入新季度首周记录。
+        分隔行不承载日期、金额或公式。
+      appended_row_format_policy: >
+        新增业务记录时，复制当前季度上一条业务记录的单元格样式和数字格式。
+        公式必须来自已确认配置，
+        不得直接照搬未经验证的上一行公式。
+      quarter_transition_first_week:
+        weekly_executed_revenue_wow: >
+          未来所有季度切换首周均保持空白，
+          不写入公式、不计算且不在周报中展示。
+        existing_20260701_div_zero: >
+          技术线现有20260701记录中的#DIV/0!保持不动，
+          不作为当前Readiness Gate的修复要求。
+    duplicate_business_date_policy:
+      existing_partial_row: >
+        如果相同截止日期的记录已经存在，且仅预填去年同期数据、
+        当年数据或计算结果仍为空，则直接补充该行缺失数据，
+        不新增相同日期记录。
+      existing_populated_value: >
+        如果相同截止日期的当年数据已经存在且非空，
+        但重新计算结果与表内数据不一致，则暂停写入并通知用户确认。
+        未经用户确认不得覆盖已有值，也不得新增相同日期记录。
+      identical_recalculated_result: >
+        如果相同截止日期已经存在，
+        且重新计算结果与表内数据完全一致，
+        则视为幂等成功：
+        不重复写入、不发送异常通知，并继续Workflow。
+    validation_before_write:
+      technical_regular_week_completeness: Confirmed
+      ctv_regular_week_completeness: Confirmed
+    backup_or_version_policy: >
+      写入前不创建备份副本或时间戳版本文件。
+      完成必要校验后直接修改原始存档工作簿。
+      该规则不覆盖已有的冲突暂停与用户确认要求。
+    failure_policy:
+      trigger_conditions:
+        - Original workbook is locked or occupied
+        - Original workbook does not exist
+        - Workbook save fails
+        - Post-save re-read verification differs from the intended result
+      store_action: >
+        立即暂停Metric Result Store写入并通知用户。
+      downstream_workflow_action: >
+        不阻断后续收入处理或Weekly Business Report生成。
+        允许继续使用已经通过业务校验的当周计算结果，
+        但必须向用户明确提示历史存档写入失败。
+    success_notification:
+      required: true
+      timing: Included in the current revenue-processing completion notice
+      minimum_content:
+        - Workbook name
+        - Revenue data cutoff date
+        - Archive write and re-read verification succeeded
+
+    store_assets:
+      - store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
+        business_context: Technical Line Weekly Revenue
+        workbook_name: 技术线历史整体数据存档.xlsx
+        worksheet_name: Sheet1
+        business_date_field: 数据当周最后一天
+        business_date_semantics: >
+          代表本年度当前财务季度累计收入数据的截止日期，
+          通常为周三，但不将星期三硬编码为固定规则。
+        business_date_uniqueness: >
+          同一工作簿内不应因补充当周缺失数据而新增相同截止日期记录；
+          其他重复日期场景的处理规则仍为TBD。
+        observed_column_count: 12
+        current_write_mode: >
+          Append a new occurred-week row at the end of the current-quarter
+          sequence, using validated base values plus configured Excel formulas.
+        pre_write_completeness_gate:
+          regular_week_required_range: A:L
+          pass_condition: >
+            普通周A:L全部字段均具备有效数值或已确认公式，
+            且不存在公式计算错误。
+          failure_action: >
+            任一字段为空、公式未配置或出现计算错误时，
+            暂停写入并通知用户。
+          exception: >
+            季度切换首周仅允许已明确确认的字段留空，
+            当前包括“当周新增已执行金额环比”。
+        historical_anomaly_handling: TBD
+
+      - store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
+        business_context: CTV Weekly Revenue
+        workbook_name: CTV线历史整体数据存档.xlsx
+        worksheet_name: tv
+        business_date_field: 数据当周最后一天
+        business_date_semantics: >
+          代表本年度当前财务季度累计收入数据的截止日期，
+          通常为周三，但不将星期三硬编码为固定规则。
+        business_date_uniqueness: >
+          同一工作簿内不应因补充当周缺失数据而新增相同截止日期记录；
+          其他重复日期场景的处理规则仍为TBD。
+        observed_column_count: 6
+        current_write_mode: >
+          Append a new occurred-week row at the end of the current-quarter
+          sequence, using validated base values plus configured Excel formulas.
+        pre_write_completeness_gate:
+          regular_week_required_range: A:F
+          pass_condition: >
+            普通周A:F全部字段均具备有效数值或已确认公式，
+            且不存在公式计算错误。
+          failure_action: >
+            任一字段为空、公式未配置或出现计算错误时，
+            暂停写入并通知用户。
+        historical_anomaly_handling:
+          corrected_items:
+            - corrected_on: 2026-07-29
+              field: 数据当周最后一天
+              corrections:
+                - from: 20240807
+                  to: 20250807
+                - from: 20240814
+                  to: 20250814
+                - from: 20240821
+                  to: 20250821
+                - from: 20250521
+                  to: 20260521
+              authorization: Explicit user confirmation
+          date_sequence_scan:
+            scan_scope:
+              - CTV线历史整体数据存档.xlsx
+              - 技术线历史整体数据存档.xlsx
+            scan_result: >
+              已扫描两个工作簿的完整业务日期列。
+              完成上述修正后，未发现其他可由连续时间序列明确判定的年份异常。
+          remaining_items: >
+            非年份类历史异常仍需逐项确认。
+          missing_historical_week:
+            business_date: 20250618
+            handling: >
+              该日期收入字段未填写。保留日期记录，
+              其余收入及衍生字段保持空白，不参与后续计算。
+            correction_completed: >
+              已清除原同比单元格中的#DIV/0!公式并完成重新读取验证。
+
+      - store_asset_id: STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
+        business_context: Smart Speaker Weekly Revenue
+        workbook_name: 智能音箱线历史收入数据存档.xlsx
+        worksheet_name: weekly_revenue
+        business_date_field: 数据当周最后一天
+        weekly_revenue_field: 当周收入
+        qtd_revenue_field: 截止当周最后一天本Q累计收入
+        business_date_semantics: >
+          代表本年度当前财务季度累计过程中的当周收入数据截止日期。
+        date_storage_format: Excel Date
+        observed_column_count: 3
+        current_write_mode: >
+          按截止日期新增已发生周的验证后收入结果；
+          同日重复、冲突、保存失败与回读验证沿用Store共享规则。
+        physical_asset_status: >
+          Created, owner-initialized, and read/visual verified on 2026-07-29.
+        bootstrap_record:
+          business_date: 2026-07-22
+          owner_provided: true
+          weekly_revenue_populated: true
+          qtd_revenue_populated: true
+        historical_anomaly_handling: Not applicable for new empty asset
+
+      - store_asset_id: STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
+        business_context: Fast Version Weekly Revenue
+        workbook_name: 极速版线历史收入数据存档.xlsx
+        worksheet_name: weekly_revenue
+        business_date_field: 数据当周最后一天
+        weekly_revenue_field: 当周收入
+        qtd_revenue_field: 截止当周最后一天本Q累计收入
+        business_date_semantics: >
+          代表本年度当前财务季度累计过程中的当周收入数据截止日期。
+        date_storage_format: Excel Date
+        observed_column_count: 3
+        current_write_mode: >
+          按截止日期新增已发生周的验证后收入结果；
+          同日重复、冲突、保存失败与回读验证沿用Store共享规则。
+        physical_asset_status: >
+          Created, owner-initialized, and read/visual verified on 2026-07-29.
+        bootstrap_record:
+          business_date: 2026-07-22
+          owner_provided: true
+          weekly_revenue_populated: true
+          qtd_revenue_populated: true
+        historical_anomaly_handling: Not applicable for new empty asset
+
+    historical_calculation_focus:
+      applicable_store_assets:
+        - STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
+        - STORE_ASSET_WEEKLY_REVENUE_CTV
+      boundary_date: 20250723
+      boundary_inclusion: Inclusive
+      policy: >
+        后续Workflow从20250723当周开始使用历史结果，
+        有效范围为20250723（含）及以后。
+        更早数据作为Legacy History保留，
+        不参与Workflow读取、同比或环比计算，
+        且不阻塞当前Readiness Gate。
+    new_weekly_store_asset_history:
+      applicable_store_assets:
+        - STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
+        - STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
+      history_start: 2026-07-22
+      bootstrap_policy: >
+        Owner已在两个工作簿中补充首次Pipeline运行前一周的
+        当周收入与截止当周本Q累计收入。
+        Pipeline后续直接正常执行，无需历史回填Pipeline。
+
+  - store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+    store_name: Weekly Inventory Historical Metric Result Store
+    business_domain:
+      - Inventory
+    business_purpose: >
+      保存常规库存Pipeline经过验证的周度指标结果，
+      支持后续周度环比计算并减少重复Apollo查询。
+    classification_status: Confirmed
+    lifecycle_status: Planned
+    readiness_status: Pending Metric Definition
+    storage_type: TBD
+    storage_location: TBD
+    data_source_boundary: >
+      本Store不是独立Data Source或Raw Dataset，
+      只保存经过验证的库存Metric Result。
+    write_policy: >
+      正常Pipeline将本周验证结果写入；
+      具体字段、粒度和物理结构留待Metric Library确认。
+    store_assets:
+      - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_FULL_SITE
+        business_context: Full-site Weekly Inventory
+        physical_schema: TBD
+        lifecycle_status: Planned
+      - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
+        business_context: Patch Weekly Inventory
+        physical_schema: TBD
+        lifecycle_status: Planned
+      - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT
+        business_context: Non-patch Product Weekly Inventory
+        physical_schema: TBD
+        lifecycle_status: Planned
+      - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
+        business_context: Brand Moment Weekly Sell-through
+        physical_schema: TBD
+        lifecycle_status: Planned
+      - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH
+        business_context: Product-scoped Weekly Sell-through excluding Brand Moment
+        product_dimension_required: true
+        physical_schema: TBD
+        lifecycle_status: Planned
+
+  - store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+    store_name: Weekly User Analytics Historical Metric Result Store
+    business_domain:
+      - User Analytics
+      - Platform Operation
+    business_purpose: >
+      保存经过验证的周度用户活跃结果，
+      支持DAU历史比较并减少重复NovaBI查询。
+    classification_status: Confirmed
+    lifecycle_status: Planned
+    readiness_status: Pending Metric Definition
+    storage_type: TBD
+    storage_location: TBD
+    data_source_boundary: >
+      本Store不是独立Data Source或Raw Dataset，
+      只保存经过验证的User Analytics Metric Result。
+    store_assets:
+      - store_asset_id: STORE_ASSET_WEEKLY_PLATFORM_DAU
+        business_context: Full-platform Weekly DAU
+        physical_schema: TBD
+        lifecycle_status: Planned
+
+  - store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
+    store_name: Weekly Advertising Historical Metric Result Store
+    business_domain:
+      - Advertising
+    business_purpose: >
+      独立保存经过验证的周度广告投放执行指标结果，
+      支持历史核查及已确认的下游指标计算。
+    classification_status: Confirmed
+    lifecycle_status: Planned
+    readiness_status: Pending Metric Definition
+    storage_type: TBD
+    storage_location: TBD
+    data_source_boundary: >
+      本Store不是独立Data Source或Raw Dataset，
+      不保存库存或售卖率结果，只保存经过验证的Advertising Metric Result。
+    write_policy: >
+      对应Pipeline将本周验证结果独立写入；
+      具体字段、粒度和物理结构留待Metric Library确认。
+    store_assets:
+      - store_asset_id: STORE_ASSET_WEEKLY_BRAND_MOMENT_DELIVERY
+        business_context: Brand Moment Weekly Delivery Execution and Exposure
+        includes:
+          - Validated Brand Moment delivery execution results
+          - Validated Brand Moment exposure result
+        excludes:
+          - Inventory results
+          - Brand Moment sell-through result
+        physical_schema: TBD
+        lifecycle_status: Planned
+
+notes:
+  - 当前登记仅确认资产身份、存储位置及边界。
+  - 不在本阶段定义Field Mapping、Business Rule、Metric Definition或Pipeline。
+  - 技术线与CTV既有工作簿的已确认修正记录见Discovery文档。
+  - 智能音箱与极速版两个空白Store Asset已于2026-07-29创建并完成表头验证。

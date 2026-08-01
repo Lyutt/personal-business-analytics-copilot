@@ -1,0 +1,329 @@
+config_type: field_mapping_profile
+mapping_profile_id: MAP_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY_V1
+mapping_profile_name: Apollo全站整体库存字段映射
+dataset_id: DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+dataset_version_constraint: TBD
+source_id: SRC_INTERNAL_PLATFORM_APOLLO
+query_asset_id: QRY_APOLLO_INVENTORY_WEEKLY_FULL_SITE_STOCK
+business_domains:
+  - Inventory
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-07-30
+approval_record:
+  approved_by: WORKFLOW_OWNER
+  approved_at: 2026-07-30
+  approval_scope: Full-site inventory CSV schema and P0 Field Mapping
+  approval_note: Owner confirmed all seven mappings and readiness handling
+
+scope:
+  asset_scope: Entire exported CSV result file
+  source_object_or_sheet: Apollo周报全站库存CSV结果
+  source_header_row: 1
+  header_structure: Single row
+  source_encoding: UTF-8 BOM
+  expected_raw_field_count: 7
+  mapped_field_count: 7
+  query_context_field_count: 2
+  record_grain_reference: Dataset Inventory
+
+evidence:
+  evidence_sources:
+    - '${LOCAL_WORKFLOW_DATA_ROOT}\数据查询-库存-库存 - 2026-07-30T211508.963.csv'
+    - phase1_5/discovery/DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY_Field_Structure_Inspection.md
+  inspected_sample_count: 1
+  sample_periods:
+    - TBD
+  schema_observation_status: completed
+
+source_file_attribution:
+  downloaded_filename_is_dataset_identifier: false
+  required_attribution_context:
+    - query_asset_id
+    - query_template
+    - dataset_id
+    - query_execution_context
+  automatic_attribution_by_filename_allowed: false
+  automatic_attribution_by_schema_similarity_allowed: false
+
+source_schema:
+  structure_type: CSV table
+  observed_used_range: A1:G545
+  observed_data_row_count: 544
+  expected_field_count: 7
+  field_order_is_contractual: false
+  mapped_field_match_method: exact_header_name_after_trim_and_bom_removal
+  utf8_bom_header_handling: remove_bom_before_header_matching
+  missing_required_field_policy: notify_owner_and_pause_affected_pipeline
+  unknown_source_field_policy: notify_and_request_owner_confirmation_without_blocking
+  zero_data_row_policy: notify_owner_and_pause_affected_pipeline
+
+record_identity:
+  business_unique_key:
+    - ad_placement_id
+    - vip_flag_id
+  cross_period_contextual_key:
+    - period_start_date
+    - period_end_date
+    - ad_placement_id
+    - vip_flag_id
+  key_source: explicit_source_fields_and_query_context
+  automatic_key_inference_allowed: false
+  blank_key_component_handling:
+    retain_record: true
+    pipeline_status_change: none
+    pipeline_blocking_behavior: continue
+    owner_notification_timing: final_weekly_report_output
+  duplicate_key_handling:
+    retain_all_records: true
+    automatic_deduplication_allowed: false
+    pipeline_status_change: none
+    pipeline_blocking_behavior: continue
+    owner_notification_timing: final_weekly_report_output
+
+raw_field_inventory:
+  - {raw_field_inventory_id: RF001, raw_column_position_observed: 1, raw_field_name: 广告位ID, observed_raw_storage_type: text_identifier, source_value_origin: query_export, mapping_status: mapped}
+  - {raw_field_inventory_id: RF002, raw_column_position_observed: 2, raw_field_name: 广告位, observed_raw_storage_type: text, source_value_origin: query_export, mapping_status: mapped}
+  - {raw_field_inventory_id: RF003, raw_column_position_observed: 3, raw_field_name: 是否VIPID, observed_raw_storage_type: text_identifier, source_value_origin: query_export, mapping_status: mapped}
+  - {raw_field_inventory_id: RF004, raw_column_position_observed: 4, raw_field_name: 是否VIP, observed_raw_storage_type: text, source_value_origin: query_export, mapping_status: mapped}
+  - {raw_field_inventory_id: RF005, raw_column_position_observed: 5, raw_field_name: 品牌商广整体投放库存, observed_raw_storage_type: formatted_integer, source_value_origin: query_export, mapping_status: mapped}
+  - {raw_field_inventory_id: RF006, raw_column_position_observed: 6, raw_field_name: 禁用库存, observed_raw_storage_type: formatted_integer, source_value_origin: query_export, mapping_status: mapped}
+  - {raw_field_inventory_id: RF007, raw_column_position_observed: 7, raw_field_name: 库存, observed_raw_storage_type: formatted_integer, source_value_origin: query_export, mapping_status: mapped}
+
+query_context_fields:
+  - context_field_id: QCF001
+    source_parameter_name: start_date
+    standard_field_id: period_start_date
+    standard_field_name: 统计开始日期
+    standard_data_type: date
+    semantic_role: query_context_period_start
+    required: true
+    nullable: false
+    output_format: YYYY-MM-DD
+    invalid_value_handling: notify_owner_and_pause_affected_pipeline
+    value_source: explicit_query_parameter
+
+  - context_field_id: QCF002
+    source_parameter_name: end_date
+    standard_field_id: period_end_date
+    standard_field_name: 统计结束日期
+    standard_data_type: date
+    semantic_role: query_context_period_end
+    required: true
+    nullable: false
+    output_format: YYYY-MM-DD
+    invalid_value_handling: notify_owner_and_pause_affected_pipeline
+    value_source: explicit_query_parameter
+
+field_mappings:
+  - mapping_entry_id: FM001
+    raw_field_inventory_id: RF001
+    raw_field_name: 广告位ID
+    standard_field_id: ad_placement_id
+    standard_field_name: 广告位ID
+    standard_data_type: string
+    semantic_role: business_identifier
+    required: true
+    nullable: true
+    numeric_cast_allowed: false
+    preserve_leading_zeros: true
+    text_normalization:
+      - trim_leading_and_trailing_whitespace
+      - remove_leading_and_trailing_carriage_return_or_line_feed
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM002
+    raw_field_inventory_id: RF002
+    raw_field_name: 广告位
+    standard_field_id: ad_placement_name
+    standard_field_name: 广告位
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: true
+    nullable: true
+    text_normalization:
+      - trim_leading_and_trailing_whitespace
+      - remove_leading_and_trailing_carriage_return_or_line_feed
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM003
+    raw_field_inventory_id: RF003
+    raw_field_name: 是否VIPID
+    standard_field_id: vip_flag_id
+    standard_field_name: 是否VIP ID
+    standard_data_type: string
+    semantic_role: business_identifier
+    required: true
+    nullable: true
+    numeric_cast_allowed: false
+    preserve_leading_zeros: true
+    allowed_values:
+      - "0"
+      - "1"
+    text_normalization:
+      - trim_leading_and_trailing_whitespace
+      - remove_leading_and_trailing_carriage_return_or_line_feed
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM004
+    raw_field_inventory_id: RF004
+    raw_field_name: 是否VIP
+    standard_field_id: vip_flag
+    standard_field_name: 是否VIP
+    standard_data_type: string
+    semantic_role: business_dimension
+    required: true
+    nullable: true
+    allowed_values:
+      - 非vip
+      - vip
+    text_normalization:
+      - trim_leading_and_trailing_whitespace
+      - remove_leading_and_trailing_carriage_return_or_line_feed
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM005
+    raw_field_inventory_id: RF005
+    raw_field_name: 品牌商广整体投放库存
+    standard_field_id: brand_delivery_inventory_quantity
+    standard_field_name: 品牌投放库存
+    standard_data_type: integer
+    semantic_role: inventory_measure
+    required: true
+    nullable: false
+    unit: single_inventory_unit
+    terminology_note: Unless owner explicitly states otherwise, 投放 refers to this field
+    formatted_numeric_cast:
+      thousands_separator_allowed: true
+      integer_conversion: round_half_up_to_nearest_integer
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    zero_value_handling: valid_continue
+    negative_value_handling: retain_continue_and_remind_in_final_weekly_report
+    nonnumeric_value_handling: exclude_entire_row_notify_owner_and_continue
+    source_file_mutation_allowed: false
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM006
+    raw_field_inventory_id: RF006
+    raw_field_name: 禁用库存
+    standard_field_id: disabled_inventory_quantity
+    standard_field_name: 禁用库存
+    standard_data_type: integer
+    semantic_role: inventory_measure
+    business_meaning: 因策略原因不可用的库存
+    required: true
+    nullable: false
+    unit: single_inventory_unit
+    formatted_numeric_cast:
+      thousands_separator_allowed: true
+      integer_conversion: round_half_up_to_nearest_integer
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    zero_value_handling: valid_continue
+    negative_value_handling: retain_continue_and_remind_in_final_weekly_report
+    nonnumeric_value_handling: exclude_entire_row_notify_owner_and_continue
+    source_file_mutation_allowed: false
+    mapping_status: owner_confirmed
+
+  - mapping_entry_id: FM007
+    raw_field_inventory_id: RF007
+    raw_field_name: 库存
+    standard_field_id: total_inventory_quantity
+    standard_field_name: 库存
+    standard_data_type: integer
+    semantic_role: inventory_measure
+    required: true
+    nullable: false
+    unit: single_inventory_unit
+    formatted_numeric_cast:
+      thousands_separator_allowed: true
+      integer_conversion: round_half_up_to_nearest_integer
+    blank_value_handling: replace_with_zero
+    blank_value_default: 0
+    zero_value_handling: valid_continue
+    negative_value_handling: retain_continue_and_remind_in_final_weekly_report
+    nonnumeric_value_handling: exclude_entire_row_notify_owner_and_continue
+    source_file_mutation_allowed: false
+    mapping_status: owner_confirmed
+
+paired_field_validation:
+  validation_id: VAL_VIP_ID_TEXT_PAIR
+  field_ids:
+    - vip_flag_id
+    - vip_flag
+  allowed_pairs:
+    - {vip_flag_id: "0", vip_flag: 非vip}
+    - {vip_flag_id: "1", vip_flag: vip}
+  mismatch_handling:
+    retain_record: true
+    pipeline_status_change: none
+    pipeline_blocking_behavior: continue
+    owner_notification_timing: final_weekly_report_output
+
+validation:
+  required_standard_fields:
+    - period_start_date
+    - period_end_date
+    - ad_placement_id
+    - ad_placement_name
+    - vip_flag_id
+    - vip_flag
+    - brand_delivery_inventory_quantity
+    - disabled_inventory_quantity
+    - total_inventory_quantity
+  all_source_headers_required: true
+  missing_source_header_behavior:
+    notify_owner: true
+    affected_pipeline_id: PL_INVENTORY_FULL_SITE_WEEKLY
+    pipeline_behavior: pause_pending_resolution
+  result_data_row_validation:
+    minimum_data_rows: 1
+    failure_behavior:
+      notify_owner: true
+      affected_pipeline_id: PL_INVENTORY_FULL_SITE_WEEKLY
+      pipeline_behavior: pause_pending_resolution
+  query_context_validation:
+    dates_required: true
+    date_format_validation_required: true
+    period_order_rule: period_start_date_must_not_be_after_period_end_date
+    failure_behavior:
+      notify_owner: true
+      affected_pipeline_id: PL_INVENTORY_FULL_SITE_WEEKLY
+      pipeline_behavior: pause_pending_resolution
+  integer_conversion_policy: round_half_up_to_nearest_integer
+  unknown_field_validation_required: true
+  new_raw_field_policy:
+    notify_owner: true
+    owner_confirmation_required_before_registration: true
+    automatic_registration_allowed: false
+    automatic_mapping_allowed: false
+    block_confirmed_field_processing: false
+    temporary_status: unmapped_new_field
+  duplicate_standard_target_allowed: false
+  validation_rule_ids: []
+
+standardization_exclusions:
+  derived_available_inventory_field_created_in_mapping: false
+  cpm_conversion_performed_in_mapping: false
+  downstream_business_rule_or_metric_reference: >
+    可用库存和CPM转换已记录为后续Business Rule/Metric资产候选，
+    不属于本Mapping Profile。
+
+governance:
+  evidence_required_for_approval: true
+  owner_confirmation_required: true
+  change_reason: Approved V1 field mapping for Apollo full-site inventory CSV
+  notes: >
+    本Profile只定义CSV字段和查询上下文标准化。所有原始记录保留在源CSV；
+    非数字库存行仅从标准化结果排除。负数、键异常和VIP对应异常不改变Pipeline
+    状态，并在最终周报提醒Owner。
+
+constraints:
+  profile_cannot_define_metric_formula: true
+  profile_cannot_define_business_rule: true
+  profile_cannot_create_dataset_or_pipeline_dependency: true
+  profile_cannot_auto_approve_unknown_field: true
+  profile_must_reference_registered_dataset: true

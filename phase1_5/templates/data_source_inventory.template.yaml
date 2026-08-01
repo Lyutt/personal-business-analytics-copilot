@@ -1,0 +1,57 @@
+config_type: data_source_inventory
+inventory_version: 0.1.1-draft
+status: draft
+owner: TBD
+
+data_sources:
+  - source_id: TBD
+    source_name: TBD
+    source_type: TBD
+    business_purpose: TBD
+    criticality: TBD
+    asset_priority: TBD
+    business_domains: []
+    source_system_or_mailbox: TBD
+
+    access:
+      access_method: TBD
+      access_location: TBD
+      permission_owner: TBD
+      credential_reference: managed_externally
+      manual_steps_reference: TBD
+
+    schedule:
+      update_frequency: TBD
+      expected_available_time: TBD
+      timezone: Asia/Shanghai
+      allowed_delay: TBD
+
+    acquisition:
+      supported_methods: []
+      default_method_for_mvp: TBD
+      file_or_payload_formats: []
+      source_selection_rule: TBD
+      no_match_policy: create_exception
+      multiple_match_policy: block_and_confirm
+
+    governance:
+      business_owner: TBD
+      data_owner: TBD
+      evidence_sources: []
+      version: 0.1.0-draft
+      approval_status: pending
+      effective_from: TBD
+
+    security_and_retention:
+      contains_sensitive_data: TBD
+      raw_copy_allowed: TBD
+      temporary_storage_allowed: TBD
+      retention_period: TBD
+      credentials_stored_in_config: false
+
+constraints:
+  active_source_requires_current_workflow_use_or_confirmed_near_term_plan: true
+  speculative_company_platforms_belong_in_future_backlog: true
+  auto_create_dataset_dependency: false
+  auto_match_by_name_or_schema: false
+  credentials_allowed: false

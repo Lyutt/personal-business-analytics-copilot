@@ -1,0 +1,98 @@
+config_type: dataset_inventory
+inventory_version: 0.2.0-draft
+status: draft
+owner: TBD
+
+datasets:
+  - dataset_id: TBD
+    dataset_name: TBD
+    business_domains: []
+    business_purpose: TBD
+    asset_role: TBD
+    source_id: TBD
+    query_asset_id: TBD
+
+    acquisition:
+      acquisition_role: TBD
+      source_object_or_attachment_rule: TBD
+      parameters_or_filters:
+        - parameter_name: TBD
+      result_acquisition_method: []
+      expected_format: []
+      source_data_refresh_frequency: TBD
+      query_availability: TBD
+      planned_acquisition_frequency: TBD
+      asset_scope: TBD
+      primary_analysis_object: TBD
+      other_object_usage: TBD
+
+    data_contract:
+      record_grain: TBD
+      primary_or_business_key: []
+      snapshot_or_period_type: TBD
+      period_result_grain: TBD
+      dataset_update_frequency: TBD
+      version_scope: TBD
+      period_semantics:
+        year_definition: TBD
+        quarter_definition: TBD
+        cumulative_window: TBD
+        data_cutoff_rule: TBD
+        subject_date_format: TBD
+        attachment_date_format: TBD
+        attachment_date_format_observed_example: TBD
+      business_date_field: TBD
+      expected_update_time: TBD
+      schema_profile_id: TBD
+      mapping_profile_id: TBD
+      required_fields: []
+
+    context:
+      supported_business_context_candidates: []
+      supported_business_context_ids: []
+      supported_dimension_ids: []
+      supported_workflow_ids: []
+
+    quality:
+      freshness_rule_id: TBD
+      uniqueness_rule_id: TBD
+      completeness_rule_ids: []
+      validation_owner: TBD
+
+    governance:
+      owner: TBD
+      version: 0.1.0-draft
+      approval_status: pending
+      effective_from: TBD
+      evidence_sources: []
+
+query_assets:
+  - query_asset_id: TBD
+    source_id: TBD
+    query_or_export_name: TBD
+    query_description_or_manual_steps: TBD
+    access_requirement: TBD
+    default_query_template: TBD
+    query_parameter_logic: TBD
+    external_dependency_candidates: []
+    output_dataset_id: TBD
+    parameters_or_filters:
+      - parameter_name: TBD
+    result_acquisition_method: []
+    expected_format: []
+    expected_output_grain: TBD
+    source_data_refresh_frequency: TBD
+    query_availability: TBD
+    planned_acquisition_frequency: TBD
+    query_execution_frequency: TBD
+    owner: TBD
+    version: 0.1.0-draft
+    approval_status: pending
+
+constraints:
+  source_id_must_reference_active_data_source: true
+  future_backlog_sources_cannot_create_datasets: true
+  one_source_may_provide_multiple_datasets: true
+  auto_share_mapping_between_datasets: false
+  auto_infer_dataset_role: false
+  unknown_fields_remain_tbd: true

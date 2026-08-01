@@ -1,0 +1,66 @@
+config_type: metric_definition
+
+identity:
+  metric_id: TBD
+  metric_name: TBD
+  metric_name_en: TBD
+  version: 0.1.0-draft
+  status: draft
+  business_domain: TBD
+
+meaning:
+  business_definition: TBD
+  decision_supported: TBD
+  included_items: []
+  excluded_items: []
+  caveats: []
+
+calculation:
+  metric_level: TBD
+  formula: TBD
+  input_standard_fields: []
+  upstream_metric_ids: []
+  calculation_method: TBD
+  missing_value_policy: TBD
+  zero_denominator_policy: TBD
+
+grain_and_dimensions:
+  base_grain: TBD
+  supported_dimensions: []
+  allowed_aggregations: []
+  non_additive_dimensions: []
+
+time:
+  supported_periods:
+    - weekly
+  business_date_field: TBD
+  as_of_rule: TBD
+  comparison_types: []
+  comparison_compatibility: TBD
+
+output:
+  unit: TBD
+  display_format: TBD
+  decimal_places: TBD
+  output_locations: []
+
+validation:
+  validation_method: TBD
+  reconciliation_source: TBD
+  tolerance: TBD
+  expected_range: TBD
+  blocking_on_failure: true
+
+ownership:
+  business_owner: TBD
+  data_owner: TBD
+  approver: TBD
+
+governance:
+  effective_from: TBD
+  effective_to: null
+  previous_version: null
+  backward_compatible: TBD
+  historical_recalculation_policy: TBD
+  evidence_sources: []
+  change_reason: initial_definition

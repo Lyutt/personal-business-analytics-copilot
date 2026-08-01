@@ -1,0 +1,33 @@
+# Local inspection caches and dependencies
+.tmp/
+.tmp_spreadsheet_inspect/
+node_modules/
+
+# Local environment secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.security/*.local.txt
+
+# Local-only business discovery and operational data
+phase1_5/discovery/**
+!phase1_5/discovery/README.md
+local_private/
+private_data/
+data/raw/
+attachments/
+generated_reports/
+weekly_reports/
+
+# Email archives and mutable business extracts
+*.msg
+*.eml
+*.pst
+*.ost
+
+# Office and operating-system temporary files
+~$*
+Thumbs.db
+.DS_Store

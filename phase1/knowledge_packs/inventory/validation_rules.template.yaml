@@ -1,0 +1,40 @@
+config_type: validation_rules
+knowledge_pack: inventory
+version: 0.1.0-draft
+status: draft
+
+data_validations:
+  - validation_id: INV_DQ_001
+    name: 快照新鲜度
+    validation_type: freshness
+    timestamp_field: TBD
+    rule: TBD
+    threshold: TBD
+    severity: blocking
+    owner: TBD
+    status: draft
+
+  - validation_id: INV_DQ_002
+    name: 业务唯一键重复
+    validation_type: uniqueness
+    key_fields: []
+    rule: duplicate_count_equals_zero
+    severity: blocking
+    owner: TBD
+    status: draft
+
+metric_validations:
+  - validation_id: INV_METRIC_001
+    name: 库存总量对账
+    metric_id: TBD
+    comparison_source: TBD
+    rule: TBD
+    tolerance: TBD
+    severity: blocking
+    owner: TBD
+    status: draft
+
+unknown_field_policy:
+  required_unknown_field: block_and_confirm
+  optional_unknown_field: warn_and_confirm
+  auto_mapping_allowed: false

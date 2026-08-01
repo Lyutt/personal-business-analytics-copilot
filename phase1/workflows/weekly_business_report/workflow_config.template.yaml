@@ -1,0 +1,76 @@
+config_type: workflow
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+workflow_version: 0.1.0-draft
+status: draft
+owner: TBD
+
+period_definition:
+  period_type: weekly
+  timezone: Asia/Shanghai
+  week_start_day: TBD
+  week_end_day: TBD
+  as_of_day: TBD
+  cutoff_time: TBD
+  cross_month_policy: TBD
+  cross_quarter_policy: TBD
+  fiscal_calendar_reference: TBD
+  confirmation_status: pending
+
+triggers:
+  revenue:
+    schedule: "Thursday 17:30"
+    enabled_for_mvp: true
+  inventory:
+    schedule: "Friday 10:30"
+    enabled_for_mvp: true
+  manual_backfill:
+    enabled_for_mvp: true
+    reason_required: true
+
+dependencies:
+  final_report_requires:
+    - revenue_metrics_approved
+    - inventory_metrics_validated
+    - outlook_template_active
+  missing_historical_metrics_policy: warn_and_label
+
+checkpoints:
+  revenue_confirmation:
+    required: true
+    owner: TBD
+    backup_owner: TBD
+    allowed_decisions:
+      - approve
+      - reject
+      - request_change
+  final_draft_review:
+    required: true
+    owner: TBD
+    send_action: manual_only
+
+outputs:
+  revenue_excel:
+    enabled: true
+    template_id: TBD
+    filename_pattern: "XX年QX硬广预算盘点-收入截止{as_of_date}.xlsx"
+  revenue_metrics:
+    enabled: true
+  inventory_metrics:
+    enabled: true
+  metrics_store:
+    enabled: true
+  outlook_draft:
+    enabled: true
+    template_id: TBD
+    auto_send: false
+
+retry_policy:
+  mode: resume_from_failed_step
+  preserve_run_id: true
+  max_attempts: TBD
+  timeout_policy: TBD
+
+version_references:
+  revenue_knowledge_pack: 0.1.0-draft
+  inventory_knowledge_pack: 0.1.0-draft
+  metric_library: 0.1.0-draft

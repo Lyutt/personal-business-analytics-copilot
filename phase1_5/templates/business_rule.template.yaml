@@ -1,0 +1,47 @@
+config_type: business_rule
+rule_id: TBD
+rule_name: TBD
+rule_category: TBD
+business_domains: []
+applicable_workflow_ids: []
+applicable_pipeline_ids: []
+business_context_ids: []
+owner: TBD
+business_approver: TBD
+version: 0.1.0-draft
+approval_status: draft
+effective_from: TBD
+
+purpose: TBD
+
+inputs:
+  required_standard_fields: []
+  required_context_fields: []
+  required_result_contract_ids: []
+
+conditions:
+  all: []
+  any: []
+  exceptions: []
+
+actions:
+  on_match: []
+  on_no_match: []
+  on_ambiguous: []
+
+validation:
+  deterministic: true
+  missing_input_behavior: TBD
+  ambiguous_result_behavior: TBD
+  owner_notification_required: TBD
+
+governance:
+  evidence_sources: []
+  change_reason: TBD
+
+constraints:
+  automatic_field_inference_allowed: false
+  automatic_rule_completion_allowed: false
+  metric_formula_allowed: false
+  output_formatting_allowed: false
+  unknown_decisions_remain_tbd: true

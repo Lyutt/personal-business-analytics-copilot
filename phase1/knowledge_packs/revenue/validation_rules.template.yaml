@@ -1,0 +1,31 @@
+config_type: validation_rules
+knowledge_pack: revenue
+version: 0.1.0-draft
+status: draft
+
+data_validations:
+  - validation_id: REV_DQ_001
+    name: 必需字段完整性
+    validation_type: completeness
+    target_fields: []
+    rule: TBD
+    threshold: TBD
+    severity: blocking
+    owner: TBD
+    status: draft
+
+metric_validations:
+  - validation_id: REV_METRIC_001
+    name: 收入总额对账
+    metric_id: TBD
+    comparison_source: TBD
+    rule: TBD
+    tolerance: TBD
+    severity: blocking
+    owner: TBD
+    status: draft
+
+unknown_field_policy:
+  required_unknown_field: block_and_confirm
+  optional_unknown_field: warn_and_confirm
+  auto_mapping_allowed: false
