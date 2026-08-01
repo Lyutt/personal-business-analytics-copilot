@@ -13,8 +13,8 @@ business_context_ids:
   - CTX_REVENUE_PRIOR_YEAR_COMPARABLE
 owner: WORKFLOW_OWNER
 business_approver: WORKFLOW_OWNER
-version: 0.1.0-confirmed
-approval_status: confirmed_pending_field_mapping
+version: 1.0.0
+approval_status: approved
 effective_from: 2026-08-01
 expires_after_workflow_year: 2026
 
@@ -90,9 +90,10 @@ validation:
 
 dependency_gate:
   blocking_dependency: 业务线 Sheet incremental Field Mapping
-  field_mapping_status: pending
+  field_mapping_status: passed
+  field_mapping_gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1
   rule_approval_allowed_before_dependency_passes: false
-  current_rule_status_reason: Business logic confirmed; required extraction mapping remains TBD
+  current_rule_status_reason: Required extraction mapping passed the incremental Field Mapping Gate
 
 governance:
   evidence_sources:

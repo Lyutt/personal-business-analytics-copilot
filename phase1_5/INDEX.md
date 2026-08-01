@@ -6,13 +6,13 @@
 - Business Asset Initialization：进行中。
 - Data Source Inventory：已完成，MVP范围共确认3个独立数据获取入口。
 - Dataset / Query Asset Inventory：本轮录入完成。
-- Dataset标准化与Readiness Gate：原始Weekly范围完成；Rolling Deck
-  “业务线”Sheet新增用途产生1项待补Field Mapping增量。
+- Dataset标准化与Readiness Gate：Weekly范围完成；Rolling Deck
+  “业务线”Sheet与季度结算备选Sheet的增量Field Mapping已通过Delta Gate。
 - Weekly Business Report Pipeline Registry：已完成，12条Pipeline全部通过
   Registry Readiness Gate。
-- Field Mapping Initialization：原始9个Dataset范围已完成并通过Gate。
+- Field Mapping Initialization：原始9个Dataset范围及Revenue业务线增量范围已完成并通过Gate。
 - Business Rule Initialization：进行中；Revenue范围已完成Readiness Gate。
-- Revenue Business Rule状态：4条Approved，2条Confirmed / Pending Field Mapping。
+- Revenue Business Rule状态：6条Approved。
 - 当前收口点：Revenue Business Rule Initialization已完成，未自动进入下一阶段。
 - 当前基线：[Phase 1.5 Baseline Closure — 2026-07-31](BASELINE_CLOSURE_2026-07-31.md)。
 - 整体 Personal Business Analytics Copilot 架构：不变。
@@ -44,6 +44,7 @@ Phase 1 旧版 `phase1/workflows/weekly_business_report/WORKFLOW.md` 保留，�
 - [Field Mapping 模板](templates/field_mapping.template.yaml)
 - [Field Mapping 资产索引](assets/field_mappings/INDEX.md)
 - [Field Mapping Readiness Gate](assets/field_mappings/field_mapping_readiness_gate.yaml)
+- [Revenue业务线增量Field Mapping Gate](assets/field_mappings/field_mapping_readiness_gate_delta_revenue_business_line.yaml)
 - [Field Mapping Initialization 阶段归档](Field_Mapping_Initialization_Archive.md)
 - [Business Rule 模板](templates/business_rule.template.yaml)
 - [Business Rule 资产索引](assets/business_rules/INDEX.md)

@@ -1,14 +1,14 @@
 config_type: dataset_readiness_matrix
-matrix_version: 0.3.2
-status: completed_with_pending_mapping_delta
+matrix_version: 0.3.3
+status: completed
 assessment_workflow_id: WF_WEEKLY_BUSINESS_REPORT
 last_synced_with_pipeline_registry: 2026-07-30
-last_synced_with_field_mapping_gate: 2026-07-31
+last_synced_with_field_mapping_gate: 2026-08-01
 assessment_summary:
   dataset_count: 10
   pipeline_registry_allow_count: 9
   pipeline_registry_hold_count: 0
-  blocking_readiness_item_count: 1
+  blocking_readiness_item_count: 0
 
 field_mapping_readiness_gate:
   gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
@@ -25,10 +25,11 @@ field_mapping_readiness_gate:
     change_type: additional_sheet_usage
     source_object: 业务线 Sheet
     new_usage_role: quarter_transition_previous_quarter_complete_result_primary
-    delta_gate_status: confirmed_pending_field_mapping
+    delta_gate_status: passed
+    delta_gate_artifact: phase1_5/assets/field_mappings/field_mapping_readiness_gate_delta_revenue_business_line.yaml
     fallback_dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
     fallback_usage_role: fallback_candidate
-    fallback_policy_status: confirmed_pending_field_mapping
+    fallback_policy_status: confirmed
 
 standardization_baseline:
   registration_status_means_boundary_confirmed_only: true
@@ -50,16 +51,15 @@ dataset_readiness:
     registration_status: confirmed
     workflow_usage: { usage_role: required, report_section_or_usage: Weekly Business Report Revenue Section }
     readiness:
-      status: pending_field_mapping_delta
-      blocking_tbd_items:
-        - 业务线 Sheet中技术线与CTV上季度完整收入结果的增量Field Mapping
+      status: ready
+      blocking_tbd_items: []
       non_blocking_tbd_items:
         - Runtime implementation of confirmed warning and latest-message selection behavior
     standardization: { status: completed, exceptions: [] }
     gate:
       pipeline_registry_eligible: allow
       decision_reason: Required dataset; acquisition selection and failure-handling rules are confirmed
-      quarter_transition_previous_quarter_result_eligible: hold_pending_mapping_delta
+      quarter_transition_previous_quarter_result_eligible: allow
       owner: Originating business team (Contact: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY})
 
   - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
@@ -74,9 +74,8 @@ dataset_readiness:
         fallback policy has been confirmed by Owner
       regular_week_behavior: Dataset instance is not required
     readiness:
-      status: confirmed_pending_field_mapping
-      blocking_tbd_items:
-        - Fallback workbook Sheet and business-line result Field Mapping
+      status: ready_as_confirmed_fallback
+      blocking_tbd_items: []
       non_blocking_tbd_items:
         - Runtime implementation of final, initial and other confirmation-version priority
     standardization: { status: completed, exceptions: [] }

@@ -1,0 +1,64 @@
+config_type: field_mapping_readiness_gate
+gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+assessment_date: 2026-08-01
+status: passed
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+
+scope:
+  change_type: Revenue business-line Sheet incremental mapping
+  added_mapping_profile_count: 2
+  affected_dataset_ids:
+    - DS_REVENUE_SALES_ROLLING_DECK_QTD
+    - DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+  affected_pipeline_ids:
+    - PL_REVENUE_TECHNICAL_WEEKLY
+    - PL_REVENUE_CTV_WEEKLY
+  affected_business_rule_ids:
+    - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
+    - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+
+coverage:
+  primary_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+  fallback_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
+  explicit_dataset_profile_references: pass
+  explicit_pipeline_profile_references: pass
+  required_standard_fields:
+    - revenue_business_line
+    - fiscal_quarter_or_source_period_range
+    - performance_revenue_amount
+    - executed_revenue_amount
+
+consistency_checks:
+  - check_id: CHK_PRIMARY_AND_FALLBACK_SEMANTIC_ALIGNMENT
+    result: passed
+    evidence: Both profiles explicitly map complete-quarter values to performance_revenue_amount and executed_revenue_amount in the confirmed context
+  - check_id: CHK_PRIMARY_QUARTER_HEADER_NORMALIZATION
+    result: passed
+    evidence: YYQ[1-4] source headers normalize explicitly to YYYYQ[1-4]; annual Total and YoY columns are excluded
+  - check_id: CHK_FALLBACK_PERIOD_RANGE_MAPPING
+    result: passed
+    evidence: B8 source period range is parsed into explicit start and end dates without formula recalculation
+  - check_id: CHK_EXACT_MATCH_AND_NO_FALLBACK_INFERENCE
+    result: passed
+    evidence: Duplicate, adjacent-period, annual-total, YoY and unmapped-column substitution are all prohibited
+  - check_id: CHK_STAGE_RESPONSIBILITY_BOUNDARY
+    result: passed
+    evidence: No Metric formula, Business Rule definition or Output Mapping logic is defined in the profiles
+
+gate_decision:
+  delta_mapping_complete: true
+  blocking_issue_count: 0
+  warning_count: 0
+  enables_business_rule_ids:
+    - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
+    - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+  automatic_next_asset_stage_allowed: false
+  code_implementation_authorized: false
+
+constraints:
+  automatic_field_inference_allowed: false
+  automatic_similarity_mapping_allowed: false
+  source_formula_recalculation_allowed: false
+  outlook_auto_send: false

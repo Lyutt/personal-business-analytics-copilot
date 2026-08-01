@@ -86,9 +86,9 @@ datasets:
         - Excel (.xlsx)
       asset_scope: Entire Sales Business Line Rolling Deck Excel Workbook
       primary_analysis_object: "{Year}年执行单类型 Sheet"
-      other_object_usage: >-
-        业务线 Sheet用于季度切换首周读取目标上季度的完整业绩收入结果；
-        具体行列映射与异常处理规则待增量Field Mapping确认。
+        other_object_usage: >-
+          业务线Sheet用于季度切换首周读取目标上季度的完整业绩收入结果；
+          行列映射由MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1定义。
 
     data_contract:
       record_grain: >-
@@ -108,7 +108,9 @@ datasets:
       business_date_field: TBD
       expected_update_time: 每周四17:00-18:00（Asia/Shanghai）
       schema_profile_id: TBD
-      mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+        mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+        additional_mapping_profile_ids:
+          - MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
       required_fields: []
 
     context:
@@ -209,8 +211,10 @@ datasets:
       expected_format:
         - Excel (.xlsx)
       asset_scope: Entire Rolling Deck Excel Workbook
-      primary_analysis_object: TBD
-      other_object_usage: TBD
+        primary_analysis_object: 业绩-业务线 Sheet
+        other_object_usage: >-
+          季度切换首周仅作为完整季度收入结果备选；
+          行列映射由MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1定义。
 
     data_contract:
       record_grain: TBD
@@ -232,7 +236,7 @@ datasets:
       expected_update_time: >-
         Around the beginning of the following quarter; exact date and time TBD
       schema_profile_id: TBD
-      mapping_profile_id: TBD
+        mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
       required_fields: []
 
     context:

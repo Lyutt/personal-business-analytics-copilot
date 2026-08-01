@@ -7,8 +7,8 @@
 - 本轮恢复日期：2026-08-01。
 - 当前Workflow：`WF_WEEKLY_BUSINESS_REPORT`。
 - Revenue规则状态：已完成Owner确认与Readiness Gate。
-- 已批准Revenue Rule数量：4。
-- 已确认但待Field Mapping的Revenue Rule数量：2。
+- 已批准Revenue Rule数量：6。
+- 已确认但待Field Mapping的Revenue Rule数量：0。
 - Revenue Rule未确认业务决策数量：0。
 - 代码实现：未开始。
 
@@ -27,7 +27,7 @@
 - Rolling Deck周度邮件与季度结算邮件以正文语义为主分类，日期为辅助校验。
 - 2026年技术线与CTV去年同期文件都使用“向前一年再加一天”匹配；
   2027年及以后必须重新确认。
-- 主来源增量Field Mapping仍保持`TBD`；完成前新规则不得标记为Approved。
+- 主来源业务线Sheet与备选业绩-业务线Sheet的增量Field Mapping已通过Delta Gate。
 - Revenue规则收口后不自动进入Metric Library、Inventory Rule或下一资产阶段。
 
 ## 初始化原则
@@ -49,13 +49,13 @@
 
 每个规则类别完成Owner确认后再进入下一类。
 
-## 当前依赖缺口
+## 已解决依赖
 
 - 季度切换首周的技术线与CTV上季度完整结果，主来源调整为
   `DS_REVENUE_SALES_ROLLING_DECK_QTD`工作簿中的“业务线”Sheet。
 - `DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION`仅作为备选
   来源，其启用条件已由Owner确认。
-- 在“业务线”Sheet增量Field Mapping完成前，上季度结果资格Rule不得批准。
+- 两条季度切换/同期来源规则的Field Mapping依赖已解决，并已转为Approved v1.0.0。
 
 ## Rule Registry
 
@@ -65,8 +65,8 @@
 | `BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1` | 技术线单计硬广收入记录纳入规则 | Approved v1.0.0 |
 | `BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1` | 细分业务线QTD历史累计承接资格规则 | Approved v1.0.0 |
 | `BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1` | Rolling Deck周度与季度结算邮件分类 | Approved v1.0.0 |
-| `BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1` | 季度切换首周上季度完整收入结果来源选择 | Confirmed v0.2.0 / Pending Field Mapping |
-| `BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1` | 2026年技术线与CTV同期收入文件匹配 | Confirmed v0.1.0 / Pending Field Mapping |
+| `BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1` | 季度切换首周上季度完整收入结果来源选择 | Approved v1.0.0 |
+| `BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1` | 2026年技术线与CTV同期收入文件匹配 | Approved v1.0.0 |
 
 ## 通用执行策略
 

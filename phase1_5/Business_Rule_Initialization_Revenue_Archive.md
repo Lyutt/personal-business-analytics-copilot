@@ -6,8 +6,8 @@
 - Business Domain：Revenue
 - Owner确认完成日期：2026-08-01
 - Revenue Rule数量：6
-- Approved：4
-- Confirmed / Pending Field Mapping：2
+- Approved：6
+- Confirmed / Pending Field Mapping：0
 - 未确认业务决策：0
 - 代码实现：未开始
 
@@ -26,9 +26,10 @@ Apollo和NovaBI页面会话失效时，显式绑定的Pipeline允许刷新一次
 重新进入查询模块、选择模板、恢复并验证参数后重试一次。
 禁止复用刷新前页面结果，禁止自动填写凭据。
 
-## 已知依赖
+## 已解决依赖
 
-以下两条规则的业务逻辑已确认，但在增量Field Mapping通过前不得转为Approved：
+以下两条规则的业务逻辑与增量Field Mapping均已完成，
+业务线Sheet增量Gate通过后已转为Approved v1.0.0：
 
 - 季度切换首周上季度完整收入来源选择。
 - 2026年去年同期收入文件匹配。

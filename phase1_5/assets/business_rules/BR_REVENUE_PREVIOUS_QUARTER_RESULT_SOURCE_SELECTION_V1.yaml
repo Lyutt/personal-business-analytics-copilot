@@ -13,9 +13,9 @@ business_context_ids:
   - CTX_REVENUE_QUARTER_TRANSITION_WEEK
 owner: WORKFLOW_OWNER
 business_approver: WORKFLOW_OWNER
-version: 0.2.0-confirmed
-approval_status: confirmed_pending_field_mapping
-effective_from: TBD
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-08-01
 
 purpose: >
   在季度切换首周，为技术线与CTV选择上季度完整收入结果来源；
@@ -120,9 +120,10 @@ validation:
 
 dependency_gate:
   blocking_dependency: 业务线 Sheet incremental Field Mapping
-  field_mapping_status: pending
+  field_mapping_status: passed
+  field_mapping_gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1
   rule_approval_allowed_before_dependency_passes: false
-  current_rule_status_reason: Business logic confirmed; required standard-field mapping remains TBD
+  current_rule_status_reason: Required standard-field mapping passed the incremental Field Mapping Gate
 
 governance:
   evidence_sources:

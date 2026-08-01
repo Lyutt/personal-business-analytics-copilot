@@ -24,7 +24,9 @@ scope:
   source_header_row: 1
   header_structure: Single row
   expected_raw_field_count: 43
-  other_workbook_sheets_status: unmapped_tbd
+  other_workbook_sheets_status: >-
+    业务线Sheet已由MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1单独映射；
+    其他未确认Sheet保持TBD。
   record_grain_reference: Dataset Inventory
 
 evidence:

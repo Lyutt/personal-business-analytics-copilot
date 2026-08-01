@@ -1,0 +1,171 @@
+config_type: field_mapping_profile
+mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
+mapping_profile_name: 销售业务线Rolling Deck季度结算业务线Sheet完整季度收入映射
+dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+dataset_version_constraint: TBD
+source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+business_domains:
+  - Revenue
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-08-01
+approval_record:
+  approved_by: WORKFLOW_OWNER
+  approved_at: 2026-08-01
+  approval_scope: 季度切换首周备选完整季度收入结果的最小映射
+
+scope:
+  asset_scope: 整个季度结算Rolling Deck工作簿中的业绩-业务线Sheet
+  source_object_or_sheet_pattern: 业绩-业务线
+  inspected_source_object_or_sheet: 业绩-业务线
+  structure_type: Period summary table
+  source_header_row: 8
+  business_line_label_column: B
+  period_range_cell: B8
+  amount_column: G
+  intentionally_unmapped_columns:
+    - C
+    - D
+    - E
+    - F
+    - H
+  usage_contexts:
+    - quarter_transition_previous_quarter_final_fallback
+
+evidence:
+  evidence_sources:
+    - '${LOCAL_WORKFLOW_DATA_ROOT}\业绩-业务线sheet最新模版.xlsx'
+  inspected_sample_count: 1
+  sample_observation:
+    - B8为当前Sheet的时间周期范围显示结果
+    - 业务线标签位于B列，完整季度收入结果位于G列
+  schema_observation_status: completed
+
+raw_field_inventory:
+  - raw_field_inventory_id: RF001
+    raw_location: B8
+    raw_field_name: 时间周期范围
+    observed_raw_storage_type: text_or_source_formula_result
+    source_value_origin: source_value_or_source_derived_formula_result
+    ingestion_behavior: read_current_cell_result
+    agent_recalculation_allowed: false
+    mapping_status: mapped
+  - raw_field_inventory_id: RF002
+    raw_location: B{row}
+    raw_field_name: 业务线
+    observed_raw_storage_type: text
+    source_value_origin: source_value
+    mapping_status: mapped
+  - raw_field_inventory_id: RF003
+    raw_location: G{business_line_row}
+    raw_field_name: 当季执行收入
+    observed_raw_storage_type: numeric_or_source_formula_result
+    source_value_origin: source_value_or_source_derived_formula_result
+    ingestion_behavior: read_current_cell_result
+    agent_recalculation_allowed: false
+    mapping_status: mapped
+
+field_mappings:
+  - mapping_entry_id: FM001
+    raw_field_inventory_id: RF001
+    raw_field_name: 时间周期范围
+    standard_field_id: source_period_range
+    standard_field_name: 来源周期范围
+    standard_data_type: string
+    semantic_role: business_period
+    source_pattern: YYYY/M/D—YYYY/M/D
+    source_formula_handling: read_current_cell_result_without_recalculation
+    required: true
+    nullable: false
+    mapping_status: owner_confirmed
+  - mapping_entry_id: FM002
+    raw_field_inventory_id: RF001
+    raw_field_name: 时间周期范围
+    standard_field_id: period_start_date
+    standard_field_name: 周期开始日期
+    standard_data_type: date
+    semantic_role: business_period_boundary
+    extraction_rule: parse_left_date_from_source_period_range
+    output_format: YYYY-MM-DD
+    required: true
+    nullable: false
+    mapping_status: owner_confirmed
+  - mapping_entry_id: FM003
+    raw_field_inventory_id: RF001
+    raw_field_name: 时间周期范围
+    standard_field_id: period_end_date
+    standard_field_name: 周期结束日期
+    standard_data_type: date
+    semantic_role: business_period_boundary
+    extraction_rule: parse_right_date_from_source_period_range
+    output_format: YYYY-MM-DD
+    required: true
+    nullable: false
+    mapping_status: owner_confirmed
+  - mapping_entry_id: FM004
+    raw_field_inventory_id: RF002
+    raw_field_name: 业务线
+    standard_field_id: revenue_business_line
+    standard_field_name: 收入业务线
+    standard_data_type: string
+    semantic_role: business_dimension
+    explicit_value_mapping:
+      硬广小计: Technical
+      CTV: CTV
+    matching_normalization: trim_leading_and_trailing_whitespace_then_exact_match
+    required: true
+    nullable: false
+    mapping_status: owner_confirmed
+  - mapping_entry_id: FM005
+    raw_field_inventory_id: RF003
+    raw_field_name: 当季执行收入
+    standard_field_id: performance_revenue_amount
+    standard_field_name: 签单金额
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    unit: CNY_yuan
+    owner_confirmed_source_semantics: 当季执行收入在完整季度场景中表示签单金额
+    source_formula_handling: read_current_cell_result_without_recalculation
+    required: true
+    nullable: false
+    mapping_status: owner_confirmed
+  - mapping_entry_id: FM006
+    raw_field_inventory_id: RF003
+    raw_field_name: 当季执行收入
+    standard_field_id: executed_revenue_amount
+    standard_field_name: 已执行金额
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    unit: CNY_yuan
+    contextual_equivalence: >-
+      仅在完整季度收入场景中，Owner已确认该值与
+      performance_revenue_amount保持一致。
+    source_formula_handling: read_current_cell_result_without_recalculation
+    required: true
+    nullable: false
+    mapping_status: owner_confirmed
+
+validation:
+  source_sheet_exact_match_required: true
+  source_header_row_required: 8
+  source_period_range_parse_required: true
+  business_line_label_exact_match_required_after_trim: true
+  duplicate_business_line_match_behavior: fail_mapping_resolution
+  source_value_invalid_when_any:
+    - empty
+    - non_numeric
+    - zero
+    - negative
+  invalid_value_behavior: follow_confirmed_revenue_source_failure_rule
+  unmapped_columns_must_not_be_used_as_fallback: true
+  source_formula_recalculation_allowed: false
+
+constraints:
+  automatic_field_inference_allowed: false
+  automatic_similarity_mapping_allowed: false
+  metric_formula_allowed: false
+  business_rule_definition_allowed: false
+  output_formatting_allowed: false
+  unknown_fields_remain_tbd: true

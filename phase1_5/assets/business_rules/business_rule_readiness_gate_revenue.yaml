@@ -3,13 +3,13 @@ gate_id: GATE_BUSINESS_RULE_REVENUE_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 business_domain: Revenue
 assessment_date: 2026-08-01
-status: passed_with_known_field_mapping_dependencies
+status: passed
 owner_confirmation: confirmed_complete
 
 scope:
   revenue_rule_count: 6
-  approved_rule_count: 4
-  confirmed_pending_field_mapping_rule_count: 2
+  approved_rule_count: 6
+  confirmed_pending_field_mapping_rule_count: 0
   unresolved_business_decision_count: 0
   runtime_code_implementation_started: false
 
@@ -18,14 +18,10 @@ approved_rules:
   - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
   - BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1
   - BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1
+  - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
+  - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
 
-conditionally_ready_rules:
-  - rule_id: BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
-    status: confirmed_pending_field_mapping
-    dependency: Rolling Deck and fallback workbook 业务线 result incremental Field Mapping
-  - rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
-    status: confirmed_pending_field_mapping
-    dependency: Prior-year Rolling Deck 业务线 result incremental Field Mapping
+conditionally_ready_rules: []
 
 shared_execution_policy:
   policy_id: QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1
@@ -39,7 +35,7 @@ gate_checks:
   metric_formula_excluded: pass
   output_formatting_excluded: pass
   ambiguous_source_selection_has_owner_confirmation_path: pass
-  known_field_mapping_dependencies_explicit: pass
+  known_field_mapping_dependencies_resolved: pass
   outlook_auto_send_false_unchanged: pass
   business_rule_conflict_count: 0
 
@@ -51,6 +47,6 @@ deferred_to_designated_phase:
 
 decision:
   revenue_business_rule_initialization_complete: true
-  runtime_ready_without_mapping_delta: false
+  runtime_ready_without_mapping_delta: true
   metric_library_entry_allowed_after_owner_direction: true
   automatic_next_stage_allowed: false

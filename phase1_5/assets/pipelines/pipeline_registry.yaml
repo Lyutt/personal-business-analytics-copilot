@@ -21,7 +21,8 @@ readiness_gate:
   known_conditional_dataset:
     - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
       role: Quarter-transition Revenue fallback
-      readiness: confirmed_pending_field_mapping
+      readiness: mapping_approved
+      mapping_dependency_resolved: true
   deferred_business_logic_remains_tbd: true
 initialization_scope:
   included_workflows:
@@ -174,6 +175,11 @@ pipelines:
         - VALIDATION
       mapping_profile_ids:
         - MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+      conditional_mapping_profile_ids:
+        - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+          applies_when: Quarter-transition or prior-year comparable business-line result is required
+        - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
+          applies_when: BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1 selects fallback
       ordered_rule_set_ids:
         - BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1
         - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
@@ -337,6 +343,11 @@ pipelines:
         - VALIDATION
       mapping_profile_ids:
         - MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1
+      conditional_mapping_profile_ids:
+        - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+          applies_when: Quarter-transition or prior-year comparable business-line result is required
+        - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
+          applies_when: BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1 selects fallback
       ordered_rule_set_ids:
         - BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1
         - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1

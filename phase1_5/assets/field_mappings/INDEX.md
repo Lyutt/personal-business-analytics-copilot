@@ -2,12 +2,12 @@
 
 ## 当前状态
 
-- 阶段状态：已完成（Readiness Gate Passed）。
+- 阶段状态：原始范围已完成；Revenue业务线Sheet增量映射已完成并通过Delta Gate。
 - 正式开始日期：2026-07-30。
 - 正式完成日期：2026-07-31。
 - 已完成Dataset：`DS_REVENUE_SALES_ROLLING_DECK_QTD`、`DS_REVENUE_CTV_EXCL_PLACEMENT_QTD`、`DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY`、`DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY`、`DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY`、`DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY`、`DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION`、`DS_NOVABI_PLATFORM_DAU`、`DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS`。
 - 当前盘点Dataset：无。
-- 当前真实 Mapping Profile 数量：9（已批准9）。
+- 当前真实 Mapping Profile 数量：11（已批准11）。
 - 阻断问题：0。
 - 正式Gate：`field_mapping_readiness_gate.yaml`。
 - Gate后用途变更：`DS_REVENUE_SALES_ROLLING_DECK_QTD`新增“业务线”Sheet，
@@ -45,6 +45,8 @@
 | Mapping Profile ID | Dataset ID | 状态 |
 |---|---|---|
 | `MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1` | `DS_REVENUE_SALES_ROLLING_DECK_QTD` | Approved v1.0.0 |
+| `MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1` | `DS_REVENUE_SALES_ROLLING_DECK_QTD` | Approved v1.0.0 |
+| `MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1` | `DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION` | Approved v1.0.0 |
 | `MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1` | `DS_REVENUE_CTV_EXCL_PLACEMENT_QTD` | Approved v1.0.0 |
 | `MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1` | `DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY` | Approved v1.0.0 |
 | `MAP_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY_V1` | `DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY` | Approved v1.0.0 |
@@ -66,6 +68,5 @@
 - 原Gate保留为当时9个Weekly范围Dataset的有效审查记录。
 - 增量对象是现有`DS_REVENUE_SALES_ROLLING_DECK_QTD`中的“业务线”Sheet，
   不新建Dataset，也不覆盖已批准的明细Sheet Mapping Profile。
-- 计划新增独立Sheet级Mapping Profile；其字段映射和异常处理由Owner确认后
-  执行Delta Gate。
-- 季度结算Dataset仅为备选候选，其启用策略与Mapping不阻断主路径的Delta Gate。
+- 增量已新增两个独立Sheet级Mapping Profile，分别对应业务线主来源和季度结算备选来源。
+- 正式Delta Gate：`field_mapping_readiness_gate_delta_revenue_business_line.yaml`。
