@@ -8,6 +8,7 @@
 - 当前Workflow：`WF_WEEKLY_BUSINESS_REPORT`。
 - 当前规则类别：Revenue分类、过滤与季度上下文规则。
 - 已批准Rule数量：3。
+- 已确认但待依赖Rule数量：1。
 - 代码实现：未开始。
 
 ## 本轮恢复检查点
@@ -18,8 +19,11 @@
   “业务线”Sheet。
 - 已确认`DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION`
   仅作为备选来源。
-- 备选来源启用条件、主来源增量Field Mapping及异常处置仍保持`TBD`，
-  未经Owner确认不得生成正式Rule。
+- 已确认所有主来源获取失败场景均启用备选来源，包括Sheet、业务线行、
+  季度列、唯一匹配和数值有效性异常，以及结果为0或负数。
+- 技术线与CTV原则上来源可用性一致；如出现不一致，允许按业务线独立选择
+  来源，并在最终周报输出时提醒Owner。
+- 主来源增量Field Mapping仍保持`TBD`；完成前新规则不得标记为Approved。
 - 本阶段继续采用逐批提问确认，不自动进入Metric Library或下一资产阶段。
 
 ## 初始化原则
@@ -46,7 +50,7 @@
 - 季度切换首周的技术线与CTV上季度完整结果，主来源调整为
   `DS_REVENUE_SALES_ROLLING_DECK_QTD`工作簿中的“业务线”Sheet。
 - `DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION`仅作为备选
-  来源，其启用条件尚待Owner确认。
+  来源，其启用条件已由Owner确认。
 - 在“业务线”Sheet增量Field Mapping完成前，上季度结果资格Rule不得批准。
 
 ## Rule Registry
@@ -56,6 +60,7 @@
 | `BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1` | Weekly收入模块常规周与季度切换首周判定 | Approved v1.0.0 |
 | `BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1` | 技术线单计硬广收入记录纳入规则 | Approved v1.0.0 |
 | `BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1` | 细分业务线QTD历史累计承接资格规则 | Approved v1.0.0 |
+| `BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1` | 季度切换首周上季度完整收入结果来源选择 | Confirmed / Pending Field Mapping |
 
 ## 已确认无需额外Rule的Pipeline
 
