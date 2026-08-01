@@ -1,0 +1,398 @@
+schema_version: "0.1"
+asset_type: Metric Library
+library_id: METRIC_LIBRARY_REVENUE_WEEKLY_V1
+library_name: Revenue Metric Library — Weekly Business Report
+scope_status: Completed
+approval_status: Approved
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+scope_boundary: >
+  登记Weekly Business Report当前需要的技术线、CTV、智能音箱与极速版
+  Revenue Metric及Metric Variant。其他收入业务线保持范围外。
+architecture_constraints:
+  metric_concept_is_stable: true
+  metric_variant_is_context_specific_implementation: true
+  dependencies_must_be_explicit: true
+  automatic_formula_inference: false
+  output_assembly_may_calculate: false
+  unconfirmed_content_policy: TBD
+
+metric_definitions:
+  - metric_id: METRIC_REVENUE_PERFORMANCE
+    metric_name: Performance Revenue
+    business_name: 签单金额
+    business_domain: Revenue
+    definition: >
+      在明确业务上下文、数据集、业务规则与统计周期下确认的签单/业绩收入金额。
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    aggregation_level: Context-specific
+    version: "1.0.0-draft"
+
+  - metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: Executed Revenue
+    business_name: 已执行金额
+    business_domain: Revenue
+    definition: >
+      在明确业务上下文、数据集、业务规则与统计周期下确认的已执行收入金额。
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    aggregation_level: Context-specific
+    version: "1.0.0-draft"
+
+  - metric_id: METRIC_REVENUE_GROWTH_RATE
+    metric_name: Revenue Growth Rate
+    business_name: 收入增长率
+    business_domain: Revenue
+    definition: >
+      对明确的收入基础Metric在指定比较类型、比较周期与业务上下文下计算的增长率。
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    aggregation_level: Context-specific
+    version: "1.0.0-draft"
+
+metric_variants:
+  - metric_variant_id: MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1
+    metric_id: METRIC_REVENUE_PERFORMANCE
+    metric_name: 技术线QTD签单金额
+    business_domain: Revenue
+    business_context: Technical Line Weekly Revenue
+    period_type: Fiscal-quarter-to-date
+    dataset_dependencies:
+      - DS_REVENUE_SALES_ROLLING_DECK_QTD
+    result_contract_dependency: RC_REVENUE_TECHNICAL_WEEKLY
+    business_rule_dependencies:
+      - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+      - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+    calculation_method: Aggregate validated standardized records
+    formula: >
+      SUM(performance_revenue_amount) for validated records in the target fiscal quarter
+      where business_line_level_1 equals 硬广.
+    aggregation_level: Target fiscal quarter × Technical Line
+    validation_rules:
+      final_zero_or_negative_action: Continue and notify in final output
+      source_validation: Inherit upstream Pipeline validation
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: 技术线QTD已执行金额
+    business_domain: Revenue
+    business_context: Technical Line Weekly Revenue
+    period_type: Fiscal-quarter-to-date
+    dataset_dependencies:
+      - DS_REVENUE_SALES_ROLLING_DECK_QTD
+    result_contract_dependency: RC_REVENUE_TECHNICAL_WEEKLY
+    business_rule_dependencies:
+      - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+      - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+    calculation_method: Aggregate validated standardized records
+    formula: >
+      SUM(executed_revenue_amount) for validated records in the target fiscal quarter
+      where business_line_level_1 equals 硬广.
+    aggregation_level: Target fiscal quarter × Technical Line
+    validation_rules:
+      final_zero_or_negative_action: Continue and notify in final output
+      source_validation: Inherit upstream Pipeline validation
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: 技术线当周新增已执行金额
+    business_domain: Revenue
+    business_context: Technical Line Weekly Revenue
+    period_type: Weekly incremental within fiscal quarter
+    dataset_dependencies:
+      - DS_REVENUE_SALES_ROLLING_DECK_QTD
+    result_contract_dependency: RC_REVENUE_TECHNICAL_WEEKLY
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
+      required_period_scope: Same fiscal quarter only
+      cross_quarter_read_allowed: false
+      missing_history_recovery: >
+        Automatically re-query once; if it remains unavailable, pause the Technical Line revenue result and notify the owner.
+    calculation_method: Difference of validated QTD results
+    formula: Current-week QTD Executed Revenue minus prior-week QTD Executed Revenue.
+    aggregation_level: Target weekly cutoff × Technical Line
+    quarter_transition_first_week: Leave blank; do not calculate
+    validation_rules:
+      negative_result_action: Pause Technical Line revenue result and notify owner
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_YOY_V1
+    metric_id: METRIC_REVENUE_GROWTH_RATE
+    metric_name: 技术线QTD签单金额同比
+    business_domain: Revenue
+    business_context: Technical Line Weekly Revenue
+    comparison_type: Year-over-year
+    period_type: Fiscal-quarter-to-date
+    numerator_metric_variant_id: MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1
+    prior_year_source_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+    calculation_method: Day-normalized comparison
+    formula: >
+      (Current-quarter QTD Performance Revenue / current-quarter cumulative calendar days)
+      / (prior-year comparable-quarter QTD Performance Revenue / prior-year cumulative calendar days) - 1.
+    cumulative_day_definition: >
+      Inclusive natural calendar days from the target natural-quarter start date through the corresponding revenue cutoff date.
+    2026_prior_year_matching_rule: >
+      Use the explicitly selected prior-year comparable file whose filename date is the current file date plus one day.
+      This rule must be reconfirmed before any 2027-or-later Workflow execution.
+    denominator_invalid_action: Leave growth result blank and notify owner
+    prior_year_result_unavailable_action: >
+      Retain current QTD Performance and Executed results; leave this Variant blank and notify owner.
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_WOW_V1
+    metric_id: METRIC_REVENUE_GROWTH_RATE
+    metric_name: 技术线当周新增已执行金额环比
+    business_domain: Revenue
+    business_context: Technical Line Weekly Revenue
+    comparison_type: Week-over-week
+    period_type: Weekly incremental within fiscal quarter
+    numerator_metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+    calculation_method: Direct ratio comparison
+    formula: Current-week Incremental Executed Revenue / prior-week Incremental Executed Revenue - 1.
+    denominator_invalid_action: Leave growth result blank and notify owner
+    quarter_transition_first_week: Leave blank; do not calculate
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_YOY_V1
+    metric_id: METRIC_REVENUE_GROWTH_RATE
+    metric_name: 技术线当周新增已执行金额同比
+    business_domain: Revenue
+    business_context: Technical Line Weekly Revenue
+    comparison_type: Year-over-year
+    period_type: Weekly incremental within fiscal quarter
+    numerator_metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+    prior_year_source_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+    calculation_method: Direct ratio comparison
+    formula: Current-week Incremental Executed Revenue / prior-year comparable Incremental Executed Revenue - 1.
+    denominator_invalid_action: Leave growth result blank and notify owner
+    quarter_transition_first_week: Leave blank; do not calculate
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+    metric_id: METRIC_REVENUE_PERFORMANCE
+    metric_name: CTV QTD签单金额
+    business_domain: Revenue
+    business_context: CTV Weekly Revenue excluding placement
+    period_type: Fiscal-quarter-to-date
+    dataset_dependencies:
+      - DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
+    result_contract_dependency: RC_REVENUE_CTV_WEEKLY
+    calculation_method: Aggregate validated standardized records
+    formula: SUM(tv_total_amount_quarter) over validated CTV records.
+    aggregation_level: Target fiscal quarter × CTV
+    validation_rules:
+      final_zero_or_negative_action: Continue and notify in final output
+      source_validation: Inherit upstream Pipeline validation
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_CTV_QTD_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: CTV QTD已执行金额
+    business_domain: Revenue
+    business_context: CTV Weekly Revenue excluding placement
+    period_type: Fiscal-quarter-to-date
+    dataset_dependencies:
+      - DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
+    result_contract_dependency: RC_REVENUE_CTV_WEEKLY
+    calculation_method: Row-level derived amount followed by aggregation
+    formula: >
+      SUM(IFERROR(executed_revenue_amount_quarter / total_revenue_amount_quarter
+      * tv_total_amount_quarter, 0)) over validated CTV records.
+    row_level_error_handling: >
+      If the denominator is zero or blank, or the division/calculation errors, the row contributes 0.
+      Upstream non-numeric input validation and its pause policy remain unchanged.
+    aggregation_level: Target fiscal quarter × CTV
+    validation_rules:
+      final_zero_or_negative_action: Continue and notify in final output
+      source_validation: Inherit upstream Pipeline validation
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_CTV_QTD_PERFORMANCE_YOY_V1
+    metric_id: METRIC_REVENUE_GROWTH_RATE
+    metric_name: CTV QTD签单金额同比
+    business_domain: Revenue
+    business_context: CTV Weekly Revenue excluding placement
+    comparison_type: Year-over-year
+    period_type: Fiscal-quarter-to-date
+    numerator_metric_variant_id: MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+    prior_year_source_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+    calculation_method: Day-normalized comparison
+    formula: >
+      (Current-quarter QTD Performance Revenue / current-quarter cumulative calendar days)
+      / (prior-year comparable-quarter QTD Performance Revenue / prior-year cumulative calendar days) - 1.
+    cumulative_day_definition: >
+      Inclusive natural calendar days from the target natural-quarter start date through the corresponding revenue cutoff date.
+    2026_prior_year_matching_rule: >
+      Use the explicitly selected prior-year comparable file whose filename date is the current file date plus one day.
+      This rule must be reconfirmed before any 2027-or-later Workflow execution.
+    denominator_invalid_action: Leave growth result blank and notify owner
+    prior_year_result_unavailable_action: >
+      Retain current QTD Performance and Executed results; leave this Variant blank and notify owner.
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: 智能音箱当周已执行金额
+    business_domain: Revenue
+    business_context: Smart Speaker Weekly Revenue
+    period_type: Weekly date-range total
+    dataset_dependencies:
+      - DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+    result_contract_dependency: RC_REVENUE_SMART_SPEAKER_WEEKLY
+    calculation_method: Consume validated single-row query result
+    formula: Validated calibrated executed revenue for the explicitly supplied weekly date range.
+    aggregation_level: Target weekly period × Smart Speaker
+    quarter_transition_first_week: >
+      Do not calculate or write this Variant. The source query remains required for QTD calculation.
+    validation_rules:
+      zero_negative_blank_or_non_numeric_action: Pause Smart Speaker Pipeline and notify owner
+      expected_result_shape: Exactly one row
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_SMART_SPEAKER_QTD_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: 智能音箱QTD已执行金额
+    business_domain: Revenue
+    business_context: Smart Speaker Weekly Revenue
+    period_type: Fiscal-quarter-to-date
+    dataset_dependencies:
+      - DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+    result_contract_dependency: RC_REVENUE_SMART_SPEAKER_WEEKLY
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
+      required_period_scope: Same fiscal quarter only
+    calculation_method: Previous validated QTD plus current validated weekly result
+    formula_regular_week: Prior same-quarter QTD Executed Revenue + current-week Executed Revenue.
+    formula_quarter_transition_first_week: Current validated weekly query result.
+    aggregation_level: Target fiscal quarter × Smart Speaker
+    validation_rules:
+      zero_negative_blank_or_non_numeric_action: Pause Smart Speaker Pipeline and notify owner
+      source_validation: Inherit upstream Pipeline validation
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_WOW_V1
+    metric_id: METRIC_REVENUE_GROWTH_RATE
+    metric_name: 智能音箱当周已执行金额环比
+    business_domain: Revenue
+    business_context: Smart Speaker Weekly Revenue
+    comparison_type: Week-over-week
+    period_type: Weekly date-range total
+    numerator_metric_variant_id: MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_V1
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
+      required_period_scope: Prior occurred week
+    calculation_method: Direct ratio comparison
+    formula: Current-week Executed Revenue / prior-week Executed Revenue - 1.
+    denominator_invalid_action: Leave growth result blank and notify owner
+    quarter_transition_first_week: Do not calculate or write
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: 极速版当周已执行金额
+    business_domain: Revenue
+    business_context: Fast Version Weekly Revenue
+    period_type: Weekly date-range total
+    dataset_dependencies:
+      - DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+    result_contract_dependency: RC_REVENUE_FAST_VERSION_WEEKLY
+    calculation_method: Consume validated single-row query result
+    formula: Validated calibrated executed revenue for the explicitly supplied weekly date range.
+    aggregation_level: Target weekly period × Fast Version
+    quarter_transition_first_week: >
+      Do not calculate or write this Variant. The source query remains required for QTD calculation.
+    validation_rules:
+      zero_negative_blank_or_non_numeric_action: Pause Fast Version Pipeline and notify owner
+      expected_result_shape: Exactly one row
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_FAST_VERSION_QTD_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: 极速版QTD已执行金额
+    business_domain: Revenue
+    business_context: Fast Version Weekly Revenue
+    period_type: Fiscal-quarter-to-date
+    dataset_dependencies:
+      - DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+    result_contract_dependency: RC_REVENUE_FAST_VERSION_WEEKLY
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
+      required_period_scope: Same fiscal quarter only
+    calculation_method: Previous validated QTD plus current validated weekly result
+    formula_regular_week: Prior same-quarter QTD Executed Revenue + current-week Executed Revenue.
+    formula_quarter_transition_first_week: Current validated weekly query result.
+    aggregation_level: Target fiscal quarter × Fast Version
+    validation_rules:
+      zero_negative_blank_or_non_numeric_action: Pause Fast Version Pipeline and notify owner
+      source_validation: Inherit upstream Pipeline validation
+    base_unit: CNY yuan
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_WOW_V1
+    metric_id: METRIC_REVENUE_GROWTH_RATE
+    metric_name: 极速版当周已执行金额环比
+    business_domain: Revenue
+    business_context: Fast Version Weekly Revenue
+    comparison_type: Week-over-week
+    period_type: Weekly date-range total
+    numerator_metric_variant_id: MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_V1
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
+      required_period_scope: Prior occurred week
+    calculation_method: Direct ratio comparison
+    formula: Current-week Executed Revenue / prior-week Executed Revenue - 1.
+    denominator_invalid_action: Leave growth result blank and notify owner
+    quarter_transition_first_week: Do not calculate or write
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+scope_exclusions:
+  - CTV weekly incremental executed revenue
+  - CTV weekly incremental executed revenue week-over-week
+  - CTV weekly incremental executed revenue year-over-year
+  - Output rounding, units, phrasing, and template placement
+
+approval:
+  metric_concept_taxonomy: Confirmed
+  technical_and_ctv_variant_scope: Confirmed
+  calculation_rules: Confirmed
+  smart_speaker_and_fast_version_variant_scope: Confirmed
+  owner_confirmation: confirmed_complete
+  readiness_status: Passed
+  committed_or_pushed: false

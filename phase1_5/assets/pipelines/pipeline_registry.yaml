@@ -186,7 +186,13 @@ pipelines:
         - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
         - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
         - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1
+        - MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_YOY_V1
+        - MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1
+        - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+        - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_WOW_V1
+        - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_YOY_V1
       validation_rule_ids: []
 
     outputs:
@@ -353,7 +359,10 @@ pipelines:
         - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
         - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
         - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+        - MV_REVENUE_CTV_QTD_PERFORMANCE_YOY_V1
+        - MV_REVENUE_CTV_QTD_EXECUTED_V1
       validation_rule_ids: []
 
     outputs:
@@ -529,7 +538,10 @@ pipelines:
       ordered_rule_set_ids:
         - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
         - BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_V1
+        - MV_REVENUE_SMART_SPEAKER_QTD_EXECUTED_V1
+        - MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_WOW_V1
       validation_rule_ids: []
 
     outputs:
@@ -708,7 +720,10 @@ pipelines:
       ordered_rule_set_ids:
         - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
         - BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_V1
+        - MV_REVENUE_FAST_VERSION_QTD_EXECUTED_V1
+        - MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_WOW_V1
       validation_rule_ids: []
 
     outputs:
@@ -864,7 +879,14 @@ pipelines:
       mapping_profile_ids:
         - MAP_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY_V1
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_INVENTORY_FULL_SITE_GROSS_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_DISABLED_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_BRAND_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_PERFORMANCE_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_COMMERCIAL_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_WOW_V1
       validation_rule_ids: []
 
     outputs:
@@ -1010,7 +1032,14 @@ pipelines:
       mapping_profile_ids:
         - MAP_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY_V1
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_INVENTORY_PATCH_GROSS_VOLUME_V1
+        - MV_INVENTORY_PATCH_DISABLED_VOLUME_V1
+        - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+        - MV_INVENTORY_PATCH_BRAND_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_PATCH_PERFORMANCE_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_PATCH_COMMERCIAL_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_WOW_V1
       validation_rule_ids: []
 
     outputs:
@@ -1166,7 +1195,15 @@ pipelines:
       mapping_profile_ids:
         - MAP_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY_V1
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_INVENTORY_NON_PATCH_PRODUCT_GROSS_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_DISABLED_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_PERFORMANCE_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_COMMERCIAL_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_WOW_V1
+        - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
       validation_rule_ids: []
 
     outputs:
@@ -1314,7 +1351,8 @@ pipelines:
       mapping_profile_ids:
         - MAP_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_V1
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1
       validation_rule_ids: []
 
     outputs:
@@ -1463,7 +1501,10 @@ pipelines:
         - VALIDATION
       mapping_profile_ids: []
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1
+        - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1
+        - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1
       validation_rule_ids: []
 
     outputs:
@@ -1604,7 +1645,10 @@ pipelines:
       mapping_profile_ids:
         - MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1
+        - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1
+        - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1
       validation_rule_ids: []
 
     outputs:
@@ -1870,7 +1914,11 @@ pipelines:
         - VALIDATION
       mapping_profile_ids: []
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1
+        - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1
       validation_rule_ids: []
 
     outputs:

@@ -1,0 +1,90 @@
+schema_version: "0.1"
+asset_type: Pipeline Policy
+pipeline_id: PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+approval_status: Confirmed
+scope: >
+  A conditional customer delivery-change analysis for one explicitly configured Weekly Business Report product.
+  It runs only after a validated sell-through anomaly trigger and never calculates sell-through itself.
+
+trigger:
+  producer_pipelines:
+    - PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+    - PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+  applies_to: All explicitly configured Weekly Business Report products
+  required_input: Validated product sell-through week-over-week absolute rate change
+  condition: Absolute rate change is greater than or equal to the product-configured threshold
+  default_threshold: 10 percentage points
+  product_specific_override_supported: true
+  no_trigger_action: Do not execute customer query
+
+query_product_selection:
+  source_of_truth_asset_name: 奇胜收入表细分产品筛选逻辑
+  storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
+  actual_product_filter_values_must_remain_local_only: true
+  explicit_mapping_required: true
+  auto_match_by_product_name: false
+  auto_match_by_field_similarity: false
+  unconfirmed_filter_condition_action: Ask owner; do not run query
+
+comparison_inputs:
+  current_period: Explicit triggered product and current weekly period
+  comparison_period: Explicit previous weekly period
+  current_period_measure: Customer-level exposure total
+  previous_period_measure: Customer-level exposure total
+  result_grain: Explicit product × customer × weekly period
+
+customer_selection:
+  positive_sell_through_change:
+    scenario_condition: Sell-through week-over-week change is positive and trigger condition is met
+    customer_set: Current-week customers
+    ranking_measure: Current-week total exposure
+    sort_order: Descending
+  negative_sell_through_change:
+    scenario_condition: Sell-through week-over-week change is negative and trigger condition is met
+    customer_set: Customers with exposure reduction
+    ranking_measure: Previous-week exposure minus current-week exposure
+    sort_order: Descending
+  minimum_materiality_threshold:
+    measure: Exposure for positive scenario; exposure reduction for negative scenario
+    inclusive_minimum: 1000000
+    unit: Individual impressions
+    below_threshold_action: Exclude from written customer analysis
+  per_product_output_limit:
+    rule_type: Explicit local product-category limit
+    storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
+    actual_product_category_membership_must_remain_local_only: true
+    maximum_count_applies: true
+    if_qualified_customer_count_is_below_limit: Use actual qualified customer count
+
+failure_handling:
+  query_failure:
+    notify_owner: true
+    analyze_failure_reason: true
+    block_weekly_report: false
+    product_customer_analysis_action: Omit target product customer analysis
+  zero_customer_rows:
+    notify_owner: true
+    analyze_zero_row_reason: true
+    block_weekly_report: false
+    product_customer_analysis_action: Omit target product customer analysis
+  invalid_or_missing_explicit_product_mapping:
+    notify_owner: true
+    block_target_customer_analysis_only: true
+    block_weekly_report: false
+    auto_fallback_to_similar_product: false
+
+output_boundary:
+  produces: Validated product-level customer delivery-change analysis result
+  excludes:
+    - Sell-through calculation
+    - Inventory calculation
+    - Weekly Report section assembly
+    - Outlook Draft creation or sending
+  output_assembly_may_calculate: false
+
+governance:
+  owner: WORKFLOW_OWNER
+  business_approver: WORKFLOW_OWNER
+  actual_customer_rows_must_remain_local_only: true
+  committed_or_pushed: false
