@@ -1,0 +1,91 @@
+config_type: business_rule
+rule_id: BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1
+rule_name: Rolling Deck周度与季度结算邮件分类规则
+rule_category: Revenue Source Classification
+business_domains:
+  - Revenue
+applicable_workflow_ids:
+  - WF_WEEKLY_BUSINESS_REPORT
+applicable_pipeline_ids:
+  - PL_REVENUE_TECHNICAL_WEEKLY
+  - PL_REVENUE_CTV_WEEKLY
+business_context_ids:
+  - CTX_REVENUE_ROLLING_DECK_EMAIL_SELECTION
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-08-01
+
+purpose: >
+  在同一Outlook Source下明确区分周度季度累计Rolling Deck邮件
+  与季度结算收入确认邮件，禁止仅根据相同主题或附件名自动归类。
+
+inputs:
+  required_context_fields:
+    - workflow_execution_date
+  required_source_metadata:
+    - email_body
+    - email_subject_date
+    - email_sent_time
+  required_standard_fields: []
+  required_result_contract_ids: []
+
+classification_priority:
+  primary_evidence: email_body
+  auxiliary_evidence:
+    - email_subject_date
+    - email_sent_time
+    - normal_weekly_delivery_window
+
+conditions:
+  weekly_qtd_email_when_body_semantics_match:
+    - 正文表达“截至{日期}销售部品牌广告各业务线收入概况”
+    - 正文指引查看附件的当季累计收入内容
+  quarter_close_email_when_body_semantics_match:
+    - 正文表达“附件为初版/终版{Year}Q{Quarter}各业务线收入完成情况”
+  weekly_auxiliary_expectations:
+    - normally received Thursday 17:00-18:00 Asia/Shanghai
+    - subject date normally equals email sent date
+  quarter_close_auxiliary_expectations:
+    - normally received near the beginning of the following quarter
+    - subject date normally represents the previous quarter end date
+
+actions:
+  on_weekly_body_match_and_auxiliary_match:
+    classification: weekly_quarter_to_date
+    dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+  on_quarter_close_body_match:
+    classification: quarter_close_confirmation
+    dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+  on_weekly_body_match_but_title_or_sent_date_mismatch:
+    classification: weekly_quarter_to_date
+    continue_selection: true
+    generate_warning: true
+    request_owner_secondary_confirmation: true
+  on_insufficient_or_conflicting_evidence:
+    - pause_revenue_section
+    - notify_owner
+    - request_owner_confirmation
+    - prohibit_automatic_classification
+
+validation:
+  deterministic: true
+  body_evidence_has_priority: true
+  date_only_classification_allowed: false
+  subject_similarity_only_classification_allowed: false
+  ambiguous_result_behavior: pause_revenue_section_and_notify_owner
+  owner_notification_required: true
+
+governance:
+  evidence_sources:
+    - Owner-confirmed historical email comparison
+    - phase1_5/assets/datasets/dataset_inventory.yaml
+  change_reason: Initial approved Rolling Deck email-stream classification rule
+
+constraints:
+  automatic_field_inference_allowed: false
+  automatic_rule_completion_allowed: false
+  metric_formula_allowed: false
+  output_formatting_allowed: false
+  unknown_decisions_remain_tbd: true

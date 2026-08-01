@@ -13,7 +13,7 @@ business_context_ids:
   - CTX_REVENUE_QUARTER_TRANSITION_WEEK
 owner: WORKFLOW_OWNER
 business_approver: WORKFLOW_OWNER
-version: 0.1.0-confirmed
+version: 0.2.0-confirmed
 approval_status: confirmed_pending_field_mapping
 effective_from: TBD
 
@@ -41,8 +41,10 @@ source_priority:
     version_priority:
       - final
       - initial
+      - other_confirmation_version
     other_confirmation_versions_allowed: true
     complete_quarter_result_required: true
+    same_version_type_selection: latest_sent_time
 
 conditions:
   applicable_when_all:
@@ -60,6 +62,22 @@ conditions:
     - target business-line row does not exist
     - target previous-quarter column does not exist
     - business-line row or quarter-column match is not unique
+    - result is empty
+    - result is non-numeric
+    - result equals 0
+    - result is negative
+  fallback_source_eligible_when_all:
+    - selected workbook is a confirmed complete-quarter result
+    - target business-line result has exactly one match
+    - target previous-quarter result has exactly one match
+    - result is not empty
+    - result is numeric
+    - result is greater than 0
+  fallback_source_failure_when_any:
+    - selected workbook is not a confirmed complete-quarter result
+    - target business-line result does not exist
+    - target previous-quarter result does not exist
+    - target business-line or quarter result match is not unique
     - result is empty
     - result is non-numeric
     - result equals 0
@@ -96,6 +114,8 @@ validation:
   non_unique_match_behavior: activate_fallback_source
   zero_or_negative_primary_result_behavior: activate_fallback_source
   fallback_non_complete_quarter_result_behavior: pause_revenue_section_and_request_owner_confirmation
+  fallback_empty_non_numeric_zero_or_negative_behavior: source_failure
+  fallback_version_priority_is_explicit: true
   owner_notification_required_on_mixed_source_selection: true
 
 dependency_gate:

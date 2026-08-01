@@ -11,8 +11,9 @@
 - Weekly Business Report Pipeline Registry：已完成，12条Pipeline全部通过
   Registry Readiness Gate。
 - Field Mapping Initialization：原始9个Dataset范围已完成并通过Gate。
-- Business Rule Initialization：进行中。
-- 当前资产类别：Revenue分类、过滤与季度上下文规则。
+- Business Rule Initialization：进行中；Revenue范围已完成Readiness Gate。
+- Revenue Business Rule状态：4条Approved，2条Confirmed / Pending Field Mapping。
+- 当前收口点：Revenue Business Rule Initialization已完成，未自动进入下一阶段。
 - 当前基线：[Phase 1.5 Baseline Closure — 2026-07-31](BASELINE_CLOSURE_2026-07-31.md)。
 - 整体 Personal Business Analytics Copilot 架构：不变。
 - 代码实现：未开始。
@@ -46,6 +47,9 @@ Phase 1 旧版 `phase1/workflows/weekly_business_report/WORKFLOW.md` 保留，�
 - [Field Mapping Initialization 阶段归档](Field_Mapping_Initialization_Archive.md)
 - [Business Rule 模板](templates/business_rule.template.yaml)
 - [Business Rule 资产索引](assets/business_rules/INDEX.md)
+- [Revenue Business Rule Readiness Gate](assets/business_rules/business_rule_readiness_gate_revenue.yaml)
+- [Revenue Business Rule Initialization 阶段归档](Business_Rule_Initialization_Revenue_Archive.md)
+- [通用查询会话恢复策略](assets/execution_policies/QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1.yaml)
 - `outputs/phase1_5/Business_Asset_Initialization_v2_1.xlsx`
 
 ## v2.1 轻量字段更新

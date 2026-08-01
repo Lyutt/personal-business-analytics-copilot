@@ -25,10 +25,10 @@ field_mapping_readiness_gate:
     change_type: additional_sheet_usage
     source_object: 业务线 Sheet
     new_usage_role: quarter_transition_previous_quarter_complete_result_primary
-    delta_gate_status: pending
+    delta_gate_status: confirmed_pending_field_mapping
     fallback_dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
     fallback_usage_role: fallback_candidate
-    fallback_policy_status: pending_owner_confirmation
+    fallback_policy_status: confirmed_pending_field_mapping
 
 standardization_baseline:
   registration_status_means_boundary_confirmed_only: true
@@ -54,8 +54,7 @@ dataset_readiness:
       blocking_tbd_items:
         - 业务线 Sheet中技术线与CTV上季度完整收入结果的增量Field Mapping
       non_blocking_tbd_items:
-        - Secondary validation mismatch triggers warning and user confirmation
-        - Multiple matches use the latest sent email and require an output notice
+        - Runtime implementation of confirmed warning and latest-message selection behavior
     standardization: { status: completed, exceptions: [] }
     gate:
       pipeline_registry_eligible: allow
@@ -75,12 +74,11 @@ dataset_readiness:
         fallback policy has been confirmed by Owner
       regular_week_behavior: Dataset instance is not required
     readiness:
-      status: pending_fallback_policy
-      blocking_tbd_items: []
+      status: confirmed_pending_field_mapping
+      blocking_tbd_items:
+        - Fallback workbook Sheet and business-line result Field Mapping
       non_blocking_tbd_items:
-        - Whether fallback acquisition is automatic or requires Owner confirmation
-        - Fallback workbook Sheet and field mapping
-        - Exact initial-version fallback notification behavior
+        - Runtime implementation of final, initial and other confirmation-version priority
     standardization: { status: completed, exceptions: [] }
     gate:
       pipeline_registry_eligible: not_required_for_primary_path

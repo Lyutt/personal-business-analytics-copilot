@@ -2,29 +2,33 @@
 
 ## 当前状态
 
-- 阶段状态：进行中。
+- 阶段状态：Revenue规则初始化已完成；Business Rule Initialization整体继续进行。
 - 正式开始日期：2026-07-31。
 - 本轮恢复日期：2026-08-01。
 - 当前Workflow：`WF_WEEKLY_BUSINESS_REPORT`。
-- 当前规则类别：Revenue分类、过滤与季度上下文规则。
-- 已批准Rule数量：3。
-- 已确认但待依赖Rule数量：1。
+- Revenue规则状态：已完成Owner确认与Readiness Gate。
+- 已批准Revenue Rule数量：4。
+- 已确认但待Field Mapping的Revenue Rule数量：2。
+- Revenue Rule未确认业务决策数量：0。
 - 代码实现：未开始。
 
-## 本轮恢复检查点
+## Revenue收口结果
 
 - 从已完成安全收口的`main`重新进入Business Rule Initialization。
-- 当前继续处理季度切换首周的上季度完整收入结果来源选择规则。
+- 季度切换首周的上季度完整收入结果来源选择规则已确认。
 - 已确认主来源为`DS_REVENUE_SALES_ROLLING_DECK_QTD`工作簿中的
   “业务线”Sheet。
 - 已确认`DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION`
   仅作为备选来源。
-- 已确认所有主来源获取失败场景均启用备选来源，包括Sheet、业务线行、
-  季度列、唯一匹配和数值有效性异常，以及结果为0或负数。
+- 备选版本按终版、初版、其他确认版本排序；同类版本选发送时间最新者。
+- 备选结果为空、非数字、0或负数时判定失败。
 - 技术线与CTV原则上来源可用性一致；如出现不一致，允许按业务线独立选择
   来源，并在最终周报输出时提醒Owner。
+- Rolling Deck周度邮件与季度结算邮件以正文语义为主分类，日期为辅助校验。
+- 2026年技术线与CTV去年同期文件都使用“向前一年再加一天”匹配；
+  2027年及以后必须重新确认。
 - 主来源增量Field Mapping仍保持`TBD`；完成前新规则不得标记为Approved。
-- 本阶段继续采用逐批提问确认，不自动进入Metric Library或下一资产阶段。
+- Revenue规则收口后不自动进入Metric Library、Inventory Rule或下一资产阶段。
 
 ## 初始化原则
 
@@ -60,7 +64,14 @@
 | `BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1` | Weekly收入模块常规周与季度切换首周判定 | Approved v1.0.0 |
 | `BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1` | 技术线单计硬广收入记录纳入规则 | Approved v1.0.0 |
 | `BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1` | 细分业务线QTD历史累计承接资格规则 | Approved v1.0.0 |
-| `BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1` | 季度切换首周上季度完整收入结果来源选择 | Confirmed / Pending Field Mapping |
+| `BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1` | Rolling Deck周度与季度结算邮件分类 | Approved v1.0.0 |
+| `BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1` | 季度切换首周上季度完整收入结果来源选择 | Confirmed v0.2.0 / Pending Field Mapping |
+| `BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1` | 2026年技术线与CTV同期收入文件匹配 | Confirmed v0.1.0 / Pending Field Mapping |
+
+## 通用执行策略
+
+- `QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1`：已批准；仅显式绑定的Apollo和NovaBI
+  Pipeline可在会话失效时刷新一次、恢复并验证查询配置后重试一次。
 
 ## 已确认无需额外Rule的Pipeline
 
