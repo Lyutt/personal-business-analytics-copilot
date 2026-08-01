@@ -4,10 +4,23 @@
 
 - 阶段状态：进行中。
 - 正式开始日期：2026-07-31。
+- 本轮恢复日期：2026-08-01。
 - 当前Workflow：`WF_WEEKLY_BUSINESS_REPORT`。
 - 当前规则类别：Revenue分类、过滤与季度上下文规则。
 - 已批准Rule数量：3。
 - 代码实现：未开始。
+
+## 本轮恢复检查点
+
+- 从已完成安全收口的`main`重新进入Business Rule Initialization。
+- 当前继续处理季度切换首周的上季度完整收入结果来源选择规则。
+- 已确认主来源为`DS_REVENUE_SALES_ROLLING_DECK_QTD`工作簿中的
+  “业务线”Sheet。
+- 已确认`DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION`
+  仅作为备选来源。
+- 备选来源启用条件、主来源增量Field Mapping及异常处置仍保持`TBD`，
+  未经Owner确认不得生成正式Rule。
+- 本阶段继续采用逐批提问确认，不自动进入Metric Library或下一资产阶段。
 
 ## 初始化原则
 
