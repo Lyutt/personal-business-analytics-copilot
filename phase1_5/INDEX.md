@@ -14,8 +14,12 @@
 - Business Rule Initialization：Revenue范围已完成Readiness Gate。
 - Revenue Business Rule状态：6条Approved。
 - Metric Library Initialization：已完成并通过Readiness Gate。
+- 当前收口点：Weekly Business Report Output Mapping 已完成并通过 Gate；Customer Revenue Detail Workflow 按 Owner 决策暂缓。
 - 当前收口点：Metric Library Initialization已完成，未自动进入Output Mapping。
 - 当前基线：[Phase 1.5 Baseline Closure — 2026-07-31](BASELINE_CLOSURE_2026-07-31.md)。
+- 当前 Output Mapping：[Output Mapping 资产索引](assets/output_mappings/INDEX.md)。
+- Weekly Output Mapping Gate：[weekly_report_output_mapping_readiness_gate.yaml](assets/output_mappings/weekly_report_output_mapping_readiness_gate.yaml)。
+- Weekly Workflow 收口归档：[Weekly_Business_Report_Workflow_Closure_2026-08-02.md](Weekly_Business_Report_Workflow_Closure_2026-08-02.md)。
 - 整体 Personal Business Analytics Copilot 架构：不变。
 - 代码实现：未开始。
 
@@ -54,6 +58,7 @@ Phase 1 旧版 `phase1/workflows/weekly_business_report/WORKFLOW.md` 保留，�
 - [Metric Library 资产索引](assets/metrics/INDEX.md)
 - [Metric Library Readiness Gate](assets/metrics/metric_library_readiness_gate.yaml)
 - [Metric Library Initialization 阶段归档](Metric_Library_Initialization_Archive.md)
+- [Output Mapping Initialization 阶段归档](Output_Mapping_Initialization_Archive_2026-08-02.md)
 - [产品客户变化条件分析策略](assets/pipelines/PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_policy_v1.yaml)
 - [通用查询会话恢复策略](assets/execution_policies/QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1.yaml)
 - `outputs/phase1_5/Business_Asset_Initialization_v2_1.xlsx`

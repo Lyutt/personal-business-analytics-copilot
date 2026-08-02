@@ -1,0 +1,305 @@
+config_type: output_mapping
+output_mapping_id: OM_WEEKLY_BUSINESS_REPORT_V1
+mapping_version: 1.0.0
+status: confirmed_complete
+owner: WORKFLOW_OWNER
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+
+output_target:
+  type: Weekly Report Email Body
+  format: Outlook Draft body
+  attachments_included: false
+  auto_send: false
+  source_template_references:
+    regular_week: TEMPLATE_WEEKLY_REPORT_0724_LOCAL_ONLY
+    quarter_transition_week_revenue: TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_LOCAL_ONLY
+  source_template_files_must_not_enter_git: true
+  outlook_draft_mapping_id: OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
+
+assembly_constraints:
+  input_must_be_validated_result_contract: true
+  may_read_raw_dataset: false
+  may_calculate: false
+  may_apply_business_rule: false
+  may_select_metric_variant: false
+  warning_source: Runtime validation and Pipeline notification records
+  workflow_file_dependency_on_customer_revenue_excel: false
+
+template_variants:
+  - variant_id: OM_WEEKLY_BUSINESS_REPORT_REGULAR_WEEK_V1
+    applies_when: report_mode == regular_week
+    template_reference: TEMPLATE_WEEKLY_REPORT_0724_LOCAL_ONLY
+  - variant_id: OM_WEEKLY_BUSINESS_REPORT_QUARTER_TRANSITION_WEEK_V1
+    applies_when: report_mode == quarter_transition_week
+    template_reference: TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_LOCAL_ONLY
+    inventory_mapping_reuse: OM_WEEKLY_BUSINESS_REPORT_REGULAR_WEEK_V1
+    revenue_mapping_is_independent: true
+
+section_order:
+  - section_id: INVENTORY_AND_SELL_THROUGH
+    display_order: 1
+    display_title: 一、库存及售卖
+    mapping_entries:
+      - output_slot_id: SLOT_INVENTORY_FULL_SITE
+        display_order: 1
+        display_label: 全站库存
+        validated_result_contract_ids:
+          - RC_INVENTORY_FULL_SITE_WEEKLY
+        metric_variant_ids:
+          - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1
+          - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_WOW_V1
+        display_fields:
+          - full_site_available_inventory_cpm
+          - full_site_available_inventory_wow
+      - output_slot_id: SLOT_INVENTORY_DAU
+        display_order: 2
+        display_label: DAU
+        validated_result_contract_ids:
+          - RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+        metric_variant_ids:
+          - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1
+          - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1
+        display_fields:
+          - weekly_average_dau
+          - weekly_average_dau_wow
+      - output_slot_id: SLOT_INVENTORY_PATCH
+        display_order: 3
+        display_label: 贴片库存及售卖率
+        validated_result_contract_ids:
+          - RC_INVENTORY_PATCH_WEEKLY
+          - RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+        metric_variant_ids:
+          - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+          - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_WOW_V1
+          - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1
+          - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+        display_fields:
+          - patch_available_inventory
+          - patch_available_inventory_wow
+          - patch_brand_sell_through_rate
+          - patch_brand_sell_through_wow_change_pp
+      - output_slot_id: SLOT_INVENTORY_NON_PATCH_PRODUCTS
+        display_order: 4
+        display_label: 非贴片产品库存及售卖率
+        validated_result_contract_ids:
+          - RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+          - RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+        metric_variant_ids:
+          - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_WOW_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+        display_fields:
+          - product_available_inventory
+          - product_available_inventory_wow
+          - product_brand_sell_through_rate
+          - product_brand_sell_through_wow_change_pp
+        product_routing_must_be_explicit: true
+      - output_slot_id: SLOT_INVENTORY_BRAND_MOMENT
+        display_order: 5
+        display_label: 品牌时刻库存及售卖率
+        validated_result_contract_ids:
+          - RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+          - RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+          - RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+        metric_variant_ids:
+          - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
+          - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1
+          - MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1
+          - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1
+          - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1
+        display_fields:
+          - brand_moment_available_inventory
+          - brand_moment_available_inventory_wow
+          - brand_moment_impression_count
+          - brand_moment_sell_through_rate
+          - brand_moment_sell_through_wow_change_pp
+
+  - section_id: REVENUE
+    display_order: 2
+    display_title: 二、本周收入情况
+    mapping_entries:
+      - output_slot_id: SLOT_REVENUE_TECHNICAL
+        display_order: 1
+        display_label: 技术线
+        validated_result_contract_ids:
+          - RC_REVENUE_TECHNICAL_WEEKLY
+        metric_variant_ids:
+          - MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1
+          - MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_YOY_V1
+          - MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1
+          - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+          - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_WOW_V1
+          - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_YOY_V1
+        display_fields:
+          - qtd_performance_revenue
+          - qtd_performance_revenue_yoy
+          - qtd_executed_revenue
+          - weekly_incremental_executed_revenue
+          - weekly_incremental_executed_revenue_wow
+          - weekly_incremental_executed_revenue_yoy
+      - output_slot_id: SLOT_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE
+        display_order: 2
+        display_label: 订单整体曝光完成率
+        source_type: Configured display value
+        validated_result_contract_ids: []
+        metric_library_registration: false
+        pipeline_dependency: false
+        calculation_in_output_mapping: false
+      - output_slot_id: SLOT_REVENUE_CTV
+        display_order: 3
+        display_label: CTV（不含植入）
+        validated_result_contract_ids:
+          - RC_REVENUE_CTV_WEEKLY
+        metric_variant_ids:
+          - MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+          - MV_REVENUE_CTV_QTD_PERFORMANCE_YOY_V1
+          - MV_REVENUE_CTV_QTD_EXECUTED_V1
+        display_fields:
+          - qtd_performance_revenue
+          - qtd_performance_revenue_yoy
+          - qtd_executed_revenue
+      - output_slot_id: SLOT_REVENUE_SMART_SPEAKER
+        display_order: 4
+        display_label: 智能音箱
+        validated_result_contract_ids:
+          - RC_REVENUE_SMART_SPEAKER_WEEKLY
+        metric_variant_ids:
+          - MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_V1
+          - MV_REVENUE_SMART_SPEAKER_QTD_EXECUTED_V1
+          - MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_WOW_V1
+        display_fields:
+          - qtd_executed_revenue
+          - weekly_executed_revenue
+          - weekly_executed_revenue_wow
+      - output_slot_id: SLOT_REVENUE_FAST_VERSION
+        display_order: 5
+        display_label: 极速版
+        validated_result_contract_ids:
+          - RC_REVENUE_FAST_VERSION_WEEKLY
+        metric_variant_ids:
+          - MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_V1
+          - MV_REVENUE_FAST_VERSION_QTD_EXECUTED_V1
+          - MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_WOW_V1
+        display_fields:
+          - qtd_executed_revenue
+          - weekly_executed_revenue
+          - weekly_executed_revenue_wow
+      - output_slot_id: SLOT_CONDITIONAL_PRODUCT_CUSTOMER_ANALYSIS
+        display_order: 6
+        display_label: 产品客户投放变化分析（仅异常触发）
+        applies_when: A validated product sell-through result meets its configured threshold
+        validated_result_contract_ids:
+          - RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+        selection_and_ranking_policy_reference: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        display_fields: TBD
+        output_assembly_may_calculate: false
+        query_failure_action: Omit this product customer analysis and notify owner; continue Workflow
+
+display_format:
+  rounding_mode: half_up
+  revenue_amount:
+    threshold: 100000000
+    below_threshold:
+      display_unit: 万
+      decimal_places: 0
+      thousands_separator: true
+    at_or_above_threshold:
+      display_unit: 亿
+      decimal_places: 2
+      thousands_separator: false
+  revenue_growth_rate:
+    display_unit: "%"
+    decimal_places: 0
+    zero_after_rounding_display: 持平
+  full_site_inventory_absolute:
+    source_unit: Original Count
+    display_unit: 万CPM
+    conversion_reference: Explicit CPM normalization rule
+    decimal_places: 0
+    thousands_separator: true
+  full_site_inventory_wow:
+    display_unit: "%"
+    decimal_places: 0
+    zero_after_rounding_display: 持平
+    negative_style: green_bold
+    positive_style: red_bold
+  dau_wow:
+    display_unit: "%"
+    decimal_places: 1
+    zero_after_rounding_display: 持平
+    negative_style: green_bold
+    positive_style: red_bold
+  product_inventory_wow:
+    display_unit: "%"
+    decimal_places: 0
+    zero_after_rounding_display: 持平
+  sell_through_rate:
+    display_unit: "%"
+    decimal_places: 0
+  sell_through_wow_change:
+    display_unit: pp
+    decimal_places: 0
+    preserve_sign: true
+    zero_display: 持平
+    zero_style: black
+    negative_style: green
+    positive_style: red
+
+quarter_transition_display_rules:
+  revenue_only: true
+  inventory_mapping_reuse: true
+  technical_and_ctv:
+    display_previous_quarter_final_result: true
+    display_new_quarter_qtd_result: true
+  qtd_fields:
+    - qtd_performance_revenue
+    - qtd_performance_revenue_yoy
+    - qtd_executed_revenue
+  smart_speaker:
+    hide_fields:
+      - weekly_executed_revenue
+      - weekly_executed_revenue_wow
+  fast_version:
+    hide_fields:
+      - weekly_executed_revenue
+      - weekly_executed_revenue_wow
+
+failure_and_warning_display:
+  warning_section:
+    enabled: true
+    placement: End of email body
+    title: 数据质量提醒
+    source: Runtime validation and Pipeline notification records
+  revenue_section_failure:
+    retain_section_title: true
+    annotation: 收入数据处理失败，待补充
+  inventory_product_failure:
+    retain_product_row: true
+    blocked_value: Blank
+    other_products_continue: true
+  brand_moment_sell_through_failure:
+    blocked_value: Blank
+    other_inventory_results_continue: true
+  dau_failure:
+    value: Blank
+    workflow_continue: true
+  customer_analysis_failure:
+    omit_customer_analysis: true
+    workflow_continue: true
+
+unresolved_tbd:
+  - Exact Outlook body rendering technology
+  - Exact visual typography inherited from local template
+  - Final warning text assembly schema
+
+evidence_sources:
+  - Confirmed Weekly Report 0724 template structure
+  - Confirmed quarter-transition Revenue display rules
+  - Pipeline Registry Result Contract bindings
+  - Metric Library Readiness Gate
+
+governance:
+  output_mapping_does_not_replace_metric_or_business_rule_assets: true
+  source_templates_are_local_only: true
+  stage_gate_status: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1 passed
