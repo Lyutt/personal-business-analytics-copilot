@@ -15,6 +15,7 @@
 - Revenue Business Rule状态：6条Approved。
 - Metric Library Initialization：已完成并通过Readiness Gate。
 - 当前收口点：Weekly Business Report Output Mapping 已完成并通过 Gate；Customer Revenue Detail Workflow 按 Owner 决策暂缓。
+- 当前收口点：Metric Library Initialization已完成，未自动进入Output Mapping。
 - 当前基线：[Phase 1.5 Baseline Closure — 2026-07-31](BASELINE_CLOSURE_2026-07-31.md)。
 - 当前 Output Mapping：[Output Mapping 资产索引](assets/output_mappings/INDEX.md)。
 - Weekly Output Mapping Gate：[weekly_report_output_mapping_readiness_gate.yaml](assets/output_mappings/weekly_report_output_mapping_readiness_gate.yaml)。
