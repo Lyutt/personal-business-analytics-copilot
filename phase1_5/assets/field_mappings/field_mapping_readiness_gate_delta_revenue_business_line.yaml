@@ -3,6 +3,7 @@ gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 assessment_date: 2026-08-01
 status: passed
+gate_result: passed
 owner: WORKFLOW_OWNER
 business_approver: WORKFLOW_OWNER
 
@@ -55,7 +56,8 @@ gate_decision:
     - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
     - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
   automatic_next_asset_stage_allowed: false
-  code_implementation_authorized: false
+  code_implementation_authorized_by_this_gate: false
+  final_code_implementation_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
 
 constraints:
   automatic_field_inference_allowed: false

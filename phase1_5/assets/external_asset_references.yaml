@@ -1,0 +1,58 @@
+config_type: external_asset_reference_registry
+registry_version: 1.0.0
+status: active
+
+external_assets:
+  - asset_id: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX
+    asset_type: local_reference_mapping
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+
+  - asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+    asset_type: local_business_rule_asset
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+
+  - asset_id: FILTER_PATCH_TIME_SLICE_EXCLUSION_LOCAL_ONLY
+    asset_type: local_filter_rule
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+
+  - asset_id: SPECIAL_PLACEMENT_EXCEPTION_LOCAL_ONLY
+    asset_type: local_filter_rule
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+
+  - asset_id: TEMPLATE_WEEKLY_REPORT_0724_LOCAL_ONLY
+    asset_type: local_output_template
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+
+  - asset_id: TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_LOCAL_ONLY
+    asset_type: local_output_template
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+
+  - asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
+    asset_type: local_output_template
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+
+  - asset_id: RECIPIENTS_WEEKLY_REPORT_BASELINE_LOCAL_ONLY
+    asset_type: local_recipient_configuration
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+
+constraints:
+  external_assets_are_definitions_not_business_logic: true
+  external_assets_cannot_contain_local_paths: true
+  external_assets_cannot_contain_personal_identifiers: true
+  external_assets_cannot_be_auto_activated: true

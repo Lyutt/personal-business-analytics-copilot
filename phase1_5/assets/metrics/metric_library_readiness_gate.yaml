@@ -3,6 +3,7 @@ gate_id: GATE_METRIC_LIBRARY_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 assessment_date: 2026-08-02
 status: passed
+gate_result: passed
 owner_confirmation: confirmed_complete
 
 scope:
@@ -13,7 +14,7 @@ scope:
   weekly_workflow_pipeline_count: 12
   metric_producing_or_calculating_pipeline_count: 11
   analysis_only_pipeline_count: 1
-  runtime_code_implementation_started: false
+  runtime_code_implementation_started_at_assessment_time: false
 
 approved_libraries:
   - library_id: METRIC_LIBRARY_REVENUE_WEEKLY_V1
@@ -77,4 +78,5 @@ decision:
   weekly_workflow_metric_scope_ready_for_output_mapping: true
   output_mapping_may_start_after_owner_direction: true
   automatic_next_stage_allowed: false
-  code_implementation_authorized: false
+  code_implementation_authorized_by_this_gate: false
+  final_code_implementation_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1

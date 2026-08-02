@@ -17,9 +17,9 @@
 
 ## Stage status
 
-- Current focus: Complete the Weekly Business Report Output Mapping set and its readiness gate.
+- Current focus: Weekly Business Report Output Mapping set is complete and closed.
 - Weekly Business Report Output Mapping: complete, Readiness Gate passed.
 - Inventory and Revenue section mapping: included in `OM_WEEKLY_BUSINESS_REPORT_V1.yaml`.
-- Outlook Draft Mapping: complete, `auto_send=false`.
+- Outlook Draft Mapping: complete, Draft-only and `auto_send=false`.
 - Customer Revenue Detail Excel Output Mapping: deferred by owner; resume after Weekly Business Report Workflow completion.
-- Outlook Draft Mapping: pending.
+- Code implementation authority: delegated to the final Code Implementation Readiness Gate.

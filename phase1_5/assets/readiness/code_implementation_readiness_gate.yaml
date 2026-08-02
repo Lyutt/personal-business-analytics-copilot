@@ -1,0 +1,100 @@
+config_type: code_implementation_readiness_gate
+gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+assessment_date: 2026-08-02
+status: passed_with_runtime_bootstrap_conditions
+gate_result: passed_with_runtime_bootstrap_conditions
+owner: WORKFLOW_OWNER
+
+scope:
+  included_workflow: WF_WEEKLY_BUSINESS_REPORT
+  included_asset_scope: Phase 1.5 P0 business assets
+  excluded_workflows:
+    - workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+      status: deferred_by_owner
+      blocking_weekly_implementation: false
+  code_implementation_started: false
+
+prerequisite_gate_results:
+  - gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: passed
+  - gate_id: GATE_PIPELINE_REGISTRY_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: passed
+  - gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: passed
+  - gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1
+    status: passed
+  - gate_id: GATE_BUSINESS_RULE_REVENUE_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: passed
+  - gate_id: GATE_METRIC_LIBRARY_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: passed
+  - gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: passed
+  - gate_id: GATE_METRIC_RESULT_STORE_RUNTIME_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: conditional
+
+implementation_readiness_checks:
+  yaml_parse_gate: pass
+  duplicate_core_asset_id_gate: pass
+  asset_reference_integrity_gate: pass
+  required_structure_gate: pass
+  active_data_source_scope_confirmed: pass
+  dataset_and_query_contracts_confirmed: pass
+  pipeline_minimum_execution_units_confirmed: pass
+  field_mapping_scope_confirmed: pass
+  revenue_business_rules_confirmed: pass
+  inventory_and_analysis_policies_explicit: pass
+  metric_and_metric_variant_contracts_confirmed: pass
+  output_mapping_and_outlook_draft_contracts_confirmed: pass
+  output_assembly_calculation_disabled: pass
+  outlook_auto_send_false: pass
+  personal_and_business_data_git_boundary: pass
+  metric_store_logical_contracts: pass
+  metric_store_runtime_bootstrap: conditional
+
+implementation_entry_decision:
+  code_implementation_may_start: true
+  allowed_initial_scope:
+    - Generic Analytics Core interfaces
+    - Data acquisition adapters with local runtime configuration
+    - Dataset standardization and validation
+    - Pipeline orchestration and pipeline-level recovery
+    - Business Rule and Metric Variant execution
+    - Metric Result Store interfaces and bootstrap tooling
+    - Weekly Report Output Assembly
+    - Outlook Draft creation with auto_send=false
+  business_logic_auto_completion_allowed: false
+  unknown_tbd_auto_resolution_allowed: false
+  external_side_effects_require_runtime_confirmation: true
+
+runtime_acceptance_decision:
+  end_to_end_mvp_runtime_acceptance: conditional
+  blocking_items:
+    - blocker_id: BLOCKER_METRIC_STORE_INVENTORY_BOOTSTRAP
+      store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      resolution: Configure local format, location, schemas and read/write verification
+    - blocker_id: BLOCKER_METRIC_STORE_USER_ANALYTICS_BOOTSTRAP
+      store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+      resolution: Configure local format, location, schema and read/write verification
+    - blocker_id: BLOCKER_METRIC_STORE_ADVERTISING_BOOTSTRAP
+      store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
+      resolution: Configure local format, location, schema and write verification
+  non_blocking_runtime_conditions:
+    - Revenue local workbooks must exist and be accessible for each run
+    - Outlook, Apollo and NovaBI sessions may require the confirmed refresh-and-retry policy
+    - Local templates and recipient configuration must resolve at runtime
+  runtime_acceptance_requires_owner_confirmation: true
+
+governance:
+  status_source_of_truth: phase1_5/assets/readiness/status_index.yaml
+  stage_gates_grant_code_authority_independently: false
+  auto_merge_authorized: false
+  outlook_auto_send: false
+  customer_revenue_detail_deferred_without_blocking_weekly: true
+  safety_review_required_before_each_git_operation: true
+
+decision:
+  final_gate_result: pass_for_code_implementation_start
+  runtime_gate_result: conditional_pending_local_metric_store_bootstrap
+  next_stage: Code Implementation
+  automatic_stage_transition: false

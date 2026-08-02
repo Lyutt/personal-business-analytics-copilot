@@ -12,7 +12,7 @@
 - 正式Gate：`field_mapping_readiness_gate.yaml`。
 - Gate后用途变更：`DS_REVENUE_SALES_ROLLING_DECK_QTD`新增“业务线”Sheet，
   作为季度切换首周读取上季度完整业绩收入结果的主来源；增量Field Mapping
-  Gate待完成。
+  Gate已完成并通过。
 - `DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION`保留为备选
   Dataset，不再作为主路径条件必需输入。
 - 模板位置：`phase1_5/templates/field_mapping.template.yaml`。
@@ -60,7 +60,7 @@
 
 - Readiness Gate：Passed。
 - 归档记录：`phase1_5/Field_Mapping_Initialization_Archive.md`。
-- 下一建议资产阶段：Business Rule Initialization。
+- 历史下一阶段：Business Rule Initialization（已完成）。当前项目状态以统一Status Index为准。
 - 本阶段结束不代表进入代码实现。
 
 ## Gate后增量

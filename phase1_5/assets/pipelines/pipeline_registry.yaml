@@ -1,10 +1,15 @@
 config_type: pipeline_registry
+gate_id: GATE_PIPELINE_REGISTRY_WF_WEEKLY_BUSINESS_REPORT_V1
 registry_version: 0.1.0-initialization
 status: completed
+gate_result: passed
 owner: WORKFLOW_OWNER
 current_stage: Pipeline Registry Initialization - Completed
+current_project_stage: Code Implementation Readiness Review - Completed
+final_code_implementation_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
 stage_completion_requires_explicit_owner_confirmation: true
 stage_completion:
+  record_scope: historical_stage_handoff
   owner_confirmation: confirmed
   confirmed_by: WORKFLOW_OWNER
   confirmation_date: 2026-07-29
@@ -23,7 +28,8 @@ readiness_gate:
       role: Quarter-transition Revenue fallback
       readiness: mapping_approved
       mapping_dependency_resolved: true
-  deferred_business_logic_remains_tbd: true
+  deferred_business_logic_remains_tbd: false
+  unresolved_business_decision_count: 0
 output_mapping_stage:
   workflow_id: WF_WEEKLY_BUSINESS_REPORT
   status: completed

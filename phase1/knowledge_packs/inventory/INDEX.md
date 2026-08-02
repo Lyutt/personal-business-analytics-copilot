@@ -1,5 +1,8 @@
 # Inventory Knowledge Pack — Draft
 
+> 历史状态说明：本目录保留Phase 1盘点模板，不代表当前Weekly Workflow准备度。
+> 已确认的库存资产以`phase1_5/assets/`和统一Status Index为准。
+
 ## 目的
 
 保存 Weekly Business Report 所需的已确认库存业务知识。库存数据获取步骤属于 Workflow，通用字段处理属于 Data Engine。

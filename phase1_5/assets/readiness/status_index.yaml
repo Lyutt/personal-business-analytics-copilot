@@ -1,0 +1,74 @@
+config_type: business_asset_status_index
+index_version: 1.0.0
+status: synchronized
+assessment_date: 2026-08-02
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+current_stage: Code Implementation Readiness Review - Completed
+
+phase_status:
+  phase_1: completed_and_retained_as_historical_design_baseline
+  phase_1_5_business_asset_initialization: completed_for_weekly_workflow_p0_scope
+  code_implementation: allowed_with_runtime_bootstrap_conditions
+  end_to_end_runtime_acceptance: conditional
+
+asset_stage_gates:
+  - gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Dataset and Query Asset
+    status: passed
+    source_artifact: phase1_5/assets/datasets/dataset_readiness_matrix.yaml
+  - gate_id: GATE_PIPELINE_REGISTRY_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Pipeline Registry
+    status: passed
+    source_artifact: phase1_5/assets/pipelines/pipeline_registry.yaml
+  - gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Field Mapping original scope
+    status: passed
+    source_artifact: phase1_5/assets/field_mappings/field_mapping_readiness_gate.yaml
+  - gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1
+    asset_stage: Revenue business-line Field Mapping delta
+    status: passed
+    source_artifact: phase1_5/assets/field_mappings/field_mapping_readiness_gate_delta_revenue_business_line.yaml
+  - gate_id: GATE_BUSINESS_RULE_REVENUE_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Revenue Business Rule
+    status: passed
+    source_artifact: phase1_5/assets/business_rules/business_rule_readiness_gate_revenue.yaml
+  - gate_id: GATE_METRIC_LIBRARY_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Metric Library
+    status: passed
+    source_artifact: phase1_5/assets/metrics/metric_library_readiness_gate.yaml
+  - gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Output Mapping
+    status: passed
+    source_artifact: phase1_5/assets/output_mappings/weekly_report_output_mapping_readiness_gate.yaml
+  - gate_id: GATE_METRIC_RESULT_STORE_RUNTIME_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Metric Result Store runtime readiness
+    status: conditional
+    source_artifact: phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml
+  - gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Code Implementation Readiness
+    status: passed_with_runtime_bootstrap_conditions
+    source_artifact: phase1_5/assets/readiness/code_implementation_readiness_gate.yaml
+
+scope_boundaries:
+  weekly_business_report_p0_assets: complete
+  customer_revenue_detail_workflow: deferred_by_owner_non_blocking
+  outlook_delivery_mode: draft_only
+  outlook_auto_send: false
+  unresolved_business_rule_decision_count: 0
+  unresolved_metric_definition_count: 0
+  unresolved_asset_reference_count: 0
+
+source_of_truth_order:
+  - phase1_5/assets/readiness/status_index.yaml
+  - phase1_5/assets/readiness/code_implementation_readiness_gate.yaml
+  - Versioned assets and stage Gates under phase1_5/assets
+  - phase1_5/INDEX.md
+  - Root INDEX.md
+  - Historical Phase 1 design and archive documents
+
+constraints:
+  stage_gate_does_not_independently_authorize_code_implementation: true
+  final_code_gate_controls_implementation_entry: true
+  runtime_acceptance_requires_metric_store_bootstrap: true
+  auto_send_allowed: false
+  auto_merge_allowed: false

@@ -2,6 +2,10 @@
 
 > Business Asset Discovery & MVP Workflow Design
 
+> 状态说明：本目录是已完成的历史设计基线，不再作为当前阶段状态入口。
+> 当前正式状态与可执行资产以 `phase1_5/assets/readiness/status_index.yaml`
+> 及 `phase1_5/assets/` 下的版本化资产为准。
+
 ## 本阶段目标
 
 在不编写运行代码的前提下，把 Weekly Business Report MVP 所需的业务知识、数据源、指标和流程转成可填写、可评审、可版本化的资产。

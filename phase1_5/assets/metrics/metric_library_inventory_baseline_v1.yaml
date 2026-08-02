@@ -248,7 +248,7 @@ metric_variants:
     inventory_type: Gross inventory
     period_type: Query-result period
     dataset_dependencies:
-      - DS_INVENTORY_APOLLO_PATCH_STOCK
+      - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
     result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
     calculation_method: Aggregate filtered query-result records only
     formula: SUM(stock_quantity) over validated records that pass the local time-slice exclusion rule.
@@ -274,7 +274,7 @@ metric_variants:
     inventory_type: Disabled inventory
     period_type: Query-result period
     dataset_dependencies:
-      - DS_INVENTORY_APOLLO_PATCH_STOCK
+      - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
     result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
     calculation_method: Aggregate filtered query-result records only
     formula: SUM(disabled_stock_quantity) over validated records that pass the local time-slice exclusion rule.
@@ -296,7 +296,7 @@ metric_variants:
     inventory_type: Available inventory
     period_type: Query-result period
     dataset_dependencies:
-      - DS_INVENTORY_APOLLO_PATCH_STOCK
+      - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
     result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
     calculation_method: Row-level derivation followed by filtered aggregation
     formula: >
@@ -319,7 +319,7 @@ metric_variants:
     inventory_type: Brand delivery inventory
     period_type: Query-result period
     dataset_dependencies:
-      - DS_INVENTORY_APOLLO_PATCH_STOCK
+      - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
     result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
     calculation_method: Aggregate filtered query-result records only
     formula: SUM(brand_delivery_stock_quantity) over validated records that pass the local time-slice exclusion rule.
@@ -341,7 +341,7 @@ metric_variants:
     inventory_type: Performance delivery inventory
     period_type: Query-result period
     dataset_dependencies:
-      - DS_INVENTORY_APOLLO_PATCH_STOCK
+      - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
     result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
     calculation_method: Aggregate filtered query-result records only
     formula: SUM(performance_delivery_stock_quantity) over validated records that pass the local time-slice exclusion rule.

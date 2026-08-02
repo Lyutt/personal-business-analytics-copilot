@@ -18,3 +18,7 @@ jobs:
 
       - name: Validate repository safety boundary
         run: python scripts/validate_repository_safety.py
+      - name: Install asset validation dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-validation.txt
+      - name: Validate YAML and asset integrity
+        run: python scripts/validate_asset_integrity.py
