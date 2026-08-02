@@ -1,0 +1,80 @@
+config_type: metric_library_readiness_gate
+gate_id: GATE_METRIC_LIBRARY_WF_WEEKLY_BUSINESS_REPORT_V1
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+assessment_date: 2026-08-02
+status: passed
+owner_confirmation: confirmed_complete
+
+scope:
+  metric_library_count: 3
+  stable_metric_concept_count: 9
+  metric_variant_count: 48
+  pipeline_variant_binding_count: 48
+  weekly_workflow_pipeline_count: 12
+  metric_producing_or_calculating_pipeline_count: 11
+  analysis_only_pipeline_count: 1
+  runtime_code_implementation_started: false
+
+approved_libraries:
+  - library_id: METRIC_LIBRARY_REVENUE_WEEKLY_V1
+    asset_path: phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml
+    status: approved
+  - library_id: METRIC_LIBRARY_INVENTORY_WEEKLY_V1
+    asset_path: phase1_5/assets/metrics/metric_library_inventory_baseline_v1.yaml
+    status: approved
+  - library_id: METRIC_LIBRARY_USER_ANALYTICS_DAU_V1
+    asset_path: phase1_5/assets/metrics/metric_library_user_analytics_dau_v1.yaml
+    status: approved
+
+analysis_only_pipeline:
+  pipeline_id: PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+  metric_variant_required: false
+  policy_asset: phase1_5/assets/pipelines/PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_policy_v1.yaml
+  reason: >
+    该Pipeline消费已验证的售卖率异常触发结果并生成客户变化分析，
+    不定义新的库存或售卖率Metric。
+
+referential_integrity:
+  duplicate_metric_concept_count: 0
+  duplicate_metric_variant_count: 0
+  missing_metric_concept_reference_count: 0
+  missing_metric_variant_declaration_count: 0
+  orphan_metric_variant_count: 0
+
+gate_checks:
+  metric_and_variant_two_level_model: pass
+  stable_metric_concepts_have_owner_and_version: pass
+  metric_variants_have_explicit_business_context: pass
+  dataset_or_upstream_result_dependencies_explicit: pass
+  formulas_and_calculation_methods_explicit: pass
+  aggregation_and_comparison_semantics_explicit: pass
+  validation_and_failure_scope_explicit: pass
+  pipeline_metric_variant_bindings_explicit: pass
+  metric_result_base_units_explicit: pass
+  local_knowledge_pack_dependencies_explicit: pass
+  automatic_product_or_dependency_inference_disabled: pass
+  output_assembly_calculation_disabled: pass
+  outlook_auto_send_false_unchanged: pass
+  prohibited_identity_or_absolute_path_literal_count_in_new_metric_assets: 0
+
+governance_tbd_review:
+  blocking_tbd_count: 0
+  non_blocking_tbd_count: 2
+  non_blocking_items:
+    - Revenue Library unconfirmed-content policy remains TBD by design
+    - Inventory Library unconfirmed-content policy remains TBD by design
+  policy: All unconfirmed future business content remains TBD and cannot be inferred
+
+deferred_to_designated_phase:
+  - Output units, rounding, prose, template placement, and section assembly
+  - Outlook Draft recipient and presentation mapping
+  - Physical implementation of planned Metric Result Store assets
+  - Product-specific anomaly-threshold overrides not yet requested by owner
+  - Revenue prior-year matching rules for 2027 and later, which require owner reconfirmation
+
+decision:
+  metric_library_initialization_complete: true
+  weekly_workflow_metric_scope_ready_for_output_mapping: true
+  output_mapping_may_start_after_owner_direction: true
+  automatic_next_stage_allowed: false
+  code_implementation_authorized: false

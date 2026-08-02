@@ -1,0 +1,142 @@
+config_type: business_rule
+rule_id: BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
+rule_name: 季度切换首周上季度完整收入结果来源选择规则
+rule_category: Revenue Source Selection and Fallback
+business_domains:
+  - Revenue
+applicable_workflow_ids:
+  - WF_WEEKLY_BUSINESS_REPORT
+applicable_pipeline_ids:
+  - PL_REVENUE_TECHNICAL_WEEKLY
+  - PL_REVENUE_CTV_WEEKLY
+business_context_ids:
+  - CTX_REVENUE_QUARTER_TRANSITION_WEEK
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-08-01
+
+purpose: >
+  在季度切换首周，为技术线与CTV选择上季度完整收入结果来源；
+  优先使用周度Rolling Deck工作簿中的业务线Sheet，主来源获取失败时
+  启用季度结算收入确认Dataset作为备选。
+
+inputs:
+  required_context_fields:
+    - target_business_line
+    - target_previous_calendar_quarter
+    - report_mode
+  required_standard_fields: TBD_PENDING_BUSINESS_LINE_SHEET_FIELD_MAPPING
+  required_result_contract_ids: []
+
+source_priority:
+  primary:
+    dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+    source_object: 业务线 Sheet
+    result_role: previous_quarter_complete_revenue_result
+  fallback:
+    dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+    result_role: previous_quarter_complete_revenue_confirmation
+    version_priority:
+      - final
+      - initial
+      - other_confirmation_version
+    other_confirmation_versions_allowed: true
+    complete_quarter_result_required: true
+    same_version_type_selection: latest_sent_time
+
+conditions:
+  applicable_when_all:
+    - report_mode equals quarter_transition_week
+    - target_business_line is Technical or CTV
+  primary_source_eligible_when_all:
+    - 业务线 Sheet exists
+    - target business-line row has exactly one match
+    - target previous-quarter column has exactly one match
+    - result is not empty
+    - result is numeric
+    - result is greater than 0
+  fallback_activation_when_any_primary_failure:
+    - 业务线 Sheet does not exist
+    - target business-line row does not exist
+    - target previous-quarter column does not exist
+    - business-line row or quarter-column match is not unique
+    - result is empty
+    - result is non-numeric
+    - result equals 0
+    - result is negative
+  fallback_source_eligible_when_all:
+    - selected workbook is a confirmed complete-quarter result
+    - target business-line result has exactly one match
+    - target previous-quarter result has exactly one match
+    - result is not empty
+    - result is numeric
+    - result is greater than 0
+  fallback_source_failure_when_any:
+    - selected workbook is not a confirmed complete-quarter result
+    - target business-line result does not exist
+    - target previous-quarter result does not exist
+    - target business-line or quarter result match is not unique
+    - result is empty
+    - result is non-numeric
+    - result equals 0
+    - result is negative
+
+selection_scope:
+  evaluate_each_business_line_independently: true
+  normal_expectation: Technical and CTV have consistent source availability
+  mixed_source_selection_allowed_on_inconsistent_availability: true
+  mixed_source_selection_notification:
+    required: true
+    timing: final_weekly_report_output
+    recipient: WORKFLOW_OWNER
+
+actions:
+  on_primary_source_eligible:
+    selected_source_role: primary
+    continue_affected_business_line: true
+  on_primary_source_failure:
+    activate_fallback_source: true
+  on_fallback_source_eligible:
+    selected_source_role: fallback
+    continue_affected_business_line: true
+  on_primary_and_fallback_failure:
+    - pause_revenue_section
+    - notify_owner
+    - request_owner_confirmation
+    - continue_non_revenue_pipelines
+
+validation:
+  deterministic: true
+  exact_business_line_match_required: true
+  exact_previous_quarter_match_required: true
+  non_unique_match_behavior: activate_fallback_source
+  zero_or_negative_primary_result_behavior: activate_fallback_source
+  fallback_non_complete_quarter_result_behavior: pause_revenue_section_and_request_owner_confirmation
+  fallback_empty_non_numeric_zero_or_negative_behavior: source_failure
+  fallback_version_priority_is_explicit: true
+  owner_notification_required_on_mixed_source_selection: true
+
+dependency_gate:
+  blocking_dependency: 业务线 Sheet incremental Field Mapping
+  field_mapping_status: passed
+  field_mapping_gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1
+  rule_approval_allowed_before_dependency_passes: false
+  current_rule_status_reason: Required standard-field mapping passed the incremental Field Mapping Gate
+
+governance:
+  evidence_sources:
+    - Owner confirmations in Business Rule Initialization
+    - phase1_5/assets/datasets/dataset_inventory.yaml
+    - phase1_5/assets/datasets/dataset_readiness_matrix.yaml
+    - phase1_5/assets/pipelines/pipeline_registry.yaml
+  change_reason: Initial confirmed source-priority and fallback boundary
+
+constraints:
+  automatic_field_inference_allowed: false
+  automatic_rule_completion_allowed: false
+  automatic_source_dependency_inference_allowed: false
+  metric_formula_allowed: false
+  output_formatting_allowed: false
+  unknown_decisions_remain_tbd: true

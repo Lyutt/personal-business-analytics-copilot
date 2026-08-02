@@ -51,3 +51,16 @@
 `DS_REVENUE_SALES_ROLLING_DECK_QTD`工作簿中的“业务线”Sheet；季度结算Dataset
 降级为备选来源。原Gate仍保持有效，新增工作仅为现有Dataset的Sheet级Mapping
 Delta；季度结算Dataset不再阻断主路径。
+
+## Revenue业务线Sheet增量完成
+
+2026-08-01，Owner已确认主来源“业务线”Sheet与备选“业绩-业务线”Sheet的
+最小字段映射。新增两个独立Profile，并通过Delta Gate：
+
+- 主来源以业务线行与动态季度列的交叉单元格读取完整季度收入。
+- 备选来源以B8周期范围、B列业务线和G列当季执行收入读取完整季度收入。
+- 完整季度场景中，两来源均显式映射为签单金额和已执行金额的等价结果。
+- 年度Total、同比、邻近季度和其他未映射收入列不得作为自动回退。
+
+正式增量Gate：
+`phase1_5/assets/field_mappings/field_mapping_readiness_gate_delta_revenue_business_line.yaml`

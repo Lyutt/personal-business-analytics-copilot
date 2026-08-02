@@ -1,0 +1,112 @@
+config_type: business_rule
+rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+rule_name: 2026年技术线与CTV同期收入文件匹配规则
+rule_category: Revenue Comparable Source Selection
+business_domains:
+  - Revenue
+applicable_workflow_ids:
+  - WF_WEEKLY_BUSINESS_REPORT
+applicable_pipeline_ids:
+  - PL_REVENUE_TECHNICAL_WEEKLY
+  - PL_REVENUE_CTV_WEEKLY
+business_context_ids:
+  - CTX_REVENUE_PRIOR_YEAR_COMPARABLE
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-08-01
+expires_after_workflow_year: 2026
+
+purpose: >
+  为2026年Weekly Business Report的技术线与CTV同比分别选择
+  明确对应的去年同期Rolling Deck历史附件；仅定义来源匹配和
+  结果资格，不定义同比公式。
+
+inputs:
+  required_context_fields:
+    - target_business_line
+    - current_revenue_cutoff_date
+    - workflow_year
+  required_source_assets:
+    - archive_id: ARCHIVE_REVENUE_ROLLING_DECK_PRIOR_YEAR
+      dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+  required_standard_fields: TBD_PENDING_BUSINESS_LINE_SHEET_FIELD_MAPPING
+  required_result_contract_ids: []
+
+date_relationship:
+  applicable_workflow_year: 2026
+  target_prior_year_date_semantics: >
+    Move current_revenue_cutoff_date back one calendar year,
+    then add one calendar day.
+  example_mapping:
+    current_revenue_cutoff_date: 2026-07-23
+    target_prior_year_date: 2025-07-24
+  same_quarter_required: true
+  nearby_date_substitution_allowed: false
+  future_year_behavior: request_owner_reconfirmation_before_use
+
+conditions:
+  file_level_eligible_when_all:
+    - exactly one archive workbook matches the explicit target prior-year date
+    - workbook is readable
+    - matched workbook represents the required quarter-to-date snapshot
+  business_line_result_eligible_when_all:
+    - target business-line result has exactly one match
+    - result is not empty
+    - result is numeric
+    - result is greater than 0
+  business_line_result_failure_when_any:
+    - target Sheet or business-line result does not exist
+    - target business-line result match is not unique
+    - result is empty
+    - result is non-numeric
+    - result equals 0
+    - result is negative
+
+actions:
+  on_file_not_found_or_multiple_matches_or_unreadable:
+    - pause_revenue_section
+    - notify_owner
+    - request_owner_confirmation
+  on_one_business_line_result_failure:
+    - pause_affected_business_line_result
+    - notify_owner
+    - allow_other_valid_business_line_result_to_continue
+  on_both_business_line_results_failure:
+    - pause_revenue_section
+    - notify_owner
+  on_workflow_year_after_2026:
+    - pause_comparable_source_selection
+    - request_owner_reconfirmation
+
+validation:
+  deterministic: true
+  explicit_date_match_required: true
+  exact_single_file_match_required: true
+  exact_business_line_match_required: true
+  metric_formula_defined_here: false
+  owner_notification_required: true
+
+dependency_gate:
+  blocking_dependency: 业务线 Sheet incremental Field Mapping
+  field_mapping_status: passed
+  field_mapping_gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1
+  rule_approval_allowed_before_dependency_passes: false
+  current_rule_status_reason: Required extraction mapping passed the incremental Field Mapping Gate
+
+governance:
+  evidence_sources:
+    - Owner confirmations in Business Rule Initialization
+    - phase1_5/assets/data_sources/data_source_inventory.yaml
+    - phase1_5/assets/datasets/dataset_inventory.yaml
+    - phase1_5/assets/pipelines/pipeline_registry.yaml
+  change_reason: Initial confirmed 2026 prior-year comparable source-selection rule
+
+constraints:
+  automatic_field_inference_allowed: false
+  automatic_rule_completion_allowed: false
+  automatic_nearby_date_selection_allowed: false
+  metric_formula_allowed: false
+  output_formatting_allowed: false
+  unknown_decisions_remain_tbd: true

@@ -18,8 +18,11 @@ readiness_gate:
   duplicate_pipeline_id_count: 0
   unresolved_candidate_dependency_count: 0
   weekly_in_scope_dataset_coverage: Complete
-  known_out_of_scope_dataset:
-    - DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+  known_conditional_dataset:
+    - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+      role: Quarter-transition Revenue fallback
+      readiness: mapping_approved
+      mapping_dependency_resolved: true
   deferred_business_logic_remains_tbd: true
 initialization_scope:
   included_workflows:
@@ -137,10 +140,11 @@ pipelines:
     historical_input_dependencies:
       - dependency_type: Historical Attachment Archive
         source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+        archive_id: ARCHIVE_REVENUE_ROLLING_DECK_PRIOR_YEAR
         dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
         role: Prior-year comparable Rolling Deck input
         required: true
-        relationship_rule_id: TBD
+        relationship_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
         missing_input_action: >
           暂停技术线收入Pipeline并通知Owner，
           禁止使用相近日期文件替代。
@@ -171,10 +175,24 @@ pipelines:
         - VALIDATION
       mapping_profile_ids:
         - MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+      conditional_mapping_profile_ids:
+        - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+          applies_when: Quarter-transition or prior-year comparable business-line result is required
+        - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
+          applies_when: BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1 selects fallback
       ordered_rule_set_ids:
+        - BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1
         - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
         - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
-      metric_variant_ids: []
+        - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+        - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
+      metric_variant_ids:
+        - MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1
+        - MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_YOY_V1
+        - MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1
+        - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+        - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_WOW_V1
+        - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_YOY_V1
       validation_rule_ids: []
 
     outputs:
@@ -294,6 +312,19 @@ pipelines:
           automatic_rule_duplication_in_pipeline: false
 
     historical_input_dependencies:
+      - dependency_type: Historical Attachment Archive
+        source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+        archive_id: ARCHIVE_REVENUE_ROLLING_DECK_PRIOR_YEAR
+        dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+        role: Prior-year comparable CTV Rolling Deck input
+        required: true
+        relationship_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+        missing_input_action: >
+          暂停CTV同期收入结果并通知Owner；
+          禁止使用相近日期文件替代。
+        multiple_match_action: >
+          暂停相关处理并请求Owner确认具体采用文件；
+          禁止自动选择。
       - dependency_type: Metric Result Store
         store_id: STORE_WEEKLY_REVENUE_HISTORICAL
         store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
@@ -318,9 +349,20 @@ pipelines:
         - VALIDATION
       mapping_profile_ids:
         - MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1
+      conditional_mapping_profile_ids:
+        - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+          applies_when: Quarter-transition or prior-year comparable business-line result is required
+        - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
+          applies_when: BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1 selects fallback
       ordered_rule_set_ids:
+        - BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1
         - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
-      metric_variant_ids: []
+        - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+        - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
+      metric_variant_ids:
+        - MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+        - MV_REVENUE_CTV_QTD_PERFORMANCE_YOY_V1
+        - MV_REVENUE_CTV_QTD_EXECUTED_V1
       validation_rule_ids: []
 
     outputs:
@@ -496,7 +538,10 @@ pipelines:
       ordered_rule_set_ids:
         - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
         - BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_V1
+        - MV_REVENUE_SMART_SPEAKER_QTD_EXECUTED_V1
+        - MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_WOW_V1
       validation_rule_ids: []
 
     outputs:
@@ -675,7 +720,10 @@ pipelines:
       ordered_rule_set_ids:
         - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
         - BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_V1
+        - MV_REVENUE_FAST_VERSION_QTD_EXECUTED_V1
+        - MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_WOW_V1
       validation_rule_ids: []
 
     outputs:
@@ -831,7 +879,14 @@ pipelines:
       mapping_profile_ids:
         - MAP_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY_V1
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_INVENTORY_FULL_SITE_GROSS_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_DISABLED_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_BRAND_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_PERFORMANCE_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_COMMERCIAL_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_WOW_V1
       validation_rule_ids: []
 
     outputs:
@@ -977,7 +1032,14 @@ pipelines:
       mapping_profile_ids:
         - MAP_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY_V1
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_INVENTORY_PATCH_GROSS_VOLUME_V1
+        - MV_INVENTORY_PATCH_DISABLED_VOLUME_V1
+        - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+        - MV_INVENTORY_PATCH_BRAND_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_PATCH_PERFORMANCE_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_PATCH_COMMERCIAL_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_WOW_V1
       validation_rule_ids: []
 
     outputs:
@@ -1133,7 +1195,15 @@ pipelines:
       mapping_profile_ids:
         - MAP_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY_V1
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_INVENTORY_NON_PATCH_PRODUCT_GROSS_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_DISABLED_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_PERFORMANCE_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_COMMERCIAL_DELIVERY_VOLUME_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_WOW_V1
+        - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
       validation_rule_ids: []
 
     outputs:
@@ -1281,7 +1351,8 @@ pipelines:
       mapping_profile_ids:
         - MAP_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_V1
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1
       validation_rule_ids: []
 
     outputs:
@@ -1430,7 +1501,10 @@ pipelines:
         - VALIDATION
       mapping_profile_ids: []
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1
+        - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1
+        - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1
       validation_rule_ids: []
 
     outputs:
@@ -1571,7 +1645,10 @@ pipelines:
       mapping_profile_ids:
         - MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1
+        - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1
+        - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1
       validation_rule_ids: []
 
     outputs:
@@ -1837,7 +1914,11 @@ pipelines:
         - VALIDATION
       mapping_profile_ids: []
       ordered_rule_set_ids: []
-      metric_variant_ids: []
+      metric_variant_ids:
+        - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1
+        - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
+        - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1
       validation_rule_ids: []
 
     outputs:
@@ -1883,6 +1964,11 @@ constraints:
   auto_dependency_by_field_similarity: false
   auto_dependency_by_name_match: false
   auto_dependency_by_history: false
+  query_session_recovery_policy:
+    policy_id: QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1
+    binding_source: phase1_5/assets/execution_policies/QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1.yaml
+    automatic_inheritance_by_source_name_allowed: false
+    explicit_pipeline_binding_required: true
   output_assembly_may_calculate: false
   outlook_auto_send: false
   pipeline_owner_for_all_current_and_future_pipelines: WORKFLOW_OWNER

@@ -1,0 +1,806 @@
+schema_version: "0.1"
+asset_type: Metric Library
+library_id: METRIC_LIBRARY_INVENTORY_WEEKLY_V1
+library_name: Inventory Metric Library — Weekly Business Report
+scope_status: Completed
+approval_status: Approved
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+scope_boundary: >
+  登记Weekly Business Report当前需要的全站、贴片、非贴片分产品库存，
+  产品售卖率、品牌时刻可用库存与售卖率，以及所需广告曝光量Metric Variant。
+architecture_constraints:
+  metric_concept_is_stable: true
+  metric_variant_is_context_specific_implementation: true
+  dependencies_must_be_explicit: true
+  automatic_date_grain_inference: false
+  output_assembly_may_calculate: false
+  unconfirmed_content_policy: TBD
+
+metric_definitions:
+  - metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: Inventory Volume
+    business_name: 库存量
+    business_domain: Inventory
+    definition: >
+      在明确的库存类型、数据集、业务上下文与统计周期下确认的库存数量。
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_id: METRIC_SELL_THROUGH_RATE
+    metric_name: Sell-through Rate
+    business_name: 售卖率
+    business_domain: Inventory
+    definition: >
+      在明确产品、库存分母、投放/曝光分子、数据集与业务上下文下计算的售卖率。
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_id: METRIC_INVENTORY_CHANGE_RATE
+    metric_name: Inventory Change Rate
+    business_name: 库存变动率
+    business_domain: Inventory
+    definition: >
+      对明确库存Metric Variant在指定比较类型与比较周期下计算的变动率。
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_id: METRIC_IMPRESSION_COUNT
+    metric_name: Impression Count
+    business_name: 曝光量
+    business_domain: Advertising
+    definition: >
+      在明确广告产品、数据集、业务上下文与统计周期下确认的投放曝光数量。
+    base_unit: Individual impression
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+normalization_rules:
+  - rule_id: NORM_RAW_QUANTITY_TO_CPM_V1
+    applies_to_metric_ids:
+      - METRIC_INVENTORY_VOLUME
+      - METRIC_IMPRESSION_COUNT
+    formula: Raw individual inventory or impression quantity / 1000.
+    normalized_unit: CPM
+    rule_boundary: >
+      原始Metric Result仍保存为单个库存或单次曝光数量。
+      该归一化规则可被已确认的Metric Variant或Output Mapping显式引用，
+      不得自动替换原始结果或推断展示口径。
+
+metric_variants:
+  - metric_variant_id: MV_INVENTORY_FULL_SITE_GROSS_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 全站总库存
+    business_domain: Inventory
+    business_context: Full-site Weekly Inventory
+    inventory_type: Gross inventory
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    calculation_method: Aggregate query-result records only
+    formula: SUM(stock_quantity) over validated query-result records.
+    aggregation_level: Query-result record set × Full site
+    date_grain_policy: >
+      按查询结果记录处理；在日期展开形态明确前，不得自行按天累计、平均或推断日期粒度。
+    validation_rules:
+      source_validation: Inherit upstream Pipeline validation
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause Full-site Inventory calculation and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_FULL_SITE_DISABLED_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 全站禁用库存
+    business_domain: Inventory
+    business_context: Full-site Weekly Inventory
+    inventory_type: Disabled inventory
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    calculation_method: Aggregate query-result records only
+    formula: SUM(disabled_stock_quantity) over validated query-result records.
+    aggregation_level: Query-result record set × Full site
+    date_grain_policy: >
+      按查询结果记录处理；在日期展开形态明确前，不得自行按天累计、平均或推断日期粒度。
+    validation_rules:
+      source_validation: Inherit upstream Pipeline validation
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause Full-site Inventory calculation and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 全站可用库存
+    business_domain: Inventory
+    business_context: Full-site Weekly Inventory
+    inventory_type: Available inventory
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    calculation_method: Row-level derivation followed by aggregation
+    formula: >
+      SUM(stock_quantity - disabled_stock_quantity) over validated query-result records satisfying either:
+      (ad_placement is not the locally configured special-placement exception AND commercial_sellability_flag equals 是),
+      or (ad_placement is the locally configured special-placement exception AND vip_status equals 非vip).
+    aggregation_level: Query-result record set × Full site
+    date_grain_policy: >
+      按查询结果记录处理；在日期展开形态明确前，不得自行按天累计、平均或推断日期粒度。
+    validation_rules:
+      source_validation: Inherit upstream Pipeline validation
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause Full-site Inventory calculation and notify owner
+    local_knowledge_pack_dependency:
+      asset_name: 是否商广售卖index
+      purpose: Resolve commercial_sellability_flag by explicit ad-placement mapping
+      storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
+      mapping_content_must_remain_local_only: true
+      special_placement_exception_key: '${SPECIAL_PLACEMENT_EXCEPTION_LOCAL_ONLY}'
+      mapping_missing_or_unmatched_handling: >
+        If an ad placement is unmatched, the mapped value is blank, or the mapped value is neither 是 nor 否,
+        treat commercial_sellability_flag as 是.
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_FULL_SITE_BRAND_DELIVERY_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 全站品牌投放库存
+    business_domain: Inventory
+    business_context: Full-site Weekly Inventory
+    inventory_type: Brand delivery inventory
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    calculation_method: Aggregate query-result records only
+    formula: SUM(brand_delivery_stock_quantity) over validated query-result records.
+    aggregation_level: Query-result record set × Full site
+    date_grain_policy: >
+      按查询结果记录处理；在日期展开形态明确前，不得自行按天累计、平均或推断日期粒度。
+    validation_rules:
+      source_validation: Inherit upstream Pipeline validation
+      final_negative_action: Pause Full-site Inventory calculation and notify owner
+      final_zero_action: Continue and notify in final output
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_FULL_SITE_PERFORMANCE_DELIVERY_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 全站效果投放库存
+    business_domain: Inventory
+    business_context: Full-site Weekly Inventory
+    inventory_type: Performance delivery inventory
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    calculation_method: Aggregate query-result records only
+    formula: SUM(performance_delivery_stock_quantity) over validated query-result records.
+    aggregation_level: Query-result record set × Full site
+    date_grain_policy: >
+      按查询结果记录处理；在日期展开形态明确前，不得自行按天累计、平均或推断日期粒度。
+    validation_rules:
+      source_validation: Inherit upstream Pipeline validation
+      final_negative_action: Pause Full-site Inventory calculation and notify owner
+      final_zero_action: Continue and notify in final output
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_FULL_SITE_COMMERCIAL_DELIVERY_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 全站商广投放库存
+    business_domain: Inventory
+    business_context: Full-site Weekly Inventory
+    inventory_type: Commercial delivery inventory
+    period_type: Query-result period
+    input_metric_variant_ids:
+      - MV_INVENTORY_FULL_SITE_BRAND_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_FULL_SITE_PERFORMANCE_DELIVERY_VOLUME_V1
+    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    calculation_method: Derived from validated component metrics
+    formula: Full-site Brand Delivery Inventory + Full-site Performance Delivery Inventory.
+    aggregation_level: Query-result record set × Full site
+    validation_rules:
+      input_validation: Both component Metric Variants must be validated
+      final_negative_action: Pause Full-site Inventory calculation and notify owner
+      final_zero_action: Continue and notify in final output
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_WOW_V1
+    metric_id: METRIC_INVENTORY_CHANGE_RATE
+    metric_name: 全站可用库存环比
+    business_domain: Inventory
+    business_context: Full-site Weekly Inventory
+    comparison_type: Week-over-week
+    period_type: Query-result period
+    numerator_metric_variant_id: MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_FULL_SITE
+      required_period_scope: Prior validated weekly inventory result
+      missing_history_recovery: Inherit Pipeline Registry policy
+    calculation_method: Direct ratio comparison
+    formula: Current-week Available Inventory / prior-week Available Inventory - 1.
+    denominator_invalid_action: Leave growth result blank and notify owner; do not pause Full-site Inventory Pipeline
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_PATCH_GROSS_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 贴片总库存
+    business_domain: Inventory
+    business_context: Patch Weekly Inventory
+    inventory_type: Gross inventory
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_PATCH_STOCK
+    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    calculation_method: Aggregate filtered query-result records only
+    formula: SUM(stock_quantity) over validated records that pass the local time-slice exclusion rule.
+    local_filter_dependency: &patch_time_slice_filter
+      filter_id: FILTER_PATCH_TIME_SLICE_EXCLUSION_LOCAL_ONLY
+      purpose: Exclude explicitly configured time-slice records from all Patch Inventory Metric Variants
+      storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
+      actual_filter_values_must_remain_local_only: true
+    aggregation_level: Query-result record set × Patch
+    validation_rules:
+      source_validation: Inherit upstream Pipeline validation
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause Patch Inventory calculation and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_PATCH_DISABLED_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 贴片禁用库存
+    business_domain: Inventory
+    business_context: Patch Weekly Inventory
+    inventory_type: Disabled inventory
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_PATCH_STOCK
+    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    calculation_method: Aggregate filtered query-result records only
+    formula: SUM(disabled_stock_quantity) over validated records that pass the local time-slice exclusion rule.
+    local_filter_dependency: *patch_time_slice_filter
+    aggregation_level: Query-result record set × Patch
+    validation_rules:
+      source_validation: Inherit upstream Pipeline validation
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause Patch Inventory calculation and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 贴片可用库存
+    business_domain: Inventory
+    business_context: Patch Weekly Inventory
+    inventory_type: Available inventory
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_PATCH_STOCK
+    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    calculation_method: Row-level derivation followed by filtered aggregation
+    formula: >
+      SUM(stock_quantity - disabled_stock_quantity) over validated records that pass the local time-slice exclusion rule.
+    local_filter_dependency: *patch_time_slice_filter
+    aggregation_level: Query-result record set × Patch
+    validation_rules:
+      source_validation: Inherit upstream Pipeline validation
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause Patch Inventory calculation and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_PATCH_BRAND_DELIVERY_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 贴片品牌投放库存
+    business_domain: Inventory
+    business_context: Patch Weekly Inventory
+    inventory_type: Brand delivery inventory
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_PATCH_STOCK
+    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    calculation_method: Aggregate filtered query-result records only
+    formula: SUM(brand_delivery_stock_quantity) over validated records that pass the local time-slice exclusion rule.
+    local_filter_dependency: *patch_time_slice_filter
+    aggregation_level: Query-result record set × Patch
+    validation_rules:
+      source_validation: Inherit upstream Pipeline validation
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause Patch Inventory calculation and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_PATCH_PERFORMANCE_DELIVERY_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 贴片效果投放库存
+    business_domain: Inventory
+    business_context: Patch Weekly Inventory
+    inventory_type: Performance delivery inventory
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_PATCH_STOCK
+    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    calculation_method: Aggregate filtered query-result records only
+    formula: SUM(performance_delivery_stock_quantity) over validated records that pass the local time-slice exclusion rule.
+    local_filter_dependency: *patch_time_slice_filter
+    aggregation_level: Query-result record set × Patch
+    validation_rules:
+      source_validation: Inherit upstream Pipeline validation
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause Patch Inventory calculation and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_PATCH_COMMERCIAL_DELIVERY_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 贴片商广投放库存
+    business_domain: Inventory
+    business_context: Patch Weekly Inventory
+    inventory_type: Commercial delivery inventory
+    period_type: Query-result period
+    input_metric_variant_ids:
+      - MV_INVENTORY_PATCH_BRAND_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_PATCH_PERFORMANCE_DELIVERY_VOLUME_V1
+    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    calculation_method: Derived from validated component metrics
+    formula: Patch Brand Delivery Inventory + Patch Performance Delivery Inventory.
+    local_filter_dependency: *patch_time_slice_filter
+    aggregation_level: Query-result record set × Patch
+    validation_rules:
+      input_validation: Both component Metric Variants must be validated
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause Patch Inventory calculation and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_PATCH_AVAILABLE_VOLUME_WOW_V1
+    metric_id: METRIC_INVENTORY_CHANGE_RATE
+    metric_name: 贴片可用库存环比
+    business_domain: Inventory
+    business_context: Patch Weekly Inventory
+    comparison_type: Week-over-week
+    period_type: Query-result period
+    numerator_metric_variant_id: MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
+      required_period_scope: Prior validated weekly inventory result
+      missing_history_recovery: Inherit Pipeline Registry policy
+    calculation_method: Direct ratio comparison
+    formula: Current-week Available Inventory / prior-week Available Inventory - 1.
+    denominator_invalid_action: Leave growth result blank and notify owner; do not pause Patch Inventory Pipeline
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1
+    metric_id: METRIC_SELL_THROUGH_RATE
+    metric_name: 贴片当周品牌售卖率
+    business_domain: Inventory
+    business_context: Patch Weekly Inventory
+    period_type: Query-result period
+    numerator_metric_variant_id: MV_INVENTORY_PATCH_BRAND_DELIVERY_VOLUME_V1
+    denominator_metric_variant_id: MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+    calculation_method: Direct ratio
+    formula: Patch Brand Delivery Inventory / Patch Available Inventory.
+    aggregation_level: Query-result record set × Patch
+    validation_rules:
+      numerator_zero_action: Continue
+      numerator_empty_action: Treat as 0; calculate sell-through result as 0
+      numerator_negative_or_non_numeric_action: Block Brand Sell-through result only and notify owner
+      denominator_zero_negative_empty_or_non_numeric_action: Block Brand Sell-through result only and notify owner
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+    metric_id: METRIC_INVENTORY_CHANGE_RATE
+    metric_name: 贴片品牌售卖率环比
+    business_domain: Inventory
+    business_context: Patch Weekly Inventory
+    comparison_type: Week-over-week absolute rate change
+    period_type: Query-result period
+    numerator_metric_variant_id: MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
+      required_period_scope: Prior validated weekly patch sell-through result
+      missing_history_recovery: Inherit Pipeline Registry policy
+    calculation_method: Direct rate difference
+    formula: Current-week Brand Sell-through Rate - prior-week Brand Sell-through Rate.
+    input_invalid_action: Block Brand Sell-through result only and notify owner
+    base_unit: Decimal rate-point difference
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_GROSS_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 非贴片产品总库存
+    business_domain: Inventory
+    business_context: Explicit configured non-patch product excluding Brand Moment
+    parameterization:
+      required_parameter: explicit_product_rule_id
+      automatic_product_inference: false
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    calculation_method: Aggregate records explicitly assigned to the requested product
+    formula: SUM(total_inventory_quantity) over records assigned by the local product-rule registry.
+    local_product_rule_dependency: &non_patch_product_rule_registry
+      asset_name: 分产品库存及售卖率计算逻辑
+      role: Explicit product assignment and product-specific inventory calculation rules
+      storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
+      actual_product_rules_must_remain_local_only: true
+      authoritative_for_runtime: true
+      changes_require_explicit_owner_confirmation: true
+      unconfirmed_filter_condition_action: Ask owner; do not infer condition
+      multi_product_match_action: Mark conflict, notify owner, exclude record from all product metrics
+      no_product_match_action: Exclude from product metrics without notification
+    aggregation_level: Query-result record set × Explicit product
+    validation_rules:
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause target product inventory result and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_DISABLED_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 非贴片产品禁用库存
+    business_domain: Inventory
+    business_context: Explicit configured non-patch product excluding Brand Moment
+    parameterization:
+      required_parameter: explicit_product_rule_id
+      automatic_product_inference: false
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    calculation_method: Aggregate records explicitly assigned to the requested product
+    formula: SUM(disabled_inventory_quantity) over records assigned by the local product-rule registry.
+    local_product_rule_dependency: *non_patch_product_rule_registry
+    aggregation_level: Query-result record set × Explicit product
+    validation_rules:
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause target product inventory result and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 非贴片产品可用库存
+    business_domain: Inventory
+    business_context: Explicit configured non-patch product excluding Brand Moment
+    parameterization:
+      required_parameter: explicit_product_rule_id
+      automatic_product_inference: false
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    calculation_method: Row-level derivation followed by product-filtered aggregation
+    formula: >
+      SUM(total_inventory_quantity - disabled_inventory_quantity)
+      over records assigned to the requested product by the local product-rule registry.
+    local_product_rule_dependency: *non_patch_product_rule_registry
+    aggregation_level: Query-result record set × Explicit product
+    validation_rules:
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause target product inventory result and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 非贴片产品品牌投放库存
+    business_domain: Inventory
+    business_context: Explicit configured non-patch product excluding Brand Moment
+    parameterization:
+      required_parameter: explicit_product_rule_id
+      automatic_product_inference: false
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    calculation_method: Aggregate records explicitly assigned to the requested product
+    formula: SUM(brand_delivery_inventory_quantity) over records assigned by the local product-rule registry.
+    local_product_rule_dependency: *non_patch_product_rule_registry
+    aggregation_level: Query-result record set × Explicit product
+    validation_rules:
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause target product inventory result and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_PERFORMANCE_DELIVERY_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 非贴片产品效果投放库存
+    business_domain: Inventory
+    business_context: Explicit configured non-patch product excluding Brand Moment
+    parameterization:
+      required_parameter: explicit_product_rule_id
+      automatic_product_inference: false
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    calculation_method: Aggregate records explicitly assigned to the requested product
+    formula: SUM(performance_delivery_inventory_quantity) over records assigned by the local product-rule registry.
+    local_product_rule_dependency: *non_patch_product_rule_registry
+    aggregation_level: Query-result record set × Explicit product
+    validation_rules:
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause target product inventory result and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_COMMERCIAL_DELIVERY_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 非贴片产品商广投放库存
+    business_domain: Inventory
+    business_context: Explicit configured non-patch product excluding Brand Moment
+    parameterization:
+      required_parameter: explicit_product_rule_id
+      automatic_product_inference: false
+    period_type: Query-result period
+    input_metric_variant_ids:
+      - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_NON_PATCH_PRODUCT_PERFORMANCE_DELIVERY_VOLUME_V1
+    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    calculation_method: Derived from validated component metrics
+    formula: Product Brand Delivery Inventory + Product Performance Delivery Inventory.
+    local_product_rule_dependency: *non_patch_product_rule_registry
+    aggregation_level: Query-result record set × Explicit product
+    validation_rules:
+      final_zero_action: Continue and notify in final output
+      final_negative_action: Pause target product inventory result and notify owner
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_WOW_V1
+    metric_id: METRIC_INVENTORY_CHANGE_RATE
+    metric_name: 非贴片产品可用库存环比
+    business_domain: Inventory
+    business_context: Explicit configured non-patch product excluding Brand Moment
+    parameterization:
+      required_parameter: explicit_product_rule_id
+      automatic_product_inference: false
+    comparison_type: Week-over-week
+    period_type: Query-result period
+    numerator_metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT
+      required_period_scope: Prior validated weekly product inventory result
+      missing_history_recovery: Inherit Pipeline Registry policy
+    calculation_method: Direct ratio comparison
+    formula: Current-week Product Available Inventory / prior-week Product Available Inventory - 1.
+    denominator_invalid_action: Leave change result blank and notify owner; do not pause target product inventory result
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
+    metric_id: METRIC_SELL_THROUGH_RATE
+    metric_name: 非贴片产品当周品牌售卖率
+    business_domain: Inventory
+    business_context: Explicit configured non-patch product excluding Brand Moment
+    parameterization:
+      required_parameter: explicit_product_rule_id
+      automatic_product_inference: false
+    period_type: Query-result period
+    numerator_metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1
+    denominator_metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
+    calculation_method: Direct ratio
+    formula: Product Brand Delivery Inventory / Product Available Inventory.
+    local_product_rule_dependency: *non_patch_product_rule_registry
+    validation_rules:
+      numerator_zero_action: Continue
+      numerator_empty_action: Treat as 0; calculate sell-through result as 0
+      numerator_negative_or_non_numeric_action: Block target product sell-through result only and notify owner
+      denominator_zero_negative_empty_or_non_numeric_action: Block target product sell-through result only and notify owner
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+    metric_id: METRIC_INVENTORY_CHANGE_RATE
+    metric_name: 非贴片产品品牌售卖率环比
+    business_domain: Inventory
+    business_context: Explicit configured non-patch product excluding Brand Moment
+    parameterization:
+      required_parameter: explicit_product_rule_id
+      automatic_product_inference: false
+    comparison_type: Week-over-week absolute rate change
+    period_type: Query-result period
+    numerator_metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH
+      required_period_scope: Prior validated product sell-through result
+      missing_history_recovery: Inherit Pipeline Registry policy
+    calculation_method: Direct rate difference
+    formula: Current-week Product Brand Sell-through Rate - prior-week Product Brand Sell-through Rate.
+    input_invalid_action: Block target product sell-through result only and notify owner
+    base_unit: Decimal rate-point difference
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
+    metric_id: METRIC_INVENTORY_VOLUME
+    metric_name: 品牌时刻可用库存
+    business_domain: Inventory
+    business_context: Brand Moment Weekly Sell-through
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    calculation_method: Apply explicit local Brand Moment denominator rule
+    formula: Defined exclusively by the approved local product-rule registry.
+    local_product_rule_dependency: *non_patch_product_rule_registry
+    aggregation_level: Query-result record set × Brand Moment denominator context
+    validation_rules:
+      invalid_value_action: Block Brand Moment Sell-through result only and notify owner
+      invalid_value_conditions:
+        - Empty available inventory
+        - Zero available inventory
+        - Negative available inventory
+        - Non-numeric available inventory
+    base_unit: Individual inventory unit
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1
+    metric_id: METRIC_IMPRESSION_COUNT
+    metric_name: 品牌时刻当周曝光量
+    business_domain: Advertising
+    business_context: Brand Moment Weekly Delivery Execution
+    period_type: Query-result period
+    dataset_dependencies:
+      - DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+    result_contract_dependency: RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+    calculation_method: Consume validated single-row query result
+    formula: Validated impression_count from the single-row result after date-level detail is deselected.
+    aggregation_level: Target weekly period × Brand Moment
+    validation_rules:
+      expected_result_shape: Exactly one row
+      invalid_exposure_action: Block Brand Moment Sell-through result only and notify owner
+      invalid_exposure_conditions:
+        - Missing impression_count field
+        - Empty impression_count
+        - Zero impression_count
+        - Negative impression_count
+        - Non-numeric impression_count
+    base_unit: Individual impression
+    result_precision: Preserve source precision
+    normalization_rule_id: NORM_RAW_QUANTITY_TO_CPM_V1
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1
+    metric_id: METRIC_INVENTORY_CHANGE_RATE
+    metric_name: 品牌时刻可用库存环比
+    business_domain: Inventory
+    business_context: Brand Moment Weekly Sell-through
+    comparison_type: Week-over-week
+    period_type: Query-result period
+    numerator_metric_variant_id: MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
+      required_period_scope: Prior validated weekly Brand Moment available-inventory result
+      missing_history_recovery: >
+        Trigger one repair of both required upstream Pipelines, recalculate the prior Brand Moment result,
+        and persist the validated repaired result before continuing. If repair fails, pause this Pipeline and notify owner.
+    calculation_method: Direct ratio comparison
+    formula: Current-week Brand Moment Available Inventory / prior-week Brand Moment Available Inventory - 1.
+    denominator_invalid_action: Leave change result blank and notify owner; do not pause Brand Moment Sell-through Pipeline
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1
+    metric_id: METRIC_SELL_THROUGH_RATE
+    metric_name: 品牌时刻当周售卖率
+    business_domain: Inventory
+    business_context: Brand Moment Weekly Sell-through
+    period_type: Query-result period
+    numerator_metric_variant_id: MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1
+    denominator_metric_variant_id: MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
+    calculation_method: Direct ratio
+    formula: Brand Moment Impression Count / Brand Moment Available Inventory.
+    validation_rules:
+      invalid_numerator_or_denominator_action: Block Brand Moment Sell-through result only and notify owner
+      invalid_numerator_or_denominator_conditions:
+        - Exposure is empty, zero, negative, or non-numeric
+        - Available inventory is empty, zero, negative, or non-numeric
+      unaffected_outputs:
+        - Other product results
+        - Revenue section
+    base_unit: Decimal ratio
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+  - metric_variant_id: MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1
+    metric_id: METRIC_INVENTORY_CHANGE_RATE
+    metric_name: 品牌时刻售卖率环比
+    business_domain: Inventory
+    business_context: Brand Moment Weekly Sell-through
+    comparison_type: Week-over-week absolute rate change
+    period_type: Query-result period
+    numerator_metric_variant_id: MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1
+    historical_result_dependency:
+      store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
+      required_period_scope: Prior validated weekly Brand Moment sell-through result
+      missing_history_recovery: >
+        Trigger one repair of both required upstream Pipelines, recalculate the prior Brand Moment result,
+        and persist the validated repaired result before continuing. If repair fails, pause this Pipeline and notify owner.
+    calculation_method: Direct rate difference
+    formula: Current-week Brand Moment Sell-through Rate - prior-week Brand Moment Sell-through Rate.
+    input_invalid_action: Block Brand Moment Sell-through result only and notify owner
+    base_unit: Decimal rate-point difference
+    result_precision: Preserve source precision
+    version: "1.0.0-draft"
+
+scope_exclusions:
+  - Brand Moment exposure week-over-week comparison
+  - Product-scoped sell-through outside explicitly configured report products
+  - Output rounding, template placement, and prose
+
+conditional_analysis_handoff:
+  producer_pipeline_id: PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+  applies_to: Explicitly configured Weekly Report products excluding Brand Moment
+  product_execution_cardinality: One Pipeline Run per explicit configured product
+  route_selection_rule: >
+    Use only the explicit product-to-upstream-result-contract route.
+    Automatic selection by field similarity, name similarity, or history is prohibited.
+  trigger_input_metric_variant_role: Validated product sell-through week-over-week absolute rate change
+  trigger_condition: Absolute sell-through week-over-week rate change is greater than or equal to the configured product threshold
+  default_threshold: 10 percentage points
+  product_specific_override_supported: true
+  trigger_consumer_pipeline_id: PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+  consumer_pipeline_scope: Customer delivery change analysis only
+  no_customer_query_when_trigger_not_met: true
+
+approval:
+  baseline_metric_taxonomy: Confirmed
+  full_site_base_variants: Confirmed
+  quantity_normalization_rule: Confirmed
+  patch_product_variant_scope: Confirmed
+  non_patch_product_variant_scope: Confirmed
+  brand_moment_variant_scope: Confirmed
+  customer_analysis_trigger_boundary: Confirmed
+  owner_confirmation: confirmed_complete
+  readiness_status: Passed
+  committed_or_pushed: false

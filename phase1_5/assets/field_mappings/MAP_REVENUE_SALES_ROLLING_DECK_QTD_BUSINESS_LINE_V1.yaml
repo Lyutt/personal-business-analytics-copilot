@@ -1,0 +1,149 @@
+config_type: field_mapping_profile
+mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+mapping_profile_name: 销售业务线Rolling Deck业务线Sheet完整季度收入映射
+dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+dataset_version_constraint: TBD
+source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+business_domains:
+  - Revenue
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-08-01
+approval_record:
+  approved_by: WORKFLOW_OWNER
+  approved_at: 2026-08-01
+  approval_scope: 季度切换首周及去年同期完整季度收入结果的最小映射
+
+scope:
+  asset_scope: 整个Rolling Deck工作簿中的业务线Sheet
+  source_object_or_sheet_pattern: 业务线
+  inspected_source_object_or_sheet: 业务线
+  structure_type: Cross-tab matrix
+  source_header_row: 1
+  business_line_label_column: A
+  quarter_header_columns: >-
+    从B列开始，读取第1行中所有符合YYQ[1-4]格式、且位于首个
+    YY年Total年度汇总列之前的连续季度列。
+  excluded_columns:
+    - first_and_subsequent_YY年Total_columns
+    - 同比
+  other_workbook_sheets_status: mapped_by_separate_profiles_or_tbd
+  usage_contexts:
+    - quarter_transition_previous_quarter_final
+    - prior_year_comparable
+
+evidence:
+  evidence_sources:
+    - '${LOCAL_WORKFLOW_DATA_ROOT}\业务线sheet最新模版.xlsx'
+  inspected_sample_count: 1
+  sample_observation:
+    - 业务线标签位于A列，季度标签位于第1行
+    - 收入结果位于目标业务线行与目标季度列的交叉单元格
+  schema_observation_status: completed
+
+raw_field_inventory:
+  - raw_field_inventory_id: RF001
+    raw_location: A{row}
+    raw_field_name: 业务线
+    observed_raw_storage_type: text
+    source_value_origin: source_value
+    mapping_status: mapped
+  - raw_field_inventory_id: RF002
+    raw_location: '{quarter_column}1'
+    raw_field_name: 季度标签
+    observed_raw_storage_type: text_period
+    source_value_origin: source_value
+    mapping_status: mapped
+  - raw_field_inventory_id: RF003
+    raw_location: '{quarter_column}{business_line_row}'
+    raw_field_name: 完整季度收入值
+    observed_raw_storage_type: numeric_or_source_formula_result
+    source_value_origin: source_value_or_source_derived_formula_result
+    ingestion_behavior: read_current_cell_result
+    agent_recalculation_allowed: false
+    mapping_status: mapped
+
+field_mappings:
+  - mapping_entry_id: FM001
+    raw_field_inventory_id: RF001
+    raw_field_name: 业务线
+    standard_field_id: revenue_business_line
+    standard_field_name: 收入业务线
+    standard_data_type: string
+    semantic_role: business_dimension
+    explicit_value_mapping:
+      'Total 技术类': Technical
+      CTV: CTV
+    matching_normalization: trim_leading_and_trailing_whitespace_then_exact_match
+    required: true
+    nullable: false
+    mapping_status: owner_confirmed
+  - mapping_entry_id: FM002
+    raw_field_inventory_id: RF002
+    raw_field_name: 季度标签
+    standard_field_id: fiscal_quarter
+    standard_field_name: 归属季度
+    standard_data_type: string
+    semantic_role: business_period
+    source_pattern: YYQ[1-4]
+    standard_pattern: YYYYQ[1-4]
+    normalization: prepend_20_to_two_digit_year_after_trim
+    excluded_source_header_patterns:
+      - YY年Total
+      - 同比
+    required: true
+    nullable: false
+    mapping_status: owner_confirmed
+  - mapping_entry_id: FM003
+    raw_field_inventory_id: RF003
+    raw_field_name: 完整季度收入值
+    standard_field_id: performance_revenue_amount
+    standard_field_name: 签单金额
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    unit: CNY_yuan
+    matrix_coordinate_rule: exact_intersection_of_revenue_business_line_and_fiscal_quarter
+    source_formula_handling: read_current_cell_result_without_recalculation
+    required: true
+    nullable: false
+    mapping_status: owner_confirmed
+  - mapping_entry_id: FM004
+    raw_field_inventory_id: RF003
+    raw_field_name: 完整季度收入值
+    standard_field_id: executed_revenue_amount
+    standard_field_name: 已执行金额
+    standard_data_type: decimal
+    semantic_role: monetary_measure
+    unit: CNY_yuan
+    contextual_equivalence: >-
+      仅在完整季度收入场景中，Owner已确认该值与
+      performance_revenue_amount保持一致。
+    source_formula_handling: read_current_cell_result_without_recalculation
+    required: true
+    nullable: false
+    mapping_status: owner_confirmed
+
+validation:
+  source_sheet_exact_match_required: true
+  header_row_exactly_one_required: true
+  business_line_label_exact_match_required_after_trim: true
+  fiscal_quarter_exact_match_required_after_normalization: true
+  duplicate_business_line_or_quarter_match_behavior: fail_mapping_resolution
+  source_value_invalid_when_any:
+    - empty
+    - non_numeric
+    - zero
+    - negative
+  invalid_value_behavior: follow_confirmed_revenue_source_failure_rule
+  annual_total_or_yoy_column_fallback_allowed: false
+  adjacent_quarter_or_other_revenue_column_fallback_allowed: false
+
+constraints:
+  automatic_field_inference_allowed: false
+  automatic_similarity_mapping_allowed: false
+  metric_formula_allowed: false
+  business_rule_definition_allowed: false
+  output_formatting_allowed: false
+  unknown_fields_remain_tbd: true

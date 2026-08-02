@@ -6,13 +6,15 @@
 - Business Asset Initialization：进行中。
 - Data Source Inventory：已完成，MVP范围共确认3个独立数据获取入口。
 - Dataset / Query Asset Inventory：本轮录入完成。
-- Dataset标准化与Readiness Gate：原始Weekly范围完成；Rolling Deck
-  “业务线”Sheet新增用途产生1项待补Field Mapping增量。
+- Dataset标准化与Readiness Gate：Weekly范围完成；Rolling Deck
+  “业务线”Sheet与季度结算备选Sheet的增量Field Mapping已通过Delta Gate。
 - Weekly Business Report Pipeline Registry：已完成，12条Pipeline全部通过
   Registry Readiness Gate。
-- Field Mapping Initialization：原始9个Dataset范围已完成并通过Gate。
-- Business Rule Initialization：进行中。
-- 当前资产类别：Revenue分类、过滤与季度上下文规则。
+- Field Mapping Initialization：原始9个Dataset范围及Revenue业务线增量范围已完成并通过Gate。
+- Business Rule Initialization：Revenue范围已完成Readiness Gate。
+- Revenue Business Rule状态：6条Approved。
+- Metric Library Initialization：已完成并通过Readiness Gate。
+- 当前收口点：Metric Library Initialization已完成，未自动进入Output Mapping。
 - 当前基线：[Phase 1.5 Baseline Closure — 2026-07-31](BASELINE_CLOSURE_2026-07-31.md)。
 - 整体 Personal Business Analytics Copilot 架构：不变。
 - 代码实现：未开始。
@@ -43,9 +45,17 @@ Phase 1 旧版 `phase1/workflows/weekly_business_report/WORKFLOW.md` 保留，�
 - [Field Mapping 模板](templates/field_mapping.template.yaml)
 - [Field Mapping 资产索引](assets/field_mappings/INDEX.md)
 - [Field Mapping Readiness Gate](assets/field_mappings/field_mapping_readiness_gate.yaml)
+- [Revenue业务线增量Field Mapping Gate](assets/field_mappings/field_mapping_readiness_gate_delta_revenue_business_line.yaml)
 - [Field Mapping Initialization 阶段归档](Field_Mapping_Initialization_Archive.md)
 - [Business Rule 模板](templates/business_rule.template.yaml)
 - [Business Rule 资产索引](assets/business_rules/INDEX.md)
+- [Revenue Business Rule Readiness Gate](assets/business_rules/business_rule_readiness_gate_revenue.yaml)
+- [Revenue Business Rule Initialization 阶段归档](Business_Rule_Initialization_Revenue_Archive.md)
+- [Metric Library 资产索引](assets/metrics/INDEX.md)
+- [Metric Library Readiness Gate](assets/metrics/metric_library_readiness_gate.yaml)
+- [Metric Library Initialization 阶段归档](Metric_Library_Initialization_Archive.md)
+- [产品客户变化条件分析策略](assets/pipelines/PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_policy_v1.yaml)
+- [通用查询会话恢复策略](assets/execution_policies/QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1.yaml)
 - `outputs/phase1_5/Business_Asset_Initialization_v2_1.xlsx`
 
 ## v2.1 轻量字段更新
@@ -65,7 +75,7 @@ Dataset、Pipeline或Metric资产。
 ## 当前规则
 
 - 不把示例 Pipeline、Dataset、Rule 或 Metric 当作真实业务资产。
-- 所有实际业务标识、字段、规则和公式保持 `TBD`。
+- 所有未确认业务标识、字段、规则和公式保持 `TBD`；已确认内容按对应资产版本管理。
 - Dataset–Pipeline 依赖必须显式配置。
 - Pipeline 是运行、验证、异常定位和补跑的最小执行单元。
 - Workflow 之间不产生文件级依赖。

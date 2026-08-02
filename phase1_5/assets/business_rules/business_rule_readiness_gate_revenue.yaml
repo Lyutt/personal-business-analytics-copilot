@@ -1,0 +1,52 @@
+config_type: business_rule_readiness_gate
+gate_id: GATE_BUSINESS_RULE_REVENUE_WF_WEEKLY_BUSINESS_REPORT_V1
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+business_domain: Revenue
+assessment_date: 2026-08-01
+status: passed
+owner_confirmation: confirmed_complete
+
+scope:
+  revenue_rule_count: 6
+  approved_rule_count: 6
+  confirmed_pending_field_mapping_rule_count: 0
+  unresolved_business_decision_count: 0
+  runtime_code_implementation_started: false
+
+approved_rules:
+  - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+  - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+  - BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1
+  - BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1
+  - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
+  - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+
+conditionally_ready_rules: []
+
+shared_execution_policy:
+  policy_id: QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1
+  status: approved
+  changes_pipeline_failure_scope: false
+
+gate_checks:
+  explicit_dataset_and_pipeline_references: pass
+  automatic_field_inference_disabled: pass
+  automatic_rule_completion_disabled: pass
+  metric_formula_excluded: pass
+  output_formatting_excluded: pass
+  ambiguous_source_selection_has_owner_confirmation_path: pass
+  known_field_mapping_dependencies_resolved: pass
+  outlook_auto_send_false_unchanged: pass
+  business_rule_conflict_count: 0
+
+deferred_to_designated_phase:
+  - Revenue Metric and Metric Variant formulas
+  - Revenue Output Mapping and presentation behavior
+  - Inventory prior-year date comparison rule
+  - DAU prior-year date comparison rule
+
+decision:
+  revenue_business_rule_initialization_complete: true
+  runtime_ready_without_mapping_delta: true
+  metric_library_entry_allowed_after_owner_direction: true
+  automatic_next_stage_allowed: false

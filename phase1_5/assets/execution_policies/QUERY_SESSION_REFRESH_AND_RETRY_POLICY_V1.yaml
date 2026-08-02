@@ -1,0 +1,62 @@
+config_type: execution_policy
+policy_id: QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1
+policy_name: Apollo与NovaBI查询会话刷新与单次重试策略
+policy_category: Query Session Recovery
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-08-01
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+
+purpose: >
+  处理Apollo或NovaBI网页因长时间未操作而失效，或在登录状态仍在时
+  显示无权限的可恢复会话异常。
+
+explicit_pipeline_bindings:
+  - PL_REVENUE_SMART_SPEAKER_WEEKLY
+  - PL_REVENUE_FAST_VERSION_WEEKLY
+  - PL_INVENTORY_FULL_SITE_WEEKLY
+  - PL_INVENTORY_PATCH_WEEKLY
+  - PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+  - PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+  - PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+  - PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+
+trigger_conditions:
+  any:
+    - query page appears expired after inactivity
+    - page displays no-permission state while the authenticated session still appears active
+
+recovery_sequence:
+  maximum_page_refresh_count: 1
+  ordered_actions:
+    - refresh_page
+    - reenter_explicit_query_module
+    - reselect_explicit_query_asset_or_template
+    - restore_all_configured_parameters
+    - validate_restored_configuration
+    - execute_query_once
+  restored_configuration_validation:
+    - correct Query Asset or query template
+    - correct date range
+    - correct configured filters and parameters
+    - correct configured detail-dimension selection state
+  stale_pre_refresh_result_reuse_allowed: false
+
+on_recovery_failure:
+  action: follow_each_pipeline_existing_failure_policy
+  automatic_additional_refresh_allowed: false
+  automatic_credential_entry_allowed: false
+  on_explicit_login_or_account_switch_required:
+    - notify_owner
+    - request_manual_owner_action
+
+future_binding_rule:
+  automatic_inheritance_by_source_name_allowed: false
+  explicit_policy_binding_required: true
+
+constraints:
+  business_rule_evaluation_allowed: false
+  metric_calculation_allowed: false
+  pipeline_failure_scope_override_allowed: false
+  credential_storage_allowed: false
