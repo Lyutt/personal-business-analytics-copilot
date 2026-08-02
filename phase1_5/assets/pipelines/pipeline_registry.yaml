@@ -24,6 +24,13 @@ readiness_gate:
       readiness: mapping_approved
       mapping_dependency_resolved: true
   deferred_business_logic_remains_tbd: true
+output_mapping_stage:
+  workflow_id: WF_WEEKLY_BUSINESS_REPORT
+  status: completed
+  gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
+  output_mapping_id: OM_WEEKLY_BUSINESS_REPORT_V1
+  outlook_draft_mapping_id: OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
+  customer_revenue_detail_status: deferred_by_owner
 initialization_scope:
   included_workflows:
     - WF_WEEKLY_BUSINESS_REPORT
@@ -207,7 +214,8 @@ pipelines:
         mode_selection_rule_id: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
         non_applicable_field_representation: not_applicable
         missing_data_must_not_be_mapped_to_not_applicable: true
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
@@ -377,7 +385,8 @@ pipelines:
         mode_selection_rule_id: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
         non_applicable_field_representation: not_applicable
         missing_data_must_not_be_mapped_to_not_applicable: true
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
@@ -556,7 +565,8 @@ pipelines:
         mode_selection_rule_id: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
         non_applicable_field_representation: not_applicable
         missing_data_must_not_be_mapped_to_not_applicable: true
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
@@ -738,7 +748,8 @@ pipelines:
         mode_selection_rule_id: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
         non_applicable_field_representation: not_applicable
         missing_data_must_not_be_mapped_to_not_applicable: true
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
@@ -899,7 +910,8 @@ pipelines:
           - Patch inventory results
           - Non-patch product inventory results
           - Sell-through results
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_FULL_SITE
@@ -1053,7 +1065,8 @@ pipelines:
           - Non-patch product inventory results
           - Brand Moment exposure results
           - Final sell-through results
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
@@ -1216,7 +1229,8 @@ pipelines:
           - Full-site inventory results
           - Patch inventory results
           - Final sell-through results
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT
@@ -1369,7 +1383,8 @@ pipelines:
         metric_concept: Brand Moment sell-through
         exposure_role: Numerator
         downstream_pipeline_id: PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_BRAND_MOMENT_DELIVERY
@@ -1517,7 +1532,8 @@ pipelines:
           - Raw exposure result
           - Raw or standardized inventory result
           - Other product sell-through results
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
@@ -1660,7 +1676,8 @@ pipelines:
         excludes:
           - Inventory results
           - Product sell-through results
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_PLATFORM_DAU
@@ -1798,7 +1815,8 @@ pipelines:
       result_contract_ids:
         - RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
       result_contract_cardinality: One result per triggered product Pipeline Run
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: false
 
     recovery:
@@ -1925,7 +1943,8 @@ pipelines:
       result_contract_ids:
         - RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
       result_contract_cardinality: One result per product-scoped Pipeline Run
-      output_mapping_ids: []
+      output_mapping_ids:
+        - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: true
       metric_result_store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       metric_result_store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH

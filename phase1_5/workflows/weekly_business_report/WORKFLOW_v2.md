@@ -2,13 +2,13 @@
 
 > Workflow_ID：`WF_WEEKLY_BUSINESS_REPORT`
 >
-> Version：`0.2.2-business-rule-initialization`
+> Version：`0.2.3-output-mapping-closure`
 >
-> Status：Approved Architecture / Pipeline Registry Completed / Original Field Mapping Gate Passed / Business Rule Initialization In Progress
+> Status：Approved Architecture / Pipeline Registry Completed / Field Mapping Gate Passed / Revenue Business Rules Gate Passed / Metric Library Gate Passed / Weekly Output Mapping Gate Passed
 >
 > 旧版保留位置：`phase1/workflows/weekly_business_report/WORKFLOW.md`
 >
-> 当前阶段：不包含代码实现
+> 当前阶段：Weekly Business Report P0 资产已收口；不包含代码实现
 
 ## 1. Workflow 目标
 
@@ -81,8 +81,8 @@ MVP 至少包含：
 
 | Domain_ID | 说明 | 状态 |
 |---|---|---|
-| `DOMAIN_REVENUE` | 周报收入模块所需 Pipeline 集合 | Dataset/Pipeline 已初始化；原始Field Mapping范围已通过；Business Rule进行中 |
-| `DOMAIN_INVENTORY` | 周报库存及相关经营指标 Pipeline 集合 | Dataset/Pipeline 已初始化；Field Mapping 待开始 |
+| `DOMAIN_REVENUE` | 周报收入模块所需 Pipeline 集合 | Dataset/Pipeline、Field Mapping、Revenue P0 Rules、Metrics 和 Output Mapping 已收口 |
+| `DOMAIN_INVENTORY` | 周报库存及相关经营指标 Pipeline 集合 | Dataset/Pipeline、Field Mapping、Metrics 和 Output Mapping 已收口；产品路由使用已确认的本地策略 |
 
 Domain 只定义业务语义和 Pipeline 集合，不定义统一 Source、Schema 或 Formula。
 Advertising 与 User Analytics / Platform Operation 的支持型 Pipeline 已在正式
@@ -134,7 +134,7 @@ stateDiagram-v2
 
 | Registry状态 | Pipeline数量 | Field Mapping | Business Rules | Metric Variants | Output Mapping |
 |---|---:|---|---|---|---|
-| Completed / Readiness Gate Pass | 12 | Pending | Pending | Pending | Pending |
+| Completed / Readiness Gate Pass | 12 | Passed | Revenue P0 Passed | Passed | Passed |
 
 ### 补跑规则
 
@@ -246,7 +246,8 @@ Pipeline运行时不得以本文表格代替正式Registry；若二者不一致�
 输入：
 
 - Validated Metric Result Contract。
-- Output_Mapping_ID 和 Version。
+- `OM_WEEKLY_BUSINESS_REPORT_V1` 和 Version。
+- `OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1` 和 Version。
 - Template_ID 和 Version。
 - 报告周期。
 - 已批准的展示配置。
@@ -263,6 +264,7 @@ Pipeline运行时不得以本文表格代替正式Registry；若二者不一致�
 - 找不到唯一 Output Mapping 时阻断。
 - 模板必填占位符未填充时阻断。
 - `auto_send=false` 不允许由 Workflow 配置覆盖。
+- `WF_CUSTOMER_REVENUE_DETAIL` 的 Excel 输出不属于本 Workflow 输入或附件。
 
 ## 13. Workflow 间结果共享
 

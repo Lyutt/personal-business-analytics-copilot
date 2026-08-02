@@ -1,0 +1,206 @@
+config_type: output_mapping
+output_mapping_id: OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1
+mapping_version: 1.0.0
+status: deferred_by_owner
+owner: WORKFLOW_OWNER
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+
+output_target:
+  type: Customer Revenue Detail Excel
+  format: XLSX
+  storage_scope: local_only
+  storage_location: ${CUSTOMER_REVENUE_OUTPUT_DIR_LOCAL_ONLY}
+  filename_pattern: ${CUSTOMER_REVENUE_DETAIL_FILENAME_PATTERN_LOCAL_ONLY}
+  source_template_reference: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
+  source_template_files_must_not_enter_git: true
+  generated_output_must_not_enter_git: true
+  weekly_report_attachment: false
+  weekly_report_file_dependency: false
+
+assembly_constraints:
+  input_must_be_validated_result_or_approved_local_input: true
+  may_read_raw_dataset: false
+  may_calculate: false
+  may_apply_business_rule: false
+  may_select_metric_variant: false
+  may_create_partial_file_on_failure: false
+  output_engine_role: Presentation assembly, template mapping and XLSX generation only
+
+workbook_layout:
+  preserve_template_style: true
+  preserve_template_sheet_order: true
+  header_row: 1
+  data_start_row: 2
+  sheets:
+    - sheet_id: CUSTOMER_DETAIL_LIST
+      sheet_name_pattern: 分客户list
+      role: Primary customer detail list
+      observed_used_range: A1:R138
+      observed_column_count: 18
+      observed_formula_cells: 10
+      column_mapping:
+        - column: A
+          template_header: 行业
+          semantic_role: industry
+        - column: B
+          template_header: 广告主
+          semantic_role: customer
+        - column: C
+          template_header_pattern: '{PriorYear}年Q{Quarter}收入'
+          semantic_role: prior_year_quarter_revenue
+        - column: D
+          template_header_pattern: '{CurrentYear}年Q{Quarter}预估'
+          semantic_role: current_quarter_forecast
+        - column: E
+          template_header: 预估同比
+          semantic_role: forecast_yoy
+        - column: F
+          template_header_pattern: '{CurrentYear}年Q{Quarter}截止{AsOfDate}业绩'
+          semantic_role: current_qtd_performance_as_of_date
+        - column: G
+          template_header: 业绩完成率
+          semantic_role: performance_completion_rate
+        - column: H
+          template_header: 业绩同比
+          semantic_role: performance_yoy
+        - column: I
+          template_header: 本周新增业绩
+          semantic_role: weekly_incremental_performance
+        - column: J
+          template_header_pattern: '{CurrentYear}年Q{Quarter}截止{AsOfDate}执行'
+          semantic_role: current_qtd_executed_as_of_date
+        - column: K
+          template_header_pattern: '{PriorYear}年Q{Quarter}截止{AsOfDate}业绩'
+          semantic_role: prior_year_qtd_performance_as_of_date
+        - column: L
+          template_header_pattern: '{PriorYear}年Q{Quarter}截止{AsOfDate}执行'
+          semantic_role: prior_year_qtd_executed_as_of_date
+        - column: M
+          template_header_pattern: '{CurrentYear}年Q{Quarter}截止{PriorWeekAsOfDate}业绩'
+          semantic_role: prior_week_qtd_performance_as_of_date
+        - column: N
+          template_header_pattern: '{CurrentYear}年Q{Quarter}截止{PriorWeekAsOfDate}执行'
+          semantic_role: prior_week_qtd_executed_as_of_date
+        - column: O
+          template_header: 变化原因类型
+          semantic_role: variance_reason_type
+        - column: P
+          template_header: 预算变动原因
+          semantic_role: budget_change_reason
+        - column: Q
+          template_header_pattern: '{PriorYear}年Q{Quarter}截止{PriorComparableAsOfDate}业绩'
+          semantic_role: prior_year_comparable_performance_as_of_date
+        - column: R
+          template_header_pattern: '{PriorYear}年Q{Quarter}截止{PriorComparableAsOfDate}执行'
+          semantic_role: prior_year_comparable_executed_as_of_date
+      formula_policy:
+        observed_formula_cells_are_template_structure_only: true
+        formula_logic: TBD
+        output_engine_must_not_invent_or_recalculate_business_logic: true
+
+    - sheet_id: PRIOR_YEAR_TOP20
+      sheet_name_pattern: '{PriorYear}年Q{Quarter}收入Top20'
+      role: Prior-year quarter customer summary
+      observed_used_range: A1:G22
+      observed_column_count: 7
+      header_row: 1
+      data_start_row: 2
+      observed_formula_cells: 0
+      columns:
+        - A: 广告主
+        - B: '{PriorYear}年Q{Quarter}收入'
+        - C: '{CurrentYear}年Q{Quarter}预估'
+        - D: '{CurrentYear}年Q{Quarter}累计业绩截止{AsOfDate}'
+        - E: 去年同期累计业绩
+        - F: 业绩完成率
+        - G: '截止{AsOfDate}业绩同比'
+
+    - sheet_id: CURRENT_QUARTER_TOP20
+      sheet_name_pattern: '{CurrentYear}年Q{Quarter}预估Top20'
+      role: Current-quarter estimate customer summary
+      observed_used_range: A1:H22
+      observed_column_count: 8
+      populated_columns: A:G
+      reserved_blank_columns: H
+      header_row: 1
+      data_start_row: 2
+      observed_formula_cells: 0
+      columns:
+        - A: 广告主
+        - B: '{PriorYear}年Q{Quarter}收入'
+        - C: '{CurrentYear}年Q{Quarter}预估'
+        - D: '{CurrentYear}年Q{Quarter}累计业绩截止{AsOfDate}'
+        - E: 去年同期累计业绩
+        - F: 业绩完成率
+        - G: '截止{AsOfDate}业绩同比'
+
+parameterization:
+  required_runtime_parameters:
+    - CurrentYear
+    - PriorYear
+    - Quarter
+    - AsOfDate
+  optional_runtime_parameters:
+    - PriorWeekAsOfDate
+    - PriorComparableAsOfDate
+  date_and_period_header_generation: Preserve the approved template pattern; exact input source rules are TBD
+
+input_sources:
+  status: confirmed_three_part_input_set
+  source_assets:
+    - source_role: current_quarter_cumulative_revenue
+      dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+      required: true
+      acquisition_scope: Current fiscal quarter cumulative revenue input
+      pipeline_binding: TBD
+    - source_role: prior_year_comparable_revenue
+      source_type: Local historical business-line revenue archive
+      storage_location: ${REVENUE_HISTORY_ARCHIVE_DIR_LOCAL_ONLY}
+      required: true
+      selection_rule_reference: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+      actual_files_must_remain_local_only: true
+    - source_role: prior_week_customer_revenue_output
+      source_type: Prior approved Customer Revenue Detail Excel output
+      workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+      run_reference: Previous approved run for the immediately preceding report period
+      required: true
+      read_only: true
+      source_fields:
+        - prior_week_cumulative_values
+        - prior_year_comparable_cumulative_values
+      output_file_must_remain_local_only: true
+  dataset_pipeline_bindings:
+    - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+      role: current_quarter_cumulative_revenue
+      pipeline_id: TBD
+    - dataset_id: TBD
+      role: prior_year_comparable_revenue
+      pipeline_id: TBD
+  prior_output_reference:
+    required_for: prior_week_cumulative_values and prior_year_comparable_cumulative_values
+    selection_rule: Latest approved output for the immediately preceding report period
+    missing_or_unapproved_action: Notify owner and block Customer Revenue Detail Workflow
+  note: All three sources are explicit; no source may be inferred from workbook field names or customer rows.
+
+failure_and_warning_policy:
+  input_missing_or_invalid:
+    notify_owner: true
+    block_workflow: true
+    block_scope: WF_CUSTOMER_REVENUE_DETAIL only
+    weekly_report_impact: none
+  output_generation_failure:
+    notify_owner: true
+    block_workflow: true
+    create_partial_file: false
+  warning_source: Runtime validation and Pipeline notification records
+
+governance:
+  deferred_by_owner: true
+  defer_reason: Complete the overall Weekly Business Report Workflow first
+  resume_condition: Owner explicitly resumes Customer Revenue Detail Workflow initialization
+  output_mapping_does_not_define_business_rules_or_metric_formulas: true
+  workflow_file_dependency_on_weekly_report: false
+  customer_data_and_generated_workbooks_must_remain_local_only: true
+  outlook_auto_send: not_applicable
+  evidence_sources:
+    - TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY

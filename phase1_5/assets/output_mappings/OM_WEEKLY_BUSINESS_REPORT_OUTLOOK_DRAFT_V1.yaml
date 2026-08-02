@@ -1,0 +1,42 @@
+config_type: output_mapping
+output_mapping_id: OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
+mapping_version: 1.0.0
+status: confirmed_complete
+owner: WORKFLOW_OWNER
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+
+output_target:
+  type: Outlook Draft
+  format: Outlook Draft
+  body_mapping_id: OM_WEEKLY_BUSINESS_REPORT_V1
+  recipient_source: RECIPIENTS_WEEKLY_REPORT_BASELINE_LOCAL_ONLY
+  recipient_configuration_must_remain_local_only: true
+  attachments_included: false
+  auto_send: false
+  draft_only: true
+  human_review_required_before_send: true
+  source_template_files_must_not_enter_git: true
+
+assembly_constraints:
+  may_read_raw_dataset: false
+  may_calculate: false
+  may_apply_business_rule: false
+  may_select_metric_variant: false
+  body_must_be_generated_by_approved_mapping: true
+  customer_revenue_excel_dependency: false
+
+failure_and_warning_policy:
+  draft_creation_failure:
+    notify_owner: true
+    block_output_generation: true
+    upstream_validated_results_remain_usable: true
+  auto_send_override:
+    allowed: false
+    enforcement: Workflow and Output Mapping configuration must keep auto_send=false
+
+governance:
+  outlook_credentials_and_recipient_identities_must_remain_local_only: true
+  no_attachments_in_mvp: true
+  evidence_sources:
+    - OM_WEEKLY_BUSINESS_REPORT_V1
+    - Confirmed Weekly Report recipient and draft policy
