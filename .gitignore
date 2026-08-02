@@ -2,6 +2,8 @@
 .tmp/
 .tmp_spreadsheet_inspect/
 node_modules/
+__pycache__/
+*.py[cod]
 
 # Local environment secrets
 .env

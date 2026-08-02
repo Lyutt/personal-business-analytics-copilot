@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 阶段状态：Revenue规则初始化已完成；Business Rule Initialization整体继续进行。
+- 阶段状态：Weekly Workflow P0 Business Rule范围已完成并通过Gate。
 - 正式开始日期：2026-07-31。
 - 本轮恢复日期：2026-08-01。
 - 当前Workflow：`WF_WEEKLY_BUSINESS_REPORT`。
@@ -10,7 +10,7 @@
 - 已批准Revenue Rule数量：6。
 - 已确认但待Field Mapping的Revenue Rule数量：0。
 - Revenue Rule未确认业务决策数量：0。
-- 代码实现：未开始。
+- 代码实现：未开始；是否进入实现由最终Code Implementation Readiness Gate统一决定。
 
 ## Revenue收口结果
 
@@ -28,7 +28,7 @@
 - 2026年技术线与CTV去年同期文件都使用“向前一年再加一天”匹配；
   2027年及以后必须重新确认。
 - 主来源业务线Sheet与备选业绩-业务线Sheet的增量Field Mapping已通过Delta Gate。
-- Revenue规则收口后不自动进入Metric Library、Inventory Rule或下一资产阶段。
+- Revenue规则Gate只负责本阶段收口，不单独授权代码实现；当前项目状态以统一Status Index为准。
 
 ## 初始化原则
 

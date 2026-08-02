@@ -1,5 +1,8 @@
 # Revenue Knowledge Pack — Draft
 
+> 历史状态说明：本目录保留Phase 1盘点模板，不代表当前Weekly Workflow准备度。
+> 已确认的收入资产以`phase1_5/assets/`和统一Status Index为准。
+
 ## 目的
 
 保存 Weekly Business Report 所需的已确认收入业务知识。此 Pack 不保存通用数据处理能力，也不保存 Workflow 步骤。

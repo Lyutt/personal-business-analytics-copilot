@@ -3,6 +3,7 @@ gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 assessment_date: 2026-07-31
 status: passed
+gate_result: passed
 owner: WORKFLOW_OWNER
 business_approver: WORKFLOW_OWNER
 
@@ -63,7 +64,8 @@ gate_decision:
   warning_count: 0
   allow_next_asset_stage: true
   recommended_next_asset_stage: Business Rule Initialization
-  code_implementation_authorized: false
+  code_implementation_authorized_by_this_gate: false
+  final_code_implementation_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
 
 constraints:
   unknown_business_rules_remain_tbd: true

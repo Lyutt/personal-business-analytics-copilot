@@ -3,6 +3,7 @@ gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 assessment_date: 2026-08-02
 status: passed
+gate_result: passed
 owner: WORKFLOW_OWNER
 owner_confirmation: confirmed_complete
 
@@ -46,5 +47,6 @@ decision:
   weekly_report_output_mapping_initialization_complete: true
   weekly_report_workflow_ready_for_phase_1_5_closure: true
   customer_revenue_detail_deferred_without_blocking_weekly_report: true
-  code_implementation_authorized: false
+  code_implementation_authorized_by_this_gate: false
+  final_code_implementation_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
   auto_merge_authorized: false

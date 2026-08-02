@@ -4,6 +4,7 @@ workflow_id: WF_WEEKLY_BUSINESS_REPORT
 business_domain: Revenue
 assessment_date: 2026-08-01
 status: passed
+gate_result: passed
 owner_confirmation: confirmed_complete
 
 scope:
@@ -11,7 +12,7 @@ scope:
   approved_rule_count: 6
   confirmed_pending_field_mapping_rule_count: 0
   unresolved_business_decision_count: 0
-  runtime_code_implementation_started: false
+  runtime_code_implementation_started_at_assessment_time: false
 
 approved_rules:
   - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
@@ -50,3 +51,5 @@ decision:
   runtime_ready_without_mapping_delta: true
   metric_library_entry_allowed_after_owner_direction: true
   automatic_next_stage_allowed: false
+  code_implementation_authorized_by_this_gate: false
+  final_code_implementation_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1

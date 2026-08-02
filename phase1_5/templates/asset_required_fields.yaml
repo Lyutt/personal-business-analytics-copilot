@@ -1,0 +1,403 @@
+config_type: asset_required_field_rules
+rules_version: 1.0.0
+status: active
+purpose: >-
+  Define the stable Required structure for formal Phase 1.5 assets. Existing
+  asset templates remain filling examples and may contain optional or
+  scenario-specific fields beyond this minimum contract.
+
+asset_rules:
+  - asset_type: data_source_inventory
+    selector: { key: config_type, value: data_source_inventory }
+    required_paths:
+      - config_type
+      - inventory_version
+      - status
+      - owner
+      - data_sources
+      - data_sources[].source_id
+      - data_sources[].source_name
+      - data_sources[].source_type
+      - data_sources[].business_purpose
+      - data_sources[].criticality
+      - data_sources[].asset_priority
+      - data_sources[].business_domains
+      - data_sources[].access
+      - data_sources[].schedule
+      - data_sources[].acquisition
+      - data_sources[].governance
+      - constraints
+
+  - asset_type: dataset_inventory
+    selector: { key: config_type, value: dataset_inventory }
+    required_paths:
+      - config_type
+      - inventory_version
+      - status
+      - owner
+      - datasets
+      - datasets[].dataset_id
+      - datasets[].dataset_name
+      - datasets[].business_domains
+      - datasets[].business_purpose
+      - datasets[].asset_role
+      - datasets[].source_id
+      - datasets[].query_asset_id
+      - datasets[].acquisition
+      - datasets[].data_contract
+      - datasets[].context
+      - datasets[].quality
+      - datasets[].governance
+      - query_assets
+      - query_assets[].query_asset_id
+      - query_assets[].source_id
+      - query_assets[].query_or_export_name
+      - query_assets[].query_description_or_manual_steps
+      - query_assets[].output_dataset_id
+      - query_assets[].parameters_or_filters
+      - query_assets[].result_acquisition_method
+      - query_assets[].expected_format
+      - query_assets[].owner
+      - query_assets[].version
+      - query_assets[].approval_status
+      - constraints
+
+  - asset_type: dataset_readiness_matrix
+    selector: { key: config_type, value: dataset_readiness_matrix }
+    required_paths:
+      - config_type
+      - gate_id
+      - matrix_version
+      - status
+      - gate_result
+      - assessment_workflow_id
+      - assessment_summary
+      - dataset_readiness
+      - dataset_readiness[].dataset_id
+      - dataset_readiness[].source_id
+      - dataset_readiness[].query_asset_id
+      - dataset_readiness[].registration_status
+      - dataset_readiness[].workflow_usage
+      - dataset_readiness[].readiness
+      - dataset_readiness[].standardization
+      - dataset_readiness[].gate
+      - constraints
+
+  - asset_type: pipeline_registry
+    selector: { key: config_type, value: pipeline_registry }
+    required_paths:
+      - config_type
+      - gate_id
+      - registry_version
+      - status
+      - gate_result
+      - owner
+      - pipelines
+      - pipelines[].pipeline_id
+      - pipelines[].pipeline_name
+      - pipelines[].business_domain
+      - pipelines[].business_line
+      - pipelines[].business_context_id
+      - pipelines[].trigger_type
+      - pipelines[].owner
+      - pipelines[].business_approver
+      - pipelines[].version
+      - pipelines[].approval_status
+      - pipelines[].workflow_bindings
+      - pipelines[].dataset_dependencies
+      - pipelines[].execution
+      - pipelines[].execution.stages
+      - pipelines[].execution.mapping_profile_ids
+      - pipelines[].execution.ordered_rule_set_ids
+      - pipelines[].execution.metric_variant_ids
+      - pipelines[].execution.validation_rule_ids
+      - pipelines[].outputs
+      - pipelines[].outputs.result_contract_ids
+      - pipelines[].outputs.output_mapping_ids
+      - pipelines[].outputs.write_to_metrics_store
+      - pipelines[].recovery
+      - pipelines[].governance
+      - constraints
+
+  - asset_type: field_mapping_profile
+    selector: { key: config_type, value: field_mapping_profile }
+    required_paths:
+      - config_type
+      - mapping_profile_id
+      - mapping_profile_name
+      - dataset_id
+      - dataset_version_constraint
+      - source_id
+      - business_domains
+      - owner
+      - business_approver
+      - version
+      - approval_status
+      - effective_from
+      - scope
+      - evidence
+      - raw_field_inventory
+      - raw_field_inventory[].raw_field_inventory_id
+      - raw_field_inventory[].raw_field_name
+      - raw_field_inventory[].observed_raw_storage_type
+      - raw_field_inventory[].source_value_origin
+      - raw_field_inventory[].mapping_status
+      - field_mappings
+      - field_mappings[].mapping_entry_id
+      - field_mappings[].raw_field_name
+      - field_mappings[].standard_field_id
+      - field_mappings[].standard_field_name
+      - field_mappings[].standard_data_type
+      - field_mappings[].semantic_role
+      - field_mappings[].required
+      - field_mappings[].nullable
+      - field_mappings[].mapping_status
+      - validation
+      - constraints
+
+  - asset_type: business_rule
+    selector: { key: config_type, value: business_rule }
+    required_paths:
+      - config_type
+      - rule_id
+      - rule_name
+      - rule_category
+      - business_domains
+      - applicable_workflow_ids
+      - applicable_pipeline_ids
+      - business_context_ids
+      - owner
+      - business_approver
+      - version
+      - approval_status
+      - effective_from
+      - purpose
+      - inputs
+      - conditions
+      - actions
+      - validation
+      - governance
+      - constraints
+
+  - asset_type: metric_library
+    selector: { key: asset_type, value: Metric Library }
+    required_paths:
+      - schema_version
+      - asset_type
+      - library_id
+      - library_name
+      - scope_status
+      - approval_status
+      - owner
+      - business_approver
+      - architecture_constraints
+      - metric_definitions
+      - metric_definitions[].metric_id
+      - metric_definitions[].metric_name
+      - metric_definitions[].business_name
+      - metric_definitions[].business_domain
+      - metric_definitions[].definition
+      - metric_definitions[].base_unit
+      - metric_definitions[].result_precision
+      - metric_definitions[].version
+      - metric_variants
+      - metric_variants[].metric_variant_id
+      - metric_variants[].metric_id
+      - metric_variants[].metric_name
+      - metric_variants[].business_context
+      - metric_variants[].calculation_method
+      - metric_variants[].period_type
+      - metric_variants[].base_unit
+      - metric_variants[].result_precision
+      - metric_variants[].version
+      - approval
+
+  - asset_type: metric_result_store_registry
+    selector: { key: asset_type, value: Metric Result Store }
+    required_paths:
+      - schema_version
+      - registry_scope
+      - asset_type
+      - metric_result_stores
+      - metric_result_stores[].store_id
+      - metric_result_stores[].store_name
+      - metric_result_stores[].business_domain
+      - metric_result_stores[].business_purpose
+      - metric_result_stores[].storage_type
+      - metric_result_stores[].storage_location
+      - metric_result_stores[].data_source_boundary
+      - metric_result_stores[].store_assets
+      - metric_result_stores[].store_assets[].store_asset_id
+      - metric_result_stores[].store_assets[].business_context
+
+  - asset_type: output_mapping
+    selector: { key: config_type, value: output_mapping }
+    required_paths:
+      - config_type
+      - output_mapping_id
+      - mapping_version
+      - status
+      - owner
+      - workflow_id
+      - output_target
+      - assembly_constraints
+      - governance
+
+  - asset_type: execution_policy
+    selector: { key: config_type, value: execution_policy }
+    required_paths:
+      - config_type
+      - policy_id
+      - policy_name
+      - policy_category
+      - version
+      - approval_status
+      - owner
+      - business_approver
+      - purpose
+      - explicit_pipeline_bindings
+      - trigger_conditions
+      - recovery_sequence
+      - on_recovery_failure
+      - constraints
+
+  - asset_type: pipeline_policy
+    selector: { key: asset_type, value: Pipeline Policy }
+    required_paths:
+      - schema_version
+      - asset_type
+      - pipeline_id
+      - policy_id
+      - approval_status
+      - scope
+      - trigger
+      - failure_handling
+      - output_boundary
+      - governance
+
+  - asset_type: external_asset_reference_registry
+    selector: { key: config_type, value: external_asset_reference_registry }
+    required_paths:
+      - config_type
+      - registry_version
+      - status
+      - external_assets
+      - external_assets[].asset_id
+      - external_assets[].asset_type
+      - external_assets[].availability_scope
+      - external_assets[].tracked_in_git
+      - external_assets[].reference_status
+      - constraints
+
+  - asset_type: business_rule_readiness_gate
+    selector: { key: config_type, value: business_rule_readiness_gate }
+    required_paths:
+      - config_type
+      - gate_id
+      - workflow_id
+      - assessment_date
+      - status
+      - gate_result
+      - scope
+      - gate_checks
+      - decision
+
+  - asset_type: field_mapping_readiness_gate
+    selector: { key: config_type, value: field_mapping_readiness_gate }
+    required_paths:
+      - config_type
+      - gate_id
+      - workflow_id
+      - assessment_date
+      - status
+      - gate_result
+      - scope
+      - coverage
+      - consistency_checks
+      - gate_decision
+      - constraints
+
+  - asset_type: metric_library_readiness_gate
+    selector: { key: config_type, value: metric_library_readiness_gate }
+    required_paths:
+      - config_type
+      - gate_id
+      - workflow_id
+      - assessment_date
+      - status
+      - gate_result
+      - scope
+      - gate_checks
+      - decision
+
+  - asset_type: output_mapping_readiness_gate
+    selector: { key: config_type, value: output_mapping_readiness_gate }
+    required_paths:
+      - config_type
+      - gate_id
+      - workflow_id
+      - assessment_date
+      - status
+      - gate_result
+      - scope
+      - gate_checks
+      - decision
+
+  - asset_type: metric_result_store_readiness_matrix
+    selector: { key: config_type, value: metric_result_store_readiness_matrix }
+    required_paths:
+      - config_type
+      - gate_id
+      - schema_version
+      - matrix_scope
+      - assessment_date
+      - status
+      - gate_result
+      - readiness_records
+      - gate_conclusion
+
+  - asset_type: business_asset_status_index
+    selector: { key: config_type, value: business_asset_status_index }
+    required_paths:
+      - config_type
+      - index_version
+      - status
+      - assessment_date
+      - workflow_id
+      - current_stage
+      - phase_status
+      - asset_stage_gates
+      - asset_stage_gates[].gate_id
+      - asset_stage_gates[].asset_stage
+      - asset_stage_gates[].status
+      - asset_stage_gates[].source_artifact
+      - scope_boundaries
+      - source_of_truth_order
+      - constraints
+
+  - asset_type: code_implementation_readiness_gate
+    selector: { key: config_type, value: code_implementation_readiness_gate }
+    required_paths:
+      - config_type
+      - gate_id
+      - workflow_id
+      - assessment_date
+      - status
+      - gate_result
+      - owner
+      - scope
+      - prerequisite_gate_results
+      - prerequisite_gate_results[].gate_id
+      - prerequisite_gate_results[].status
+      - implementation_readiness_checks
+      - implementation_entry_decision
+      - runtime_acceptance_decision
+      - governance
+      - decision
+
+constraints:
+  optional_template_fields_may_be_omitted: true
+  required_paths_must_exist: true
+  required_container_types_must_match: true
+  unknown_business_values_may_remain_tbd: true
+  required_values_are_not_auto_inferred: true

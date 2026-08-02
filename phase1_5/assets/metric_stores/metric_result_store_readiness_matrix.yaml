@@ -1,63 +1,114 @@
-schema_version: "0.1"
-matrix_scope: Weekly Revenue Historical Metric Result Store
-assessment_date: 2026-07-29
+config_type: metric_result_store_readiness_matrix
+gate_id: GATE_METRIC_RESULT_STORE_RUNTIME_WF_WEEKLY_BUSINESS_REPORT_V1
+schema_version: "0.2"
+matrix_scope: WF_WEEKLY_BUSINESS_REPORT Metric Result Stores
+assessment_date: 2026-08-02
+status: synchronized
+gate_result: conditional
+
+readiness_definitions:
+  implementation_ready: >-
+    Logical result contract, Metric Variant bindings, write policy and failure
+    boundary are complete enough to implement.
+  runtime_conditional: >-
+    Implementation may start, but each run must verify that the configured
+    local physical asset exists and is readable or writable as required.
+  runtime_bootstrap_blocked: >-
+    Logical implementation may start, but end-to-end runtime acceptance is
+    blocked until a local physical format, location and initial schema exist.
 
 readiness_records:
   - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
     store_name: Weekly Revenue Historical Metric Result Store
-    asset_initialization_gate: Pass
-    runtime_execution_gate: Not Evaluated
-    runtime_gate_reason: >
-      Field Mapping、Business Rule、Metric与Pipeline尚未进入初始化阶段。
-      当前Gate仅确认存储资产边界、历史有效范围、写入契约及失败处理，
-      不代表公式与自动执行能力已经可运行。
+    asset_initialization_gate: pass
+    implementation_readiness_gate: pass
+    runtime_execution_gate: conditional_pass
+    runtime_gate_reason: >-
+      All four Revenue Store Assets have confirmed logical contracts and local
+      workbook identities. Runtime use remains conditional on file existence,
+      lock state, save success and post-save re-read verification.
+    pipeline_binding_count: 4
+    store_asset_count: 4
+    metric_and_formula_definitions_confirmed: true
+    local_storage_contract_confirmed: true
+    runtime_preconditions:
+      - Resolve LOCAL_WORKFLOW_DATA_ROOT locally
+      - Confirm required workbooks and worksheets exist
+      - Confirm workbook is not locked before write
+      - Re-read and verify after save
+    blocking_runtime_items: []
 
-    shared_readiness:
-      asset_classification_confirmed: true
-      active_storage_location_confirmed: true
-      source_and_dataset_boundary_confirmed: true
-      business_date_semantics_confirmed: true
-      active_history_boundary_confirmed: true
-      append_policy_confirmed: true
-      partial_row_completion_policy_confirmed: true
-      duplicate_and_conflict_policy_confirmed: true
-      idempotency_policy_confirmed: true
-      formula_storage_pattern_confirmed: true
-      formula_business_definitions_confirmed: false
-      row_format_policy_confirmed: true
-      new_quarter_separator_policy_confirmed: true
-      pre_write_validation_confirmed: true
-      persistence_failure_policy_confirmed: true
-      post_write_verification_confirmed: true
-      success_notification_confirmed: true
-      backup_required: false
+  - store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
+    store_name: Weekly Inventory Historical Metric Result Store
+    asset_initialization_gate: pass
+    implementation_readiness_gate: pass
+    runtime_execution_gate: runtime_bootstrap_blocked
+    runtime_gate_reason: >-
+      Metric Variant bindings and Pipeline recovery policies are confirmed, but
+      the local physical format, location and schema for five Store Assets have
+      not been configured.
+    pipeline_binding_count: 5
+    store_asset_count: 5
+    metric_and_formula_definitions_confirmed: true
+    local_storage_contract_confirmed: false
+    blocking_runtime_items:
+      - Configure WEEKLY_INVENTORY_METRIC_STORE_LOCAL_ONLY
+      - Select and initialize the local physical storage format
+      - Create the five Store Asset schemas from their explicit Metric Variant bindings
+      - Validate one prior-week read and one current-week idempotent write
 
-    store_assets:
-      - store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
-        workbook_name: 技术线历史整体数据存档.xlsx
-        initialization_readiness: Pass
-        regular_week_required_range: A:L
-        confirmed_exception:
-          - Quarter-transition first-week weekly executed revenue WoW remains blank
-        historical_date_sequence_status: Pass
+  - store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+    store_name: Weekly User Analytics Historical Metric Result Store
+    asset_initialization_gate: pass
+    implementation_readiness_gate: pass
+    runtime_execution_gate: runtime_bootstrap_blocked
+    runtime_gate_reason: >-
+      DAU Metric Variants and fallback behavior are confirmed, but the local
+      physical store has not been initialized.
+    pipeline_binding_count: 1
+    store_asset_count: 1
+    metric_and_formula_definitions_confirmed: true
+    local_storage_contract_confirmed: false
+    blocking_runtime_items:
+      - Configure WEEKLY_USER_ANALYTICS_METRIC_STORE_LOCAL_ONLY
+      - Select and initialize the local physical storage format
+      - Validate one prior-week read and one current-week idempotent write
 
-      - store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
-        workbook_name: CTV线历史整体数据存档.xlsx
-        initialization_readiness: Pass
-        regular_week_required_range: A:F
-        historical_date_sequence_status: Pass after confirmed corrections
-        retained_missing_history:
-          business_date: 20250618
-          handling: Date retained; all result fields blank; excluded from calculations
+  - store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
+    store_name: Weekly Advertising Historical Metric Result Store
+    asset_initialization_gate: pass
+    implementation_readiness_gate: pass
+    runtime_execution_gate: runtime_bootstrap_blocked
+    runtime_gate_reason: >-
+      The Brand Moment exposure result contract is confirmed and its write
+      failure is non-blocking, but the local physical store has not been initialized.
+    pipeline_binding_count: 1
+    store_asset_count: 1
+    metric_and_formula_definitions_confirmed: true
+    local_storage_contract_confirmed: false
+    workflow_runtime_impact: non_blocking_persistence_warning
+    blocking_runtime_items:
+      - Configure WEEKLY_ADVERTISING_METRIC_STORE_LOCAL_ONLY
+      - Select and initialize the local physical storage format
+      - Validate one current-week idempotent write
 
-    deferred_to_later_asset_stages:
-      - Exact field-to-column mapping contract
-      - Confirmed Business Rules for each calculated field
-      - Metric and Metric Variant definitions
-      - Formula definitions and validation tolerances
-      - Pipeline execution configuration
+summary:
+  registered_store_count: 4
+  registered_store_asset_count: 11
+  implementation_ready_store_count: 4
+  runtime_conditional_store_count: 1
+  runtime_bootstrap_blocked_store_count: 3
+  unresolved_metric_definition_count: 0
+  unresolved_pipeline_binding_count: 0
 
-gate_conclusion: >
-  Weekly Revenue Historical Metric Result Store通过本轮资产初始化Readiness Gate。
-  该结论允许其作为已登记的持久化业务资产进入后续资产阶段，
-  但在公式、规则与Pipeline完成确认前，不得视为可自动执行。
+gate_conclusion:
+  metric_store_implementation_contracts: pass
+  code_implementation_start: allow
+  end_to_end_runtime_acceptance: conditional
+  runtime_acceptance_blocker_count: 3
+  blocker_scope:
+    - STORE_WEEKLY_INVENTORY_HISTORICAL
+    - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+    - STORE_WEEKLY_ADVERTISING_HISTORICAL
+  owner_business_rule_confirmation_required: false
+  local_runtime_configuration_required: true

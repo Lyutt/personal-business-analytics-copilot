@@ -1,4 +1,4 @@
-schema_version: "0.1"
+schema_version: "0.2"
 registry_scope: Personal Business Analytics Copilot
 asset_type: Metric Result Store
 
@@ -12,8 +12,10 @@ metric_result_stores:
       支持Weekly Business Report收入模块的历史结果读取、
       环比与同比计算，以及当周验证结果的持续沉淀。
     classification_status: Confirmed
-    lifecycle_status: Registered
-    readiness_status: In Progress
+    lifecycle_status: Active Local Asset
+    readiness_status: Implementation Ready; Runtime Conditional on Local File Availability
+    implementation_contract_status: Complete
+    runtime_bootstrap_status: Complete
     storage_type: Excel Workbooks in Fixed Directory
     storage_location: '${LOCAL_WORKFLOW_DATA_ROOT}\分周分业务线业绩收入汇总-存档'
     data_source_boundary: >
@@ -251,38 +253,75 @@ metric_result_stores:
       保存常规库存Pipeline经过验证的周度指标结果，
       支持后续周度环比计算并减少重复Apollo查询。
     classification_status: Confirmed
-    lifecycle_status: Planned
-    readiness_status: Pending Metric Definition
-    storage_type: TBD
-    storage_location: TBD
+    lifecycle_status: Registered
+    readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
+    implementation_contract_status: Complete
+    runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
+    storage_type: Local persistent store; physical format TBD
+    storage_location: ${WEEKLY_INVENTORY_METRIC_STORE_LOCAL_ONLY}
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
       只保存经过验证的库存Metric Result。
     write_policy: >
-      正常Pipeline将本周验证结果写入；
-      具体字段、粒度和物理结构留待Metric Library确认。
+      正常Pipeline将本周已验证且由Pipeline显式绑定的Metric Variant结果写入；
+      逻辑结果范围已由Metric Library确认，物理文件格式和本地位置仍需在
+      Runtime Bootstrap中配置，不得由Agent自行选择。
     store_assets:
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_FULL_SITE
         business_context: Full-site Weekly Inventory
-        physical_schema: TBD
-        lifecycle_status: Planned
+        required_metric_variant_ids:
+          - MV_INVENTORY_FULL_SITE_GROSS_VOLUME_V1
+          - MV_INVENTORY_FULL_SITE_DISABLED_VOLUME_V1
+          - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1
+          - MV_INVENTORY_FULL_SITE_BRAND_DELIVERY_VOLUME_V1
+          - MV_INVENTORY_FULL_SITE_PERFORMANCE_DELIVERY_VOLUME_V1
+          - MV_INVENTORY_FULL_SITE_COMMERCIAL_DELIVERY_VOLUME_V1
+          - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_WOW_V1
+        physical_schema_status: pending_local_runtime_configuration
+        lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
         business_context: Patch Weekly Inventory
-        physical_schema: TBD
-        lifecycle_status: Planned
+        required_metric_variant_ids:
+          - MV_INVENTORY_PATCH_GROSS_VOLUME_V1
+          - MV_INVENTORY_PATCH_DISABLED_VOLUME_V1
+          - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+          - MV_INVENTORY_PATCH_BRAND_DELIVERY_VOLUME_V1
+          - MV_INVENTORY_PATCH_PERFORMANCE_DELIVERY_VOLUME_V1
+          - MV_INVENTORY_PATCH_COMMERCIAL_DELIVERY_VOLUME_V1
+          - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_WOW_V1
+        physical_schema_status: pending_local_runtime_configuration
+        lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT
         business_context: Non-patch Product Weekly Inventory
-        physical_schema: TBD
-        lifecycle_status: Planned
+        required_metric_variant_ids:
+          - MV_INVENTORY_NON_PATCH_PRODUCT_GROSS_VOLUME_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_DISABLED_VOLUME_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_PERFORMANCE_DELIVERY_VOLUME_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_COMMERCIAL_DELIVERY_VOLUME_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_WOW_V1
+          - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
+        physical_schema_status: pending_local_runtime_configuration
+        lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
         business_context: Brand Moment Weekly Sell-through
-        physical_schema: TBD
-        lifecycle_status: Planned
+        required_metric_variant_ids:
+          - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1
+          - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1
+          - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1
+        physical_schema_status: pending_local_runtime_configuration
+        lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH
         business_context: Product-scoped Weekly Sell-through excluding Brand Moment
         product_dimension_required: true
-        physical_schema: TBD
-        lifecycle_status: Planned
+        required_metric_variant_ids:
+          - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1
+          - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
+          - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+        physical_schema_status: pending_local_runtime_configuration
+        lifecycle_status: Registered
 
   - store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
     store_name: Weekly User Analytics Historical Metric Result Store
@@ -293,18 +332,24 @@ metric_result_stores:
       保存经过验证的周度用户活跃结果，
       支持DAU历史比较并减少重复NovaBI查询。
     classification_status: Confirmed
-    lifecycle_status: Planned
-    readiness_status: Pending Metric Definition
-    storage_type: TBD
-    storage_location: TBD
+    lifecycle_status: Registered
+    readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
+    implementation_contract_status: Complete
+    runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
+    storage_type: Local persistent store; physical format TBD
+    storage_location: ${WEEKLY_USER_ANALYTICS_METRIC_STORE_LOCAL_ONLY}
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
       只保存经过验证的User Analytics Metric Result。
     store_assets:
       - store_asset_id: STORE_ASSET_WEEKLY_PLATFORM_DAU
         business_context: Full-platform Weekly DAU
-        physical_schema: TBD
-        lifecycle_status: Planned
+        required_metric_variant_ids:
+          - MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1
+          - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1
+          - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1
+        physical_schema_status: pending_local_runtime_configuration
+        lifecycle_status: Registered
 
   - store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
     store_name: Weekly Advertising Historical Metric Result Store
@@ -314,16 +359,19 @@ metric_result_stores:
       独立保存经过验证的周度广告投放执行指标结果，
       支持历史核查及已确认的下游指标计算。
     classification_status: Confirmed
-    lifecycle_status: Planned
-    readiness_status: Pending Metric Definition
-    storage_type: TBD
-    storage_location: TBD
+    lifecycle_status: Registered
+    readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
+    implementation_contract_status: Complete
+    runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
+    storage_type: Local persistent store; physical format TBD
+    storage_location: ${WEEKLY_ADVERTISING_METRIC_STORE_LOCAL_ONLY}
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
       不保存库存或售卖率结果，只保存经过验证的Advertising Metric Result。
     write_policy: >
-      对应Pipeline将本周验证结果独立写入；
-      具体字段、粒度和物理结构留待Metric Library确认。
+      对应Pipeline将已验证的品牌时刻曝光Metric Variant结果独立写入；
+      逻辑结果范围已由Metric Library确认，物理文件格式和本地位置仍需在
+      Runtime Bootstrap中配置，不得由Agent自行选择。
     store_assets:
       - store_asset_id: STORE_ASSET_WEEKLY_BRAND_MOMENT_DELIVERY
         business_context: Brand Moment Weekly Delivery Execution and Exposure
@@ -333,11 +381,14 @@ metric_result_stores:
         excludes:
           - Inventory results
           - Brand Moment sell-through result
-        physical_schema: TBD
-        lifecycle_status: Planned
+        required_metric_variant_ids:
+          - MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1
+        physical_schema_status: pending_local_runtime_configuration
+        lifecycle_status: Registered
 
 notes:
-  - 当前登记仅确认资产身份、存储位置及边界。
-  - 不在本阶段定义Field Mapping、Business Rule、Metric Definition或Pipeline。
+  - 当前登记已同步已批准的Metric Library与Pipeline绑定。
+  - Revenue Store已具备实现和本地运行前提；其实际文件可用性在每次运行时验证。
+  - Inventory、User Analytics与Advertising Store的逻辑契约已完成，物理格式和本地位置仍是Runtime Bootstrap阻断项。
   - 技术线与CTV既有工作簿的已确认修正记录见Discovery文档。
   - 智能音箱与极速版两个空白Store Asset已于2026-07-29创建并完成表头验证。

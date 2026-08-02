@@ -1,9 +1,15 @@
 config_type: dataset_readiness_matrix
+gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1
 matrix_version: 0.3.3
 status: completed
+gate_result: passed
+implementation_authority:
+  granted_by_this_gate: false
+  final_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
 assessment_workflow_id: WF_WEEKLY_BUSINESS_REPORT
-last_synced_with_pipeline_registry: 2026-07-30
-last_synced_with_field_mapping_gate: 2026-08-01
+last_synced_with_pipeline_registry: 2026-08-02
+last_synced_with_field_mapping_gate: 2026-08-02
+last_synced_with_final_code_gate: 2026-08-02
 assessment_summary:
   dataset_count: 10
   pipeline_registry_allow_count: 9
@@ -60,7 +66,7 @@ dataset_readiness:
       pipeline_registry_eligible: allow
       decision_reason: Required dataset; acquisition selection and failure-handling rules are confirmed
       quarter_transition_previous_quarter_result_eligible: allow
-      owner: Originating business team (Contact: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY})
+      owner: "Originating business team (Contact: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY})"
 
   - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
     source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
@@ -82,7 +88,7 @@ dataset_readiness:
     gate:
       pipeline_registry_eligible: not_required_for_primary_path
       decision_reason: Dataset is retained as a fallback candidate and does not block the confirmed primary path
-      owner: Originating business team (Contact: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY})
+      owner: "Originating business team (Contact: ${REVENUE_SOURCE_CONTACT_NAME_LOCAL_ONLY})"
 
   - dataset_id: DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
     source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX

@@ -7,6 +7,7 @@
 - Readiness Gate：Passed
 - 完成日期：2026-08-02
 - 代码实现：未开始
+- 实现入口：由`GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1`统一控制
 
 ## Metric Library
 
@@ -29,6 +30,8 @@
 ## 正式Gate
 
 [Metric Library Readiness Gate](metric_library_readiness_gate.yaml)
+
+本Gate只证明Metric资产可进入后续阶段，不单独授予代码实现权限。
 
 ## 约束
 
