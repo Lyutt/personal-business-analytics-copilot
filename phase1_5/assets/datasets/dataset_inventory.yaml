@@ -1481,7 +1481,10 @@ query_assets:
     external_dependency_candidates:
       - asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
         asset_type: Business Rule
-        registration_status: unregistered
+        registration_status: registered
+        reference_contract_version: 1.0.0
+        runtime_version_reference: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'
+        runtime_version_verification_required: true
         usage: 为product_filter参数提供Apollo筛选条件
     output_dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
     parameters_or_filters:

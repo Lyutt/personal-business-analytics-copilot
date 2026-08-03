@@ -14,15 +14,18 @@
 - Business Rule Initialization：Revenue范围已完成Readiness Gate。
 - Revenue Business Rule状态：6条Approved。
 - Metric Library Initialization：已完成并通过Readiness Gate。
-- 当前收口点：Code Implementation Readiness Gate已完成并通过，保留本地Metric Store Runtime Bootstrap条件；Customer Revenue Detail Workflow按Owner决策暂缓。
+- Result Contract Initialization：12个正式Contract已完成并通过Readiness Gate；
+  48个Metric Variant已显式绑定Contract Field。
+- 当前收口点：Implementation Baseline 1.0.0已冻结并等待Owner明确批准代码实现；保留本地Metric Store Runtime Bootstrap条件；Customer Revenue Detail Workflow按Owner决策暂缓。
 - 统一状态入口：[Status Index](assets/readiness/status_index.yaml)。
 - 最终实现入口：[Code Implementation Readiness Gate](assets/readiness/code_implementation_readiness_gate.yaml)。
+- 冻结实现基线：[Implementation Baseline 1.0.0](assets/readiness/implementation_baseline.yaml)。
 - 历史基线：[Phase 1.5 Baseline Closure — 2026-07-31](BASELINE_CLOSURE_2026-07-31.md)。
 - 当前 Output Mapping：[Output Mapping 资产索引](assets/output_mappings/INDEX.md)。
 - Weekly Output Mapping Gate：[weekly_report_output_mapping_readiness_gate.yaml](assets/output_mappings/weekly_report_output_mapping_readiness_gate.yaml)。
 - Weekly Workflow 收口归档：[Weekly_Business_Report_Workflow_Closure_2026-08-02.md](Weekly_Business_Report_Workflow_Closure_2026-08-02.md)。
 - 整体 Personal Business Analytics Copilot 架构：不变。
-- 代码实现：未开始；允许启动。
+- 代码实现：未开始且不得启动；等待Owner明确批准冻结Baseline ID和版本。
 - 端到端MVP运行验收：Conditional，需先完成Inventory、User Analytics与Advertising Metric Store本地Bootstrap。
 
 ## 已确认架构
@@ -60,11 +63,17 @@ Phase 1 旧版 `phase1/workflows/weekly_business_report/WORKFLOW.md` 保留，�
 - [Metric Library 资产索引](assets/metrics/INDEX.md)
 - [Metric Library Readiness Gate](assets/metrics/metric_library_readiness_gate.yaml)
 - [Metric Library Initialization 阶段归档](Metric_Library_Initialization_Archive.md)
+- [Result Contract 资产索引](assets/result_contracts/INDEX.md)
+- [Result Contract Readiness Gate](assets/result_contracts/result_contract_readiness_gate.yaml)
+- [Inventory / Advertising Policy资产索引](assets/policies/INDEX.md)
+- [Inventory / Advertising Policy Gate](assets/policies/inventory_advertising_policy_readiness_gate.yaml)
 - [Metric Result Store Registry](assets/metric_stores/metric_result_store_registry.yaml)
 - [Metric Result Store Readiness Matrix](assets/metric_stores/metric_result_store_readiness_matrix.yaml)
+- [Versioned External Asset Reference Registry](assets/external_asset_references.yaml)
 - [Output Mapping Initialization 阶段归档](Output_Mapping_Initialization_Archive_2026-08-02.md)
 - [统一状态索引](assets/readiness/status_index.yaml)
 - [Code Implementation Readiness Gate](assets/readiness/code_implementation_readiness_gate.yaml)
+- [Implementation Baseline 1.0.0](assets/readiness/implementation_baseline.yaml)
 - [产品客户变化条件分析策略](assets/pipelines/PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_policy_v1.yaml)
 - [通用查询会话恢复策略](assets/execution_policies/QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1.yaml)
 - `outputs/phase1_5/Business_Asset_Initialization_v2_1.xlsx`

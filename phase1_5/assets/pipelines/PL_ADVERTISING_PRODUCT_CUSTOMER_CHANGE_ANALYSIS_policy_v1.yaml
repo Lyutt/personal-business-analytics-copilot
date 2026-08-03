@@ -6,6 +6,8 @@ approval_status: Confirmed
 scope: >
   A conditional customer delivery-change analysis for one explicitly configured Weekly Business Report product.
   It runs only after a validated sell-through anomaly trigger and never calculates sell-through itself.
+analysis_only_pipeline: true
+metric_variant_creation_for_result_fields: prohibited
 
 trigger:
   producer_pipelines:
@@ -20,6 +22,11 @@ trigger:
 
 query_product_selection:
   source_of_truth_asset_name: 奇胜收入表细分产品筛选逻辑
+  source_of_truth_asset:
+    asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+    reference_contract_version: 1.0.0
+    runtime_version_reference: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'
+    runtime_version_verification_required: true
   storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
   actual_product_filter_values_must_remain_local_only: true
   explicit_mapping_required: true
@@ -33,6 +40,14 @@ comparison_inputs:
   current_period_measure: Customer-level exposure total
   previous_period_measure: Customer-level exposure total
   result_grain: Explicit product × customer × weekly period
+  cross_period_match_key: customer_id
+  customer_name_fuzzy_matching_allowed: false
+  current_only_customer_comparison_period_exposure: 0
+  comparison_only_customer_current_period_exposure: 0
+  customer_name_conflict_for_same_customer_id:
+    notify_owner: true
+    exclude_conflicting_customer_row: true
+    automatic_name_selection_or_merge: false
 
 customer_selection:
   positive_sell_through_change:
@@ -53,6 +68,11 @@ customer_selection:
   per_product_output_limit:
     rule_type: Explicit local product-category limit
     storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
+    source_asset:
+      asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+      reference_contract_version: 1.0.0
+      runtime_version_reference: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'
+      runtime_version_verification_required: true
     actual_product_category_membership_must_remain_local_only: true
     maximum_count_applies: true
     if_qualified_customer_count_is_below_limit: Use actual qualified customer count
@@ -73,9 +93,28 @@ failure_handling:
     block_target_customer_analysis_only: true
     block_weekly_report: false
     auto_fallback_to_similar_product: false
+  trigger_not_met:
+    notify_owner: true
+    block_weekly_report: false
+    product_customer_analysis_action: Omit target product customer analysis
+  result_contract_generation:
+    generate_placeholder_or_null_contract: false
+    omit_when: [query_failure, zero_customer_rows, trigger_not_met, invalid_or_missing_explicit_product_mapping]
+    continue_weekly_workflow: true
 
 output_boundary:
   produces: Validated product-level customer delivery-change analysis result
+  result_contract_id: RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+  contract_shape: record_set
+  field_source_types_allowed:
+    - metric_variant
+    - upstream_contract_field
+    - standardized_field
+    - policy_derived_field
+  field_source_assignments:
+    customer_and_exposure_fields: standardized_field
+    sell_through_change_field: upstream_contract_field
+    scenario_change_ranking_and_rank_fields: policy_derived_field
   excludes:
     - Sell-through calculation
     - Inventory calculation

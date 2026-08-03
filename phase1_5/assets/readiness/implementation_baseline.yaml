@@ -1,0 +1,88 @@
+config_type: implementation_baseline
+baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
+baseline_version: 1.0.0
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+freeze_date: 2026-08-03
+status: frozen_awaiting_explicit_owner_code_implementation_approval
+owner: WORKFLOW_OWNER
+source_main_commit_sha: 7a6c6d007fd0e84a3d65193c1c9e60b9c3d7ddd2
+source_branch: main
+working_branch: codex/result-contract-initialization
+
+baseline_scope:
+  phase: Phase 1.5
+  workflow_scope: Weekly Business Report P0
+  asset_layers:
+    - Data Source
+    - Dataset and Query Asset
+    - Pipeline Registry
+    - Field Mapping
+    - Business Rule
+    - Inventory and Advertising Policy
+    - Metric Library
+    - Result Contract
+    - Metric Result Store logical contract
+    - External Asset reference contract
+    - Output Mapping
+    - Readiness and Implementation Entry
+  excluded_runtime_material:
+    - Raw business data and customer rows
+    - Email and original attachments
+    - Real templates and recipient identities
+    - Local paths, credentials, sessions, and accounts
+    - Resolved local External Asset versions and content fingerprints
+    - Generated reports and Outlook Drafts
+
+frozen_asset_versions:
+  external_asset_reference_registry: 1.0.0
+  external_asset_reference_count: 10
+  pipeline_registry: 0.1.0-initialization
+  field_mapping_profile_count: 10
+  approved_revenue_business_rule_count: 6
+  metric_library_count: 3
+  metric_variant_count: 48
+  result_contract_schema_version: 1.0.0
+  result_contract_count: 12
+  result_contract_field_count: 67
+  inventory_advertising_policy_gate_version: 1.0.0
+  weekly_output_mapping_version: 1.0.0
+  outlook_draft_mapping_version: 1.0.0
+
+frozen_gate_results:
+  - { gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_PIPELINE_REGISTRY_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1, status: passed }
+  - { gate_id: GATE_BUSINESS_RULE_REVENUE_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_METRIC_LIBRARY_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_RESULT_CONTRACT_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_INVENTORY_ADVERTISING_POLICY_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_METRIC_RESULT_STORE_RUNTIME_WF_WEEKLY_BUSINESS_REPORT_V1, status: conditional }
+
+validation_contract:
+  repository_safety_validation_required: true
+  asset_integrity_validation_required: true
+  exact_diff_sensitive_data_review_required_before_git_operation: true
+  baseline_consistency_validation_required: true
+  changed_asset_requires_baseline_version_review: true
+
+implementation_authorization:
+  asset_baseline_ready: true
+  code_implementation_started: false
+  explicit_owner_code_implementation_approval_received: false
+  code_implementation_may_start: false
+  approval_must_name_this_baseline_id_and_version: true
+  automated_gate_pass_does_not_grant_approval: true
+
+change_control:
+  baseline_is_logically_frozen: true
+  repository_commit_binding_status: pending_owner_review_and_commit
+  any_asset_change_requires:
+    - Baseline version impact review
+    - Re-run repository safety validation
+    - Re-run asset integrity validation
+    - Owner review before Code Implementation approval
+  force_push_allowed: false
+  auto_merge_allowed: false
+  automatic_next_stage_allowed: false

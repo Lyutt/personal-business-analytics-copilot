@@ -2,13 +2,13 @@
 
 > Workflow_ID：`WF_WEEKLY_BUSINESS_REPORT`
 >
-> Version：`0.2.3-output-mapping-closure`
+> Version：`0.2.4-implementation-baseline`
 >
-> Status：Approved Architecture / Pipeline Registry Completed / Field Mapping Gate Passed / Revenue Business Rules Gate Passed / Metric Library Gate Passed / Weekly Output Mapping Gate Passed
+> Status：Phase 1.5 assets complete / Result Contract Gate Passed / Inventory and Advertising Policy Gate Passed / Implementation Baseline 1.0.0 Frozen
 >
 > 旧版保留位置：`phase1/workflows/weekly_business_report/WORKFLOW.md`
 >
-> 当前阶段：Weekly Business Report P0 资产已收口；不包含代码实现
+> 当前阶段：等待Owner明确批准`IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1`版本`1.0.0`后才可开始代码实现
 
 ## 1. Workflow 目标
 
@@ -68,7 +68,7 @@ flowchart LR
     P --> RS["Rule Sets"]
     P --> MV["Metric Variants"]
     P --> OM["Output Mappings"]
-    MV --> MR["Validated Metric Result Contract"]
+    MV --> MR["Validated Result Contract"]
     MR --> OA["Output Assembly"]
     OA --> OD["Outlook Draft<br/>auto_send=false"]
 ```
@@ -174,11 +174,11 @@ stateDiagram-v2
 ### VALIDATION
 
 - 执行 Dataset、Join、Rule、Metric 和跨 Pipeline 验证。
-- 生成 Validated Metric Result Contract。
+- 生成 Validated Result Contract。
 
 ### OUTPUT_GENERATION
 
-- 只消费 Validated Metric Result Contract。
+- 只消费 Validated Result Contract中的明确字段。
 - 根据 Output_Mapping_ID 生成周报模块和 Outlook Draft。
 - 不重新计算指标。
 
@@ -214,7 +214,7 @@ Inventory Domain 按 Dataset / Query Asset 管理 Pipeline，不按平台拆分�
 - 独立 Source、Dataset、Pipeline、Rule、Metric Variant 和 Output Mapping。
 - 生成 Customer Revenue Excel。
 - 与 Weekly Workflow 不产生文件级依赖。
-- 如需共享，通过 Metrics Store 或 Validated Metric Result Contract。
+- 如需共享，通过 Metrics Store 或 Validated Result Contract。
 - Weekly Workflow 不检查 Customer Revenue Excel 是否已生成。
 
 ## 11. Required 与 Optional Pipeline
@@ -245,7 +245,7 @@ Pipeline运行时不得以本文表格代替正式Registry；若二者不一致�
 
 输入：
 
-- Validated Metric Result Contract。
+- Validated Result Contract。
 - `OM_WEEKLY_BUSINESS_REPORT_V1` 和 Version。
 - `OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1` 和 Version。
 - Template_ID 和 Version。
@@ -271,7 +271,7 @@ Pipeline运行时不得以本文表格代替正式Registry；若二者不一致�
 Workflow 之间只能通过：
 
 - Metrics Store。
-- Validated Metric Result Contract。
+- Validated Result Contract。
 
 共享结果至少包含：
 

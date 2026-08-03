@@ -10,6 +10,11 @@ output_target:
   format: Outlook Draft
   body_mapping_id: OM_WEEKLY_BUSINESS_REPORT_V1
   recipient_source: RECIPIENTS_WEEKLY_REPORT_BASELINE_LOCAL_ONLY
+  recipient_source_version_binding:
+    asset_id: RECIPIENTS_WEEKLY_REPORT_BASELINE_LOCAL_ONLY
+    reference_contract_version: 1.0.0
+    runtime_version_reference: '${RECIPIENTS_WEEKLY_REPORT_BASELINE_VERSION_LOCAL_ONLY}'
+    runtime_version_verification_required: true
   recipient_configuration_must_remain_local_only: true
   attachments_included: false
   auto_send: false

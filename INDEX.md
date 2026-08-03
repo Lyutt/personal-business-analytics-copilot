@@ -4,21 +4,24 @@
 
 - 架构方向：已确认。
 - Phase 1：已确认。
-- 当前阶段：Code Implementation Readiness Review 已完成。
+- 当前阶段：Implementation Baseline 1.0.0已冻结，等待Owner明确批准代码实现。
 - Workflow Architecture Optimization v2：已确认并迁移为独立 v2 文件。
-- Weekly Workflow的Data Source、Dataset、Pipeline、Field Mapping、Business Rule、Metric Library、Metric Store逻辑契约与Output Mapping：已完成P0资产收口。
+- Weekly Workflow的Data Source、Dataset、Pipeline、Field Mapping、Business Rule、Metric Library、Result Contract、Metric Store逻辑契约与Output Mapping：已完成P0资产收口。
+- Result Contract入口：[Result Contract资产索引](phase1_5/assets/result_contracts/INDEX.md)；[Result Contract Readiness Gate](phase1_5/assets/result_contracts/result_contract_readiness_gate.yaml)已通过。
+- 本地External Asset仅登记版本合同与`LOCAL_ONLY`运行时占位符，真实版本和内容指纹不得进入Git。
 - 统一状态入口：[Phase 1.5 Status Index](phase1_5/assets/readiness/status_index.yaml)。
 - 最终Gate：[Code Implementation Readiness Gate](phase1_5/assets/readiness/code_implementation_readiness_gate.yaml)。
 - 当前 MVP：Weekly Business Report Workflow。
-- 实现状态：尚未开始；允许启动代码实现，但端到端运行验收仍需完成3个本地Metric Store Runtime Bootstrap。
+- 实现状态：尚未开始且当前不得启动；必须先获得Owner对冻结Baseline ID和版本的明确批准。端到端运行验收仍需完成3个本地Metric Store Runtime Bootstrap。
 
 ## 默认读取顺序
 
 1. 统一状态入口：[Phase 1.5 Status Index](phase1_5/assets/readiness/status_index.yaml)
 2. 当前阶段入口：[phase1_5/INDEX.md](phase1_5/INDEX.md)
-3. 已确认的 Phase 1 资产：[phase1/INDEX.md](phase1/INDEX.md)
-4. 需要查看整体架构时：[Personal Business Analytics Copilot_架构设计方案_v1.md](Personal%20Business%20Analytics%20Copilot_架构设计方案_v1.md)
-5. 只有当前 Workflow 明确引用时，才读取对应 Knowledge Pack、指标或数据源配置。
+3. 冻结实现基线：[Implementation Baseline](phase1_5/assets/readiness/implementation_baseline.yaml)
+4. 已确认的 Phase 1 历史资产：[phase1/INDEX.md](phase1/INDEX.md)
+5. 需要查看整体架构时：[Personal Business Analytics Copilot_架构设计方案_v1.md](Personal%20Business%20Analytics%20Copilot_架构设计方案_v1.md)
+6. 只有当前 Workflow 明确引用时，才读取对应 Knowledge Pack、指标或数据源配置。
 
 ## 当前硬性边界
 

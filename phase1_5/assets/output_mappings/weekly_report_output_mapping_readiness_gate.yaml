@@ -1,7 +1,7 @@
 config_type: output_mapping_readiness_gate
 gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-assessment_date: 2026-08-02
+assessment_date: 2026-08-03
 status: passed
 gate_result: passed
 owner: WORKFLOW_OWNER
@@ -18,6 +18,9 @@ scope:
 gate_checks:
   weekly_inventory_and_revenue_section_order_explicit: pass
   weekly_section_result_contract_references_explicit: pass
+  weekly_result_contract_field_bindings_explicit: pass
+  metric_variant_parallel_lists_absent: pass
+  display_field_parallel_lists_absent: pass
   conditional_customer_analysis_result_contract_reference_explicit: pass
   output_assembly_calculation_disabled: pass
   output_assembly_business_rule_evaluation_disabled: pass

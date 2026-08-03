@@ -1,0 +1,93 @@
+config_type: result_contract
+result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+contract_name: Product-scoped Weekly Sell-through Result Contract
+contract_version: 1.0.0
+status: active
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+business_domain: Inventory
+business_context_id: CTX_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+producer: { producer_pipeline_id: PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY, producer_pipeline_version_constraint: 0.1.0-draft, producer_must_be_unique: true }
+contract_shape: parameterized_single_record
+record_grain: [explicit_product, reporting_period]
+input_contract_field_routes:
+  - route_id: regular_patch_products
+    input_fields:
+      - { result_contract_id: RC_INVENTORY_PATCH_WEEKLY, result_field_id: brand_delivery_inventory_count, required_or_optional: required }
+      - { result_contract_id: RC_INVENTORY_PATCH_WEEKLY, result_field_id: available_inventory_count, required_or_optional: required }
+  - route_id: all_products_except_regular_patch_and_brand_moment
+    input_fields:
+      - { result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY, result_field_id: brand_delivery_inventory_count, required_or_optional: required }
+      - { result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY, result_field_id: available_inventory_count, required_or_optional: required }
+contract_fields:
+  - field_id: patch_brand_sell_through_rate
+    field_name: 贴片产品当周品牌售卖率
+    business_definition: 贴片品牌投放库存除以贴片可用库存。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1
+    data_type: number
+    base_unit: Decimal ratio
+    numeric_constraints: { numeric_semantics: ratio, unit: decimal_ratio, integer_only: false, precision: preserve_source_precision, minimum: 0, maximum: null }
+    nullable: true
+    value_status_allowed: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    applicable_route: regular_patch_products
+    validation_requirement: Numerator may be zero; denominator must be positive numeric. Invalid input blocks only the target product result.
+    lineage_required: true
+  - field_id: patch_brand_sell_through_wow_change_pp
+    field_name: 贴片产品品牌售卖率环比变化
+    business_definition: 当周贴片品牌售卖率减上周已验证结果。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+    data_type: number
+    base_unit: Decimal rate-point difference
+    numeric_constraints: { numeric_semantics: percentage_point_change, unit: percentage_point, integer_only: false, precision: preserve_source_precision, minimum: null, maximum: null }
+    nullable: true
+    value_status_allowed: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    applicable_route: regular_patch_products
+    validation_requirement: Current and prior sell-through values must validate; invalid input blocks only the target product result.
+    lineage_required: true
+  - field_id: non_patch_product_brand_sell_through_rate
+    field_name: 非贴片产品当周品牌售卖率
+    business_definition: 目标非贴片产品品牌投放库存除以其可用库存。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
+    data_type: number
+    base_unit: Decimal ratio
+    numeric_constraints: { numeric_semantics: ratio, unit: decimal_ratio, integer_only: false, precision: preserve_source_precision, minimum: 0, maximum: null }
+    nullable: true
+    value_status_allowed: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    applicable_route: all_products_except_regular_patch_and_brand_moment
+    validation_requirement: Numerator may be zero; denominator must be positive numeric. Invalid input blocks only the target product result.
+    lineage_required: true
+  - field_id: non_patch_product_brand_sell_through_wow_change_pp
+    field_name: 非贴片产品品牌售卖率环比变化
+    business_definition: 当周非贴片产品品牌售卖率减上周已验证结果。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+    data_type: number
+    base_unit: Decimal rate-point difference
+    numeric_constraints: { numeric_semantics: percentage_point_change, unit: percentage_point, integer_only: false, precision: preserve_source_precision, minimum: null, maximum: null }
+    nullable: true
+    value_status_allowed: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    applicable_route: all_products_except_regular_patch_and_brand_moment
+    validation_requirement: Current and prior sell-through values must validate; invalid input blocks only the target product result.
+    lineage_required: true
+record_sets: []
+mode_semantics: { allowed_value_statuses: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation], missing_must_not_be_mapped_to_not_applicable: true }
+validation:
+  producer_pipeline_validation_required: true
+  required_fields: [patch_brand_sell_through_rate, patch_brand_sell_through_wow_change_pp, non_patch_product_brand_sell_through_rate, non_patch_product_brand_sell_through_wow_change_pp]
+  conditional_fields:
+    - { field_ids: [patch_brand_sell_through_rate, patch_brand_sell_through_wow_change_pp], condition: route == regular_patch_products }
+    - { field_ids: [non_patch_product_brand_sell_through_rate, non_patch_product_brand_sell_through_wow_change_pp], condition: route == all_products_except_regular_patch_and_brand_moment }
+  unit_validation: true
+  data_type_validation: true
+  numeric_constraint_validation: true
+  duplicate_field_id_check: true
+  metric_variant_binding_check: true
+  contract_completeness_check: true
+lineage: { required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, cutoff_date, report_mode, dataset_instance_ids, mapping_profile_versions, business_rule_versions, metric_variant_versions, generated_at, validation_status, approval_status] }
+constraints: { automatic_business_inference_allowed: false, output_mapping_may_calculate: false, unknown_business_values_remain_tbd: true }

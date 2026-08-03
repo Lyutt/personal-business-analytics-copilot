@@ -1,14 +1,14 @@
 config_type: business_asset_status_index
 index_version: 1.0.0
 status: synchronized
-assessment_date: 2026-08-02
+assessment_date: 2026-08-03
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-current_stage: Code Implementation Readiness Review - Completed
+current_stage: Implementation Baseline Frozen - Awaiting Explicit Owner Code Implementation Approval
 
 phase_status:
   phase_1: completed_and_retained_as_historical_design_baseline
   phase_1_5_business_asset_initialization: completed_for_weekly_workflow_p0_scope
-  code_implementation: allowed_with_runtime_bootstrap_conditions
+  code_implementation: awaiting_explicit_owner_approval
   end_to_end_runtime_acceptance: conditional
 
 asset_stage_gates:
@@ -36,6 +36,14 @@ asset_stage_gates:
     asset_stage: Metric Library
     status: passed
     source_artifact: phase1_5/assets/metrics/metric_library_readiness_gate.yaml
+  - gate_id: GATE_RESULT_CONTRACT_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Result Contract
+    status: passed
+    source_artifact: phase1_5/assets/result_contracts/result_contract_readiness_gate.yaml
+  - gate_id: GATE_INVENTORY_ADVERTISING_POLICY_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Inventory and Advertising Policy
+    status: passed
+    source_artifact: phase1_5/assets/policies/inventory_advertising_policy_readiness_gate.yaml
   - gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
     asset_stage: Output Mapping
     status: passed
@@ -46,8 +54,15 @@ asset_stage_gates:
     source_artifact: phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml
   - gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
     asset_stage: Code Implementation Readiness
-    status: passed_with_runtime_bootstrap_conditions
+    status: ready_awaiting_explicit_owner_approval
     source_artifact: phase1_5/assets/readiness/code_implementation_readiness_gate.yaml
+
+implementation_baseline:
+  baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
+  baseline_version: 1.0.0
+  status: frozen_awaiting_explicit_owner_code_implementation_approval
+  source_artifact: phase1_5/assets/readiness/implementation_baseline.yaml
+  explicit_owner_code_implementation_approval_received: false
 
 scope_boundaries:
   weekly_business_report_p0_assets: complete
@@ -57,9 +72,11 @@ scope_boundaries:
   unresolved_business_rule_decision_count: 0
   unresolved_metric_definition_count: 0
   unresolved_asset_reference_count: 0
+  registered_versioned_external_asset_count: 10
 
 source_of_truth_order:
   - phase1_5/assets/readiness/status_index.yaml
+  - phase1_5/assets/readiness/implementation_baseline.yaml
   - phase1_5/assets/readiness/code_implementation_readiness_gate.yaml
   - Versioned assets and stage Gates under phase1_5/assets
   - phase1_5/INDEX.md
@@ -69,6 +86,8 @@ source_of_truth_order:
 constraints:
   stage_gate_does_not_independently_authorize_code_implementation: true
   final_code_gate_controls_implementation_entry: true
+  explicit_owner_approval_required_before_code_implementation: true
+  frozen_baseline_does_not_authorize_code_implementation: true
   runtime_acceptance_requires_metric_store_bootstrap: true
   auto_send_allowed: false
   auto_merge_allowed: false

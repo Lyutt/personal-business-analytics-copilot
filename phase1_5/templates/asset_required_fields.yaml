@@ -230,6 +230,37 @@ asset_rules:
       - metric_result_stores[].store_assets[].store_asset_id
       - metric_result_stores[].store_assets[].business_context
 
+  - asset_type: result_contract
+    selector: { key: config_type, value: result_contract }
+    required_paths:
+      - config_type
+      - result_contract_id
+      - contract_name
+      - contract_version
+      - status
+      - workflow_id
+      - business_domain
+      - business_context_id
+      - producer
+      - producer.producer_pipeline_id
+      - producer.producer_pipeline_version_constraint
+      - producer.producer_must_be_unique
+      - contract_shape
+      - mode_semantics
+      - validation
+      - validation.producer_pipeline_validation_required
+      - validation.required_fields
+      - validation.conditional_fields
+      - validation.unit_validation
+      - validation.data_type_validation
+      - validation.numeric_constraint_validation
+      - validation.duplicate_field_id_check
+      - validation.metric_variant_binding_check
+      - validation.contract_completeness_check
+      - lineage
+      - lineage.required_instance_fields
+      - constraints
+
   - asset_type: output_mapping
     selector: { key: config_type, value: output_mapping }
     required_paths:
@@ -287,6 +318,14 @@ asset_rules:
       - external_assets[].availability_scope
       - external_assets[].tracked_in_git
       - external_assets[].reference_status
+      - external_assets[].reference_contract_version
+      - external_assets[].runtime_version_placeholder
+      - external_assets[].runtime_content_fingerprint_placeholder
+      - external_assets[].version_resolution_status
+      - external_assets[].runtime_verification_required
+      - external_assets[].owner_confirmation_required_on_version_change
+      - version_contract_status
+      - version_resolution_policy
       - constraints
 
   - asset_type: business_rule_readiness_gate
@@ -343,6 +382,39 @@ asset_rules:
       - gate_checks
       - decision
 
+  - asset_type: result_contract_readiness_gate
+    selector: { key: config_type, value: result_contract_readiness_gate }
+    required_paths:
+      - config_type
+      - gate_id
+      - workflow_id
+      - assessment_date
+      - status
+      - gate_result
+      - owner
+      - scope
+      - gate_checks
+      - owner_confirmations_applied
+      - decision
+
+  - asset_type: inventory_advertising_policy_readiness_gate
+    selector: { key: config_type, value: inventory_advertising_policy_readiness_gate }
+    required_paths:
+      - config_type
+      - gate_id
+      - workflow_id
+      - gate_version
+      - assessment_date
+      - status
+      - gate_result
+      - owner
+      - scope
+      - inventory_policy_coverage
+      - advertising_policy_coverage
+      - external_asset_version_gate
+      - gate_checks
+      - decision
+
   - asset_type: metric_result_store_readiness_matrix
     selector: { key: config_type, value: metric_result_store_readiness_matrix }
     required_paths:
@@ -374,6 +446,12 @@ asset_rules:
       - scope_boundaries
       - source_of_truth_order
       - constraints
+      - implementation_baseline
+      - implementation_baseline.baseline_id
+      - implementation_baseline.baseline_version
+      - implementation_baseline.status
+      - implementation_baseline.source_artifact
+      - implementation_baseline.explicit_owner_code_implementation_approval_received
 
   - asset_type: code_implementation_readiness_gate
     selector: { key: config_type, value: code_implementation_readiness_gate }
@@ -394,6 +472,27 @@ asset_rules:
       - runtime_acceptance_decision
       - governance
       - decision
+
+  - asset_type: implementation_baseline
+    selector: { key: config_type, value: implementation_baseline }
+    required_paths:
+      - config_type
+      - baseline_id
+      - baseline_version
+      - workflow_id
+      - freeze_date
+      - status
+      - owner
+      - source_main_commit_sha
+      - source_branch
+      - baseline_scope
+      - frozen_asset_versions
+      - frozen_gate_results
+      - frozen_gate_results[].gate_id
+      - frozen_gate_results[].status
+      - validation_contract
+      - implementation_authorization
+      - change_control
 
 constraints:
   optional_template_fields_may_be_omitted: true

@@ -1,9 +1,9 @@
 config_type: code_implementation_readiness_gate
 gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-assessment_date: 2026-08-02
-status: passed_with_runtime_bootstrap_conditions
-gate_result: passed_with_runtime_bootstrap_conditions
+assessment_date: 2026-08-03
+status: ready_awaiting_explicit_owner_approval
+gate_result: ready_awaiting_explicit_owner_approval
 owner: WORKFLOW_OWNER
 
 scope:
@@ -14,6 +14,9 @@ scope:
       status: deferred_by_owner
       blocking_weekly_implementation: false
   code_implementation_started: false
+  implementation_baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
+  implementation_baseline_version: 1.0.0
+  implementation_baseline_status: frozen
 
 prerequisite_gate_results:
   - gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1
@@ -27,6 +30,10 @@ prerequisite_gate_results:
   - gate_id: GATE_BUSINESS_RULE_REVENUE_WF_WEEKLY_BUSINESS_REPORT_V1
     status: passed
   - gate_id: GATE_METRIC_LIBRARY_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: passed
+  - gate_id: GATE_RESULT_CONTRACT_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: passed
+  - gate_id: GATE_INVENTORY_ADVERTISING_POLICY_WF_WEEKLY_BUSINESS_REPORT_V1
     status: passed
   - gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
     status: passed
@@ -45,6 +52,13 @@ implementation_readiness_checks:
   revenue_business_rules_confirmed: pass
   inventory_and_analysis_policies_explicit: pass
   metric_and_metric_variant_contracts_confirmed: pass
+  formal_result_contract_assets_confirmed: pass
+  result_contract_numeric_semantics_confirmed: pass
+  result_contract_dependency_graph_acyclic: pass
+  metric_variant_output_bindings_confirmed: pass
+  inventory_advertising_policy_gate: pass
+  external_asset_version_contracts_confirmed: pass
+  implementation_baseline_frozen: pass
   output_mapping_and_outlook_draft_contracts_confirmed: pass
   output_assembly_calculation_disabled: pass
   outlook_auto_send_false: pass
@@ -53,7 +67,10 @@ implementation_readiness_checks:
   metric_store_runtime_bootstrap: conditional
 
 implementation_entry_decision:
-  code_implementation_may_start: true
+  asset_baseline_ready: true
+  explicit_owner_code_implementation_approval_received: false
+  code_implementation_may_start: false
+  waiting_for_explicit_owner_approval: true
   allowed_initial_scope:
     - Generic Analytics Core interfaces
     - Data acquisition adapters with local runtime configuration
@@ -83,6 +100,7 @@ runtime_acceptance_decision:
     - Revenue local workbooks must exist and be accessible for each run
     - Outlook, Apollo and NovaBI sessions may require the confirmed refresh-and-retry policy
     - Local templates and recipient configuration must resolve at runtime
+    - Local External Asset versions and content fingerprints must validate before dependent scope activation
   runtime_acceptance_requires_owner_confirmation: true
 
 governance:
@@ -92,9 +110,11 @@ governance:
   outlook_auto_send: false
   customer_revenue_detail_deferred_without_blocking_weekly: true
   safety_review_required_before_each_git_operation: true
+  explicit_owner_approval_required_before_code_implementation: true
+  frozen_baseline_does_not_grant_implementation_authority: true
 
 decision:
-  final_gate_result: pass_for_code_implementation_start
+  final_gate_result: implementation_baseline_ready_awaiting_explicit_owner_approval
   runtime_gate_result: conditional_pending_local_metric_store_bootstrap
-  next_stage: Code Implementation
+  next_stage: Await explicit Owner approval for Code Implementation
   automatic_stage_transition: false

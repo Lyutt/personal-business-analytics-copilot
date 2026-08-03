@@ -1,0 +1,286 @@
+config_type: result_contract
+result_contract_id: RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+contract_name: Product Customer Delivery Change Analysis Result Contract
+contract_version: 1.0.0
+status: active
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+business_domain: Advertising
+business_context_id: CTX_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+producer: { producer_pipeline_id: PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS, producer_pipeline_version_constraint: 0.1.0-draft, producer_must_be_unique: true }
+contract_shape: record_set
+analysis_only_pipeline: true
+metric_variant_required: false
+generation_policy:
+  generate_only_when_valid_records_exist: true
+  omit_contract_when:
+    - query_failure
+    - zero_customer_result
+    - trigger_not_met
+    - invalid_product_mapping
+  omitted_contract_behavior: Notify owner when required by existing Policy and continue Weekly Workflow.
+record_sets:
+  - record_set_id: customer_delivery_changes
+    record_grain: [target_ad_product_name, current_reporting_period, customer_id]
+    cross_period_customer_match_key: customer_id
+    customer_name_fuzzy_matching_allowed: false
+    missing_side_impression_count: 0
+    customer_name_conflict_behavior: Notify owner and exclude the conflicting customer row; do not choose or merge names automatically.
+    context_fields:
+      - field_id: target_ad_product_name
+        field_name: 目标广告产品
+        business_definition: 触发本次单产品客户投放变化分析的明确广告产品。
+        source_type: standardized_field
+        source_standard_field_id: target_ad_product_name
+        data_type: string
+        base_unit: text
+        nullable: false
+        value_status_allowed: [valid_value, pending_confirmation]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Must come from the explicit product mapping; invalid mapping omits the analysis.
+        lineage_required: true
+      - field_id: analysis_scenario
+        field_name: 分析场景
+        business_definition: 根据已验证售卖率环比变化符号确定的正向或负向分析场景。
+        source_type: policy_derived_field
+        source_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        data_type: string
+        base_unit: category
+        allowed_values: [positive_sell_through_change, negative_sell_through_change]
+        nullable: false
+        value_status_allowed: [valid_value, pending_confirmation]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Scenario sign must agree with trigger_sell_through_wow_change_pp.
+        lineage_required: true
+      - field_id: current_period_start_date
+        field_name: 本期开始日期
+        business_definition: 当前周期客户投放查询的明确开始日期。
+        source_type: standardized_field
+        source_standard_field_id: period_start_date
+        source_period_role: current_period
+        data_type: date
+        base_unit: date
+        nullable: false
+        value_status_allowed: [valid_value, calculation_failed]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Required query context date in YYYY-MM-DD format.
+        lineage_required: true
+      - field_id: current_period_end_date
+        field_name: 本期结束日期
+        business_definition: 当前周期客户投放查询的明确结束日期。
+        source_type: standardized_field
+        source_standard_field_id: period_end_date
+        source_period_role: current_period
+        data_type: date
+        base_unit: date
+        nullable: false
+        value_status_allowed: [valid_value, calculation_failed]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Required query context date in YYYY-MM-DD format and not before start date.
+        lineage_required: true
+      - field_id: comparison_period_start_date
+        field_name: 对比期开始日期
+        business_definition: 上一对比周期客户投放查询的明确开始日期。
+        source_type: standardized_field
+        source_standard_field_id: period_start_date
+        source_period_role: comparison_period
+        data_type: date
+        base_unit: date
+        nullable: false
+        value_status_allowed: [valid_value, calculation_failed]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Required query context date in YYYY-MM-DD format.
+        lineage_required: true
+      - field_id: comparison_period_end_date
+        field_name: 对比期结束日期
+        business_definition: 上一对比周期客户投放查询的明确结束日期。
+        source_type: standardized_field
+        source_standard_field_id: period_end_date
+        source_period_role: comparison_period
+        data_type: date
+        base_unit: date
+        nullable: false
+        value_status_allowed: [valid_value, calculation_failed]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Required query context date in YYYY-MM-DD format and not before start date.
+        lineage_required: true
+      - field_id: trigger_sell_through_wow_change_pp
+        field_name: 触发售卖率环比变化
+        business_definition: 触发当前单产品客户分析的已验证售卖率环比百分点变化。
+        source_type: upstream_contract_field
+        source_contract_routes:
+          - { result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY, result_field_ids: [patch_brand_sell_through_wow_change_pp, non_patch_product_brand_sell_through_wow_change_pp] }
+          - { result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY, result_field_ids: [sell_through_wow_change_pp] }
+        data_type: number
+        base_unit: Decimal rate-point difference
+        numeric_constraints: { numeric_semantics: percentage_point_change, unit: percentage_point, integer_only: false, precision: preserve_source_precision, minimum: null, maximum: null }
+        nullable: false
+        value_status_allowed: [valid_value]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Must be a validated upstream field and satisfy the configured absolute trigger threshold.
+        lineage_required: true
+      - field_id: applied_trigger_threshold_pp
+        field_name: 已应用触发阈值
+        business_definition: 当前产品本次分析实际应用的售卖率环比绝对百分点阈值。
+        source_type: policy_derived_field
+        source_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        data_type: number
+        base_unit: percentage point
+        numeric_constraints: { numeric_semantics: threshold_percentage_point, unit: percentage_point, integer_only: false, precision: preserve_configured_precision, minimum: 0, maximum: null }
+        nullable: false
+        value_status_allowed: [valid_value]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Use the explicit product threshold or the confirmed default 10 percentage points; do not infer overrides.
+        lineage_required: true
+      - field_id: selection_basis
+        field_name: 客户选择依据
+        business_definition: 正向场景使用本周曝光量，负向场景使用上周减本周曝光量。
+        source_type: policy_derived_field
+        source_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        data_type: string
+        base_unit: category
+        allowed_values: [current_period_impression_count, comparison_period_minus_current_period_impression_count]
+        nullable: false
+        value_status_allowed: [valid_value]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Must agree with analysis_scenario.
+        lineage_required: true
+      - field_id: applied_materiality_threshold_count
+        field_name: 已应用重要性门槛
+        business_definition: 客户写入分析前应用的曝光量或曝光减少量包含下限。
+        source_type: policy_derived_field
+        source_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        data_type: number
+        base_unit: impression
+        numeric_constraints: { numeric_semantics: integer_threshold_count, unit: impression, integer_only: true, precision: integer, minimum: 1000000, maximum: 1000000 }
+        nullable: false
+        value_status_allowed: [valid_value]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Must equal the confirmed inclusive minimum of 1,000,000 impressions.
+        lineage_required: true
+      - field_id: applied_output_limit
+        field_name: 已应用输出数量上限
+        business_definition: 当前产品类别依本地已确认规则应用的最大客户输出数量。
+        source_type: policy_derived_field
+        source_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        data_type: number
+        base_unit: customer
+        numeric_constraints: { numeric_semantics: integer_limit, unit: customer, integer_only: true, precision: integer, minimum: 1, maximum: null }
+        nullable: false
+        value_status_allowed: [valid_value, pending_confirmation]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Resolve only from the explicit local product-category limit; do not infer a value.
+        lineage_required: true
+    record_fields:
+      - field_id: customer_id
+        field_name: 广告主ID
+        business_definition: 用于跨周期客户精确匹配的标准客户标识。
+        source_type: standardized_field
+        source_standard_field_id: customer_id
+        data_type: string
+        base_unit: identifier
+        nullable: false
+        value_status_allowed: [valid_value]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Exact customer_id matching only; blank IDs are excluded.
+        lineage_required: true
+      - field_id: customer_name
+        field_name: 广告主
+        business_definition: 经已批准广告主归属映射获得的客户或集团名称。
+        source_type: standardized_field
+        source_standard_field_id: customer_name
+        data_type: string
+        base_unit: text
+        nullable: false
+        value_status_allowed: [valid_value, pending_confirmation]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Same customer_id with conflicting names is excluded and reported; no fuzzy match or automatic merge.
+        lineage_required: true
+      - field_id: current_period_impression_count
+        field_name: 本期曝光量
+        business_definition: 目标客户在当前周期的标准化曝光量；仅对比期存在时记为0。
+        source_type: standardized_field
+        source_standard_field_id: impression_count
+        source_period_role: current_period
+        data_type: number
+        base_unit: impression
+        numeric_constraints: { numeric_semantics: integer_count, unit: impression, integer_only: true, precision: integer, minimum: 0, maximum: null }
+        nullable: false
+        value_status_allowed: [valid_value, calculation_failed]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Use standardized current-period value; missing-side outer match value is exactly 0.
+        lineage_required: true
+      - field_id: comparison_period_impression_count
+        field_name: 对比期曝光量
+        business_definition: 目标客户在上一对比周期的标准化曝光量；仅本期存在时记为0。
+        source_type: standardized_field
+        source_standard_field_id: impression_count
+        source_period_role: comparison_period
+        data_type: number
+        base_unit: impression
+        numeric_constraints: { numeric_semantics: integer_count, unit: impression, integer_only: true, precision: integer, minimum: 0, maximum: null }
+        nullable: false
+        value_status_allowed: [valid_value, calculation_failed]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Use standardized comparison-period value; missing-side outer match value is exactly 0.
+        lineage_required: true
+      - field_id: impression_change_count
+        field_name: 曝光变化量
+        business_definition: 本期曝光量减对比期曝光量的有符号变化量。
+        source_type: policy_derived_field
+        source_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        derivation: current_period_impression_count - comparison_period_impression_count
+        data_type: number
+        base_unit: impression
+        numeric_constraints: { numeric_semantics: signed_integer_change_count, unit: impression, integer_only: true, precision: integer, minimum: null, maximum: null }
+        nullable: false
+        value_status_allowed: [valid_value, calculation_failed]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Derive after exact customer_id matching and missing-side zero filling.
+        lineage_required: true
+      - field_id: ranking_measure
+        field_name: 排序值
+        business_definition: 正向场景等于本期曝光量；负向场景等于对比期曝光量减本期曝光量。
+        source_type: policy_derived_field
+        source_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        derivation_by_scenario:
+          positive_sell_through_change: current_period_impression_count
+          negative_sell_through_change: comparison_period_impression_count - current_period_impression_count
+        data_type: number
+        base_unit: impression
+        numeric_constraints: { numeric_semantics: integer_ranking_measure, unit: impression, integer_only: true, precision: integer, minimum: 1000000, maximum: null }
+        nullable: false
+        value_status_allowed: [valid_value, calculation_failed]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Must satisfy the inclusive applied materiality threshold and agree with analysis_scenario.
+        lineage_required: true
+      - field_id: customer_rank
+        field_name: 客户排名
+        business_definition: 目标产品当前分析场景内按ranking_measure降序生成的客户名次。
+        source_type: policy_derived_field
+        source_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        data_type: number
+        base_unit: ordinal position
+        numeric_constraints: { numeric_semantics: rank, unit: ordinal_position, integer_only: true, precision: integer, minimum: 1, maximum: null, maximum_reference: applied_output_limit }
+        nullable: false
+        value_status_allowed: [valid_value, calculation_failed]
+        applicable_report_modes: [regular_week, quarter_transition_week]
+        validation_requirement: Rank by ranking_measure descending and do not exceed applied_output_limit.
+        lineage_required: true
+contract_fields: []
+mode_semantics: { allowed_value_statuses: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation], missing_must_not_be_mapped_to_not_applicable: true }
+validation:
+  producer_pipeline_validation_required: true
+  required_fields: [customer_delivery_changes.target_ad_product_name, customer_delivery_changes.analysis_scenario, customer_delivery_changes.current_period_start_date, customer_delivery_changes.current_period_end_date, customer_delivery_changes.comparison_period_start_date, customer_delivery_changes.comparison_period_end_date, customer_delivery_changes.trigger_sell_through_wow_change_pp, customer_delivery_changes.applied_trigger_threshold_pp, customer_delivery_changes.selection_basis, customer_delivery_changes.applied_materiality_threshold_count, customer_delivery_changes.applied_output_limit, customer_delivery_changes.customer_id, customer_delivery_changes.customer_name, customer_delivery_changes.current_period_impression_count, customer_delivery_changes.comparison_period_impression_count, customer_delivery_changes.impression_change_count, customer_delivery_changes.ranking_measure, customer_delivery_changes.customer_rank]
+  conditional_fields: []
+  exact_customer_id_cross_period_match_required: true
+  customer_name_fuzzy_match_prohibited: true
+  customer_name_conflict_exclusion_required: true
+  omit_empty_or_invalid_contract_required: true
+  unit_validation: true
+  data_type_validation: true
+  numeric_constraint_validation: true
+  duplicate_field_id_check: true
+  metric_variant_binding_check: true
+  contract_completeness_check: true
+lineage: { required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, cutoff_date, report_mode, dataset_instance_ids, mapping_profile_versions, business_rule_versions, metric_variant_versions, generated_at, validation_status, approval_status] }
+constraints: { automatic_business_inference_allowed: false, output_mapping_may_calculate: false, unknown_business_values_remain_tbd: true, fake_metric_variant_prohibited: true, customer_rows_must_remain_local_only: true }

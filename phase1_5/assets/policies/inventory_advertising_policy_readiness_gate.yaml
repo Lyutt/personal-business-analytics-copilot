@@ -1,0 +1,80 @@
+config_type: inventory_advertising_policy_readiness_gate
+gate_id: GATE_INVENTORY_ADVERTISING_POLICY_WF_WEEKLY_BUSINESS_REPORT_V1
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+gate_version: 1.0.0
+assessment_date: 2026-08-03
+status: passed
+gate_result: passed
+owner: WORKFLOW_OWNER
+owner_confirmation: inherited_from_approved_source_assets
+
+scope:
+  domains: [Inventory, Advertising]
+  source_assets:
+    - phase1_5/assets/metrics/metric_library_inventory_baseline_v1.yaml
+    - phase1_5/assets/pipelines/pipeline_registry.yaml
+    - phase1_5/assets/pipelines/PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_policy_v1.yaml
+    - phase1_5/assets/field_mappings/MAP_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY_V1.yaml
+    - phase1_5/assets/field_mappings/MAP_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY_V1.yaml
+    - phase1_5/assets/field_mappings/MAP_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY_V1.yaml
+    - phase1_5/assets/field_mappings/MAP_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_V1.yaml
+    - phase1_5/assets/field_mappings/MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1.yaml
+    - phase1_5/assets/external_asset_references.yaml
+  policy_id:
+    - POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+  new_business_policy_created_by_gate: false
+  existing_policy_values_changed_by_gate: false
+
+inventory_policy_coverage:
+  full_site_inventory_filter_and_validation: confirmed
+  patch_time_slice_exclusion: confirmed_local_versioned_external_asset
+  non_patch_product_assignment: confirmed_local_versioned_external_asset
+  commercial_sellability_mapping: confirmed_local_versioned_external_asset
+  special_placement_exception: confirmed_local_versioned_external_asset
+  inventory_volume_and_change_validation: confirmed
+  product_and_brand_moment_sell_through_validation: confirmed
+  missing_history_recovery: confirmed
+  dependent_scope_failure_isolation: confirmed
+
+advertising_policy_coverage:
+  brand_moment_delivery_mapping_and_validation: confirmed
+  product_filter_mapping: confirmed_local_versioned_external_asset
+  customer_analysis_trigger_threshold: unchanged_confirmed
+  materiality_threshold_and_output_limit: unchanged_confirmed
+  exact_customer_id_cross_period_match: confirmed
+  missing_side_impression_count_zero: confirmed
+  conflicting_customer_name_exclusion: confirmed
+  scenario_specific_ranking_measure: confirmed
+  invalid_or_empty_analysis_contract_omission: confirmed
+  weekly_workflow_continuation_after_scoped_failure: confirmed
+
+external_asset_version_gate:
+  registered_external_asset_count: 10
+  repository_reference_contract_version_required: true
+  runtime_local_version_required: true
+  runtime_content_fingerprint_required: true
+  actual_runtime_values_must_remain_local_only: true
+  unresolved_version_action: Block dependent scope, notify owner, and do not substitute.
+  owner_confirmation_required_after_version_change: true
+
+gate_checks:
+  inventory_policy_sources_explicit: pass
+  advertising_policy_sources_explicit: pass
+  formulas_and_thresholds_unchanged: pass
+  product_mapping_auto_inference_disabled: pass
+  external_asset_reference_contract_versions_complete: pass
+  external_asset_runtime_values_remain_local_only: pass
+  inventory_failure_scope_explicit: pass
+  advertising_failure_scope_explicit: pass
+  customer_analysis_result_omission_policy_explicit: pass
+  outlook_auto_send_false_unchanged: pass
+  sensitive_business_rows_absent: pass
+  owner_approval_status_unchanged: pass
+
+decision:
+  inventory_advertising_policy_assets_ready: true
+  runtime_external_asset_resolution_still_required: true
+  code_implementation_authorized_by_this_gate: false
+  owner_code_implementation_approval_required: true
+  final_code_implementation_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
+  auto_merge_authorized: false

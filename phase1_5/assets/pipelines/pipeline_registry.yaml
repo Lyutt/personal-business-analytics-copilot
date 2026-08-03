@@ -1717,6 +1717,8 @@ pipelines:
     source_and_data_owners: Inherit from Data Source and Dataset registries
     version: 0.1.0-draft
     approval_status: registry_initialized
+    analysis_only_pipeline: true
+    metric_variant_creation_for_result_fields: prohibited
 
     pipeline_boundary:
       start: >
@@ -1805,6 +1807,15 @@ pipelines:
           detail_dimension_date: deselected
           expected_result_shape: Customer-level period summary rows
       cross_period_comparison_input: Two independently validated weekly customer summaries
+      cross_period_customer_matching:
+        match_key: customer_id
+        fuzzy_customer_name_matching_allowed: false
+        current_only_customer_comparison_period_impression_count: 0
+        comparison_only_customer_current_period_impression_count: 0
+        same_customer_id_name_conflict_action:
+          - Notify owner
+          - Exclude the conflicting customer row
+          - Do not automatically choose or merge customer names
       stages:
         - DATA_COLLECTION
         - DATA_STANDARDIZATION
@@ -1821,6 +1832,17 @@ pipelines:
       result_contract_ids:
         - RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
       result_contract_cardinality: One result per triggered product Pipeline Run
+      result_contract_shape: record_set
+      result_record_grain:
+        - target_ad_product_name
+        - current_reporting_period
+        - customer_id
+      no_placeholder_result_contract_when:
+        - Query failure
+        - Zero customer rows
+        - Trigger not met
+        - Invalid product mapping
+      omitted_result_behavior: Notify owner under the existing Policy and continue Weekly Workflow
       output_mapping_ids:
         - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: false

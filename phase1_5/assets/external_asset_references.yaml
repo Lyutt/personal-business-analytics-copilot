@@ -1,6 +1,13 @@
 config_type: external_asset_reference_registry
 registry_version: 1.0.0
 status: active
+version_contract_status: complete
+version_resolution_policy:
+  repository_records_reference_contract_versions_only: true
+  actual_local_versions_and_fingerprints_must_remain_local_only: true
+  runtime_version_and_fingerprint_resolution_required_before_use: true
+  unresolved_or_changed_version_action: Block the dependent scope, notify owner, and do not substitute another local asset.
+  owner_confirmation_required_after_local_asset_change: true
 
 external_assets:
   - asset_id: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX
@@ -8,51 +15,126 @@ external_assets:
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${MAP_ADVERTISER_NAME_OWNERSHIP_INDEX_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${MAP_ADVERTISER_NAME_OWNERSHIP_INDEX_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
 
   - asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
     asset_type: local_business_rule_asset
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
 
   - asset_id: FILTER_PATCH_TIME_SLICE_EXCLUSION_LOCAL_ONLY
     asset_type: local_filter_rule
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${FILTER_PATCH_TIME_SLICE_EXCLUSION_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${FILTER_PATCH_TIME_SLICE_EXCLUSION_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
 
   - asset_id: SPECIAL_PLACEMENT_EXCEPTION_LOCAL_ONLY
     asset_type: local_filter_rule
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${SPECIAL_PLACEMENT_EXCEPTION_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${SPECIAL_PLACEMENT_EXCEPTION_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+
+  - asset_id: MAP_COMMERCIAL_SELLABILITY_INDEX_LOCAL_ONLY
+    asset_type: local_reference_mapping
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${MAP_COMMERCIAL_SELLABILITY_INDEX_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${MAP_COMMERCIAL_SELLABILITY_INDEX_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+
+  - asset_id: RULESET_NON_PATCH_PRODUCT_INVENTORY_LOCAL_ONLY
+    asset_type: local_business_rule_asset
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${RULESET_NON_PATCH_PRODUCT_INVENTORY_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${RULESET_NON_PATCH_PRODUCT_INVENTORY_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
 
   - asset_id: TEMPLATE_WEEKLY_REPORT_0724_LOCAL_ONLY
     asset_type: local_output_template
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${TEMPLATE_WEEKLY_REPORT_0724_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${TEMPLATE_WEEKLY_REPORT_0724_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
 
   - asset_id: TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_LOCAL_ONLY
     asset_type: local_output_template
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
 
   - asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
     asset_type: local_output_template
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${TEMPLATE_CUSTOMER_REVENUE_DETAIL_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${TEMPLATE_CUSTOMER_REVENUE_DETAIL_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
 
   - asset_id: RECIPIENTS_WEEKLY_REPORT_BASELINE_LOCAL_ONLY
     asset_type: local_recipient_configuration
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${RECIPIENTS_WEEKLY_REPORT_BASELINE_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${RECIPIENTS_WEEKLY_REPORT_BASELINE_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
 
 constraints:
   external_assets_are_definitions_not_business_logic: true
   external_assets_cannot_contain_local_paths: true
   external_assets_cannot_contain_personal_identifiers: true
   external_assets_cannot_be_auto_activated: true
+  runtime_version_values_must_not_enter_git: true
+  runtime_content_fingerprints_must_not_enter_git: true
+  unresolved_external_asset_version_blocks_only_dependent_scope: true

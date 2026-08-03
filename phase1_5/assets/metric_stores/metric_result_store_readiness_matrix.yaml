@@ -9,12 +9,14 @@ gate_result: conditional
 readiness_definitions:
   implementation_ready: >-
     Logical result contract, Metric Variant bindings, write policy and failure
-    boundary are complete enough to implement.
+    boundary are complete enough for a frozen implementation baseline; actual
+    Code Implementation still requires explicit Owner approval.
   runtime_conditional: >-
-    Implementation may start, but each run must verify that the configured
-    local physical asset exists and is readable or writable as required.
+    After explicit Owner approval allows Implementation, each run must verify
+    that the configured local physical asset exists and is readable or writable
+    as required.
   runtime_bootstrap_blocked: >-
-    Logical implementation may start, but end-to-end runtime acceptance is
+    The logical baseline may be reviewed, but end-to-end runtime acceptance is
     blocked until a local physical format, location and initial schema exist.
 
 readiness_records:

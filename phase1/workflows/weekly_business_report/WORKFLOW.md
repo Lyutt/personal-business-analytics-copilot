@@ -1,5 +1,17 @@
 # Weekly Business Report Workflow 详细设计
 
+> **历史版本提示**
+>
+> 本文件是Phase 1设计草案，仅用于追溯，不再作为当前Workflow、字段合同、
+> Pipeline依赖、Result Contract或Implementation状态的权威来源。当前实现基线请依次读取：
+>
+> 1. `phase1_5/assets/readiness/status_index.yaml`
+> 2. `phase1_5/assets/readiness/implementation_baseline.yaml`
+> 3. `phase1_5/workflows/weekly_business_report/WORKFLOW_v2.md`
+>
+> 当前代码实现尚未开始，必须等待Owner对冻结Baseline ID和版本的明确批准。
+> 下文中的Draft状态、步骤划分和输出描述不得直接转成代码需求。
+
 ## 1. Workflow 身份
 
 | 项目 | 定义 |

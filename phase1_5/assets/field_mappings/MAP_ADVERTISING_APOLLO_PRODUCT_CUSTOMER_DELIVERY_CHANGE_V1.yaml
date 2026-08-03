@@ -169,6 +169,9 @@ derived_lookup_mapping_requirements:
     output_standard_field_name: 广告主
     output_business_meaning: 经广告主归属映射后的客户/集团名称
     reference_mapping_asset_id: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX
+    reference_mapping_contract_version: 1.0.0
+    reference_mapping_runtime_version: '${MAP_ADVERTISER_NAME_OWNERSHIP_INDEX_VERSION_LOCAL_ONLY}'
+    reference_mapping_runtime_verification_required: true
     reference_mapping_asset:
       source_path: '${LOCAL_WORKFLOW_DATA_ROOT}\匹配表\广告主名称归属index.csv'
       input_column: A

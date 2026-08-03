@@ -1,0 +1,64 @@
+config_type: result_contract
+result_contract_id: RC_REVENUE_CTV_WEEKLY
+contract_name: CTV Weekly Revenue Result Contract
+contract_version: 1.0.0
+status: active
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+business_domain: Revenue
+business_context_id: CTX_REVENUE_CTV_WEEKLY
+producer: { producer_pipeline_id: PL_REVENUE_CTV_WEEKLY, producer_pipeline_version_constraint: 0.1.0-draft, producer_must_be_unique: true }
+contract_shape: single_record
+contract_fields:
+  - field_id: qtd_performance_revenue
+    field_name: CTV QTD签单金额
+    business_definition: 目标财务季度内CTV不含植入有效记录的累计签单金额。
+    source_type: metric_variant
+    source_metric_variant_id: MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+    data_type: number
+    base_unit: CNY yuan
+    numeric_constraints: { numeric_semantics: monetary_amount, unit: CNY_yuan, integer_only: false, precision: preserve_source_precision, minimum: null, maximum: null }
+    nullable: false
+    value_status_allowed: [valid_value, calculation_failed, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    validation_requirement: Inherit upstream Pipeline validation; zero or negative final value continues with final-output notification.
+    lineage_required: true
+  - field_id: qtd_performance_revenue_yoy
+    field_name: CTV QTD签单金额同比
+    business_definition: CTV QTD签单金额与明确去年同期结果的日均化同比。
+    source_type: metric_variant
+    source_metric_variant_id: MV_REVENUE_CTV_QTD_PERFORMANCE_YOY_V1
+    data_type: number
+    base_unit: Decimal ratio
+    numeric_constraints: { numeric_semantics: ratio, unit: decimal_ratio, integer_only: false, precision: preserve_source_precision, minimum: null, maximum: null }
+    nullable: true
+    value_status_allowed: [valid_value, missing, calculation_failed, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    validation_requirement: Leave blank and notify owner when denominator or prior-year comparable result is invalid or unavailable.
+    lineage_required: true
+  - field_id: qtd_executed_revenue
+    field_name: CTV QTD已执行金额
+    business_definition: 目标财务季度内CTV不含植入有效记录的行级派生已执行金额汇总。
+    source_type: metric_variant
+    source_metric_variant_id: MV_REVENUE_CTV_QTD_EXECUTED_V1
+    data_type: number
+    base_unit: CNY yuan
+    numeric_constraints: { numeric_semantics: monetary_amount, unit: CNY_yuan, integer_only: false, precision: preserve_source_precision, minimum: null, maximum: null }
+    nullable: false
+    value_status_allowed: [valid_value, calculation_failed, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    validation_requirement: Inherit upstream Pipeline validation; zero or negative final value continues with final-output notification.
+    lineage_required: true
+record_sets: []
+mode_semantics: { allowed_value_statuses: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation], missing_must_not_be_mapped_to_not_applicable: true }
+validation:
+  producer_pipeline_validation_required: true
+  required_fields: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue]
+  conditional_fields: []
+  unit_validation: true
+  data_type_validation: true
+  numeric_constraint_validation: true
+  duplicate_field_id_check: true
+  metric_variant_binding_check: true
+  contract_completeness_check: true
+lineage: { required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, cutoff_date, report_mode, dataset_instance_ids, mapping_profile_versions, business_rule_versions, metric_variant_versions, generated_at, validation_status, approval_status] }
+constraints: { automatic_business_inference_allowed: false, output_mapping_may_calculate: false, unknown_business_values_remain_tbd: true }

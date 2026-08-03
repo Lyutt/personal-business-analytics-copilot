@@ -13,6 +13,15 @@ output_target:
   source_template_references:
     regular_week: TEMPLATE_WEEKLY_REPORT_0724_LOCAL_ONLY
     quarter_transition_week_revenue: TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_LOCAL_ONLY
+  source_template_version_bindings:
+    - asset_id: TEMPLATE_WEEKLY_REPORT_0724_LOCAL_ONLY
+      reference_contract_version: 1.0.0
+      runtime_version_reference: '${TEMPLATE_WEEKLY_REPORT_0724_VERSION_LOCAL_ONLY}'
+      runtime_version_verification_required: true
+    - asset_id: TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_LOCAL_ONLY
+      reference_contract_version: 1.0.0
+      runtime_version_reference: '${TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_VERSION_LOCAL_ONLY}'
+      runtime_version_verification_required: true
   source_template_files_must_not_enter_git: true
   outlook_draft_mapping_id: OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
 
@@ -45,55 +54,51 @@ section_order:
         display_label: 全站库存
         validated_result_contract_ids:
           - RC_INVENTORY_FULL_SITE_WEEKLY
-        metric_variant_ids:
-          - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1
-          - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_WOW_V1
-        display_fields:
-          - full_site_available_inventory_cpm
-          - full_site_available_inventory_wow
+        output_fields:
+          - output_field_id: full_site_available_inventory_cpm
+            result_field_binding: { result_contract_id: RC_INVENTORY_FULL_SITE_WEEKLY, result_field_id: available_inventory_count }
+          - output_field_id: full_site_available_inventory_wow
+            result_field_binding: { result_contract_id: RC_INVENTORY_FULL_SITE_WEEKLY, result_field_id: available_inventory_wow }
       - output_slot_id: SLOT_INVENTORY_DAU
         display_order: 2
         display_label: DAU
         validated_result_contract_ids:
           - RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
-        metric_variant_ids:
-          - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1
-          - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1
-        display_fields:
-          - weekly_average_dau
-          - weekly_average_dau_wow
+        output_fields:
+          - output_field_id: weekly_average_dau
+            result_field_binding: { result_contract_id: RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY, result_field_id: weekly_average_dau }
+          - output_field_id: weekly_average_dau_wow
+            result_field_binding: { result_contract_id: RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY, result_field_id: weekly_average_dau_wow }
       - output_slot_id: SLOT_INVENTORY_PATCH
         display_order: 3
         display_label: 贴片库存及售卖率
         validated_result_contract_ids:
           - RC_INVENTORY_PATCH_WEEKLY
           - RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
-        metric_variant_ids:
-          - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
-          - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_WOW_V1
-          - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1
-          - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1
-        display_fields:
-          - patch_available_inventory
-          - patch_available_inventory_wow
-          - patch_brand_sell_through_rate
-          - patch_brand_sell_through_wow_change_pp
+        output_fields:
+          - output_field_id: patch_available_inventory
+            result_field_binding: { result_contract_id: RC_INVENTORY_PATCH_WEEKLY, result_field_id: available_inventory_count }
+          - output_field_id: patch_available_inventory_wow
+            result_field_binding: { result_contract_id: RC_INVENTORY_PATCH_WEEKLY, result_field_id: available_inventory_wow }
+          - output_field_id: patch_brand_sell_through_rate
+            result_field_binding: { result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY, result_field_id: patch_brand_sell_through_rate }
+          - output_field_id: patch_brand_sell_through_wow_change_pp
+            result_field_binding: { result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY, result_field_id: patch_brand_sell_through_wow_change_pp }
       - output_slot_id: SLOT_INVENTORY_NON_PATCH_PRODUCTS
         display_order: 4
         display_label: 非贴片产品库存及售卖率
         validated_result_contract_ids:
           - RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
           - RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
-        metric_variant_ids:
-          - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
-          - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_WOW_V1
-          - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
-          - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1
-        display_fields:
-          - product_available_inventory
-          - product_available_inventory_wow
-          - product_brand_sell_through_rate
-          - product_brand_sell_through_wow_change_pp
+        output_fields:
+          - output_field_id: product_available_inventory
+            result_field_binding: { result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY, result_field_id: available_inventory_count }
+          - output_field_id: product_available_inventory_wow
+            result_field_binding: { result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY, result_field_id: available_inventory_wow }
+          - output_field_id: product_brand_sell_through_rate
+            result_field_binding: { result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY, result_field_id: non_patch_product_brand_sell_through_rate }
+          - output_field_id: product_brand_sell_through_wow_change_pp
+            result_field_binding: { result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY, result_field_id: non_patch_product_brand_sell_through_wow_change_pp }
         product_routing_must_be_explicit: true
       - output_slot_id: SLOT_INVENTORY_BRAND_MOMENT
         display_order: 5
@@ -102,18 +107,17 @@ section_order:
           - RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
           - RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
           - RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
-        metric_variant_ids:
-          - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
-          - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1
-          - MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1
-          - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1
-          - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1
-        display_fields:
-          - brand_moment_available_inventory
-          - brand_moment_available_inventory_wow
-          - brand_moment_impression_count
-          - brand_moment_sell_through_rate
-          - brand_moment_sell_through_wow_change_pp
+        output_fields:
+          - output_field_id: brand_moment_available_inventory
+            result_field_binding: { result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY, result_field_id: brand_moment_available_inventory_count }
+          - output_field_id: brand_moment_available_inventory_wow
+            result_field_binding: { result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY, result_field_id: available_inventory_wow }
+          - output_field_id: brand_moment_impression_count
+            result_field_binding: { result_contract_id: RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY, result_field_id: impression_count }
+          - output_field_id: brand_moment_sell_through_rate
+            result_field_binding: { result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY, result_field_id: sell_through_rate }
+          - output_field_id: brand_moment_sell_through_wow_change_pp
+            result_field_binding: { result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY, result_field_id: sell_through_wow_change_pp }
 
   - section_id: REVENUE
     display_order: 2
@@ -124,20 +128,19 @@ section_order:
         display_label: 技术线
         validated_result_contract_ids:
           - RC_REVENUE_TECHNICAL_WEEKLY
-        metric_variant_ids:
-          - MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1
-          - MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_YOY_V1
-          - MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1
-          - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
-          - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_WOW_V1
-          - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_YOY_V1
-        display_fields:
-          - qtd_performance_revenue
-          - qtd_performance_revenue_yoy
-          - qtd_executed_revenue
-          - weekly_incremental_executed_revenue
-          - weekly_incremental_executed_revenue_wow
-          - weekly_incremental_executed_revenue_yoy
+        output_fields:
+          - output_field_id: qtd_performance_revenue
+            result_field_binding: { result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY, result_field_id: qtd_performance_revenue }
+          - output_field_id: qtd_performance_revenue_yoy
+            result_field_binding: { result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY, result_field_id: qtd_performance_revenue_yoy }
+          - output_field_id: qtd_executed_revenue
+            result_field_binding: { result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY, result_field_id: qtd_executed_revenue }
+          - output_field_id: weekly_incremental_executed_revenue
+            result_field_binding: { result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY, result_field_id: weekly_incremental_executed_revenue }
+          - output_field_id: weekly_incremental_executed_revenue_wow
+            result_field_binding: { result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY, result_field_id: weekly_incremental_executed_revenue_wow }
+          - output_field_id: weekly_incremental_executed_revenue_yoy
+            result_field_binding: { result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY, result_field_id: weekly_incremental_executed_revenue_yoy }
       - output_slot_id: SLOT_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE
         display_order: 2
         display_label: 订单整体曝光完成率
@@ -151,40 +154,37 @@ section_order:
         display_label: CTV（不含植入）
         validated_result_contract_ids:
           - RC_REVENUE_CTV_WEEKLY
-        metric_variant_ids:
-          - MV_REVENUE_CTV_QTD_PERFORMANCE_V1
-          - MV_REVENUE_CTV_QTD_PERFORMANCE_YOY_V1
-          - MV_REVENUE_CTV_QTD_EXECUTED_V1
-        display_fields:
-          - qtd_performance_revenue
-          - qtd_performance_revenue_yoy
-          - qtd_executed_revenue
+        output_fields:
+          - output_field_id: qtd_performance_revenue
+            result_field_binding: { result_contract_id: RC_REVENUE_CTV_WEEKLY, result_field_id: qtd_performance_revenue }
+          - output_field_id: qtd_performance_revenue_yoy
+            result_field_binding: { result_contract_id: RC_REVENUE_CTV_WEEKLY, result_field_id: qtd_performance_revenue_yoy }
+          - output_field_id: qtd_executed_revenue
+            result_field_binding: { result_contract_id: RC_REVENUE_CTV_WEEKLY, result_field_id: qtd_executed_revenue }
       - output_slot_id: SLOT_REVENUE_SMART_SPEAKER
         display_order: 4
         display_label: 智能音箱
         validated_result_contract_ids:
           - RC_REVENUE_SMART_SPEAKER_WEEKLY
-        metric_variant_ids:
-          - MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_V1
-          - MV_REVENUE_SMART_SPEAKER_QTD_EXECUTED_V1
-          - MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_WOW_V1
-        display_fields:
-          - qtd_executed_revenue
-          - weekly_executed_revenue
-          - weekly_executed_revenue_wow
+        output_fields:
+          - output_field_id: qtd_executed_revenue
+            result_field_binding: { result_contract_id: RC_REVENUE_SMART_SPEAKER_WEEKLY, result_field_id: qtd_executed_revenue }
+          - output_field_id: weekly_executed_revenue
+            result_field_binding: { result_contract_id: RC_REVENUE_SMART_SPEAKER_WEEKLY, result_field_id: weekly_executed_revenue }
+          - output_field_id: weekly_executed_revenue_wow
+            result_field_binding: { result_contract_id: RC_REVENUE_SMART_SPEAKER_WEEKLY, result_field_id: weekly_executed_revenue_wow }
       - output_slot_id: SLOT_REVENUE_FAST_VERSION
         display_order: 5
         display_label: 极速版
         validated_result_contract_ids:
           - RC_REVENUE_FAST_VERSION_WEEKLY
-        metric_variant_ids:
-          - MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_V1
-          - MV_REVENUE_FAST_VERSION_QTD_EXECUTED_V1
-          - MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_WOW_V1
-        display_fields:
-          - qtd_executed_revenue
-          - weekly_executed_revenue
-          - weekly_executed_revenue_wow
+        output_fields:
+          - output_field_id: qtd_executed_revenue
+            result_field_binding: { result_contract_id: RC_REVENUE_FAST_VERSION_WEEKLY, result_field_id: qtd_executed_revenue }
+          - output_field_id: weekly_executed_revenue
+            result_field_binding: { result_contract_id: RC_REVENUE_FAST_VERSION_WEEKLY, result_field_id: weekly_executed_revenue }
+          - output_field_id: weekly_executed_revenue_wow
+            result_field_binding: { result_contract_id: RC_REVENUE_FAST_VERSION_WEEKLY, result_field_id: weekly_executed_revenue_wow }
       - output_slot_id: SLOT_CONDITIONAL_PRODUCT_CUSTOMER_ANALYSIS
         display_order: 6
         display_label: 产品客户投放变化分析（仅异常触发）
@@ -193,7 +193,16 @@ section_order:
           - RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
         selection_and_ranking_policy_reference: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
         display_fields: TBD
+        result_record_set_binding:
+          result_contract_id: RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+          record_set_id: customer_delivery_changes
         output_assembly_may_calculate: false
+        placeholder_or_null_result_contract_allowed: false
+        omission_conditions:
+          - Query failure
+          - Zero customer rows
+          - Trigger not met
+          - Invalid product mapping
         query_failure_action: Omit this product customer analysis and notify owner; continue Workflow
 
 display_format:
