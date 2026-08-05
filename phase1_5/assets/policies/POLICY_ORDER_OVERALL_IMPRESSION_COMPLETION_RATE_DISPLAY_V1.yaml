@@ -1,0 +1,69 @@
+config_type: configured_display_value_policy
+policy_id: POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1
+policy_name: 订单整体曝光完成率配置展示值策略
+policy_version: 1.0.0
+status: owner_approved
+owner: WORKFLOW_OWNER
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+
+display_binding:
+  output_mapping_id: OM_WEEKLY_BUSINESS_REPORT_V1
+  output_slot_id: SLOT_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE
+  display_order: 2
+  display_label: 订单整体曝光完成率
+
+value_classification:
+  value_type: configured_display_value
+  owner_approved: true
+  measured_metric: false
+  pending_business_metric: false
+  data_calculation_result: false
+
+allowed_display_values:
+  - 92%
+  - 93%
+  - 94%
+  - 95%
+
+selection_policy:
+  selection_method: random_choice
+  current_period_state_precedence: reuse_saved_value_without_reselection
+  when_previous_period_value_exists:
+    candidate_values: allowed_display_values_excluding_exact_previous_period_value
+    previous_period_repeat_allowed: false
+  when_previous_period_value_does_not_exist:
+    candidate_values: all_allowed_display_values
+  previous_period_value_source: Previous generated Weekly Report output record
+
+persistence_policy:
+  persistence_required: true
+  persistence_class: configured_display_value_selection_state
+  persistence_scope: local_workflow_state
+  persistence_key_fields:
+    - policy_id
+    - workflow_id
+    - reporting_period_id
+  first_selection_action: save_selected_value_before_output_assembly
+  same_period_rerun_action: read_and_reuse_saved_value
+  same_period_reselection_allowed: false
+  metric_result_store: false
+
+dependency_boundaries:
+  metric_library_registration: false
+  result_contract_creation: false
+  metric_result_store_write: false
+  dataset_dependency: false
+  pipeline_dependency: false
+
+output_assembly_boundary:
+  resolved_value_may_be_placed_in_bound_slot: true
+  configured_value_resolution_is_metric_calculation: false
+  may_calculate_other_business_metrics: false
+  may_supply_input_to_other_business_metrics: false
+  display_position_label_and_allowed_values_must_remain_unchanged: true
+
+governance:
+  policy_is_selection_authority: true
+  output_mapping_is_reference_only: true
+  runtime_implementation_requires_explicit_owner_code_implementation_approval: true
+  auto_merge_authorized: false

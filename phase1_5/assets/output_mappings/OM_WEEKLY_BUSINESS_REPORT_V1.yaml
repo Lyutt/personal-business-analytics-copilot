@@ -145,6 +145,11 @@ section_order:
         display_order: 2
         display_label: 订单整体曝光完成率
         source_type: Configured display value
+        configured_display_value_policy_reference:
+          policy_id: POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1
+          resolution_role: display_value_selection_only
+          same_period_saved_value_must_be_reused: true
+          output_assembly_may_calculate_other_business_metrics: false
         validated_result_contract_ids: []
         metric_library_registration: false
         pipeline_dependency: false

@@ -326,6 +326,16 @@ def collect_definitions(
                 "policy_id",
             )
 
+        if document.get("config_type") == "configured_display_value_policy":
+            add_definition(
+                definitions,
+                definition_paths,
+                "policy",
+                document.get("policy_id"),
+                file,
+                "policy_id",
+            )
+
         if document.get("asset_type") == "Pipeline Policy":
             add_definition(
                 definitions,
@@ -1238,6 +1248,248 @@ def validate_result_contract_semantics(
     }
 
 
+def validate_configured_display_value_policy(
+    documents: dict[str, Any], errors: list[str]
+) -> int:
+    """Validate the Owner-approved non-Metric configured display value policy."""
+    policy_id = "POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1"
+    policy_file = (
+        "phase1_5/assets/policies/"
+        "POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1.yaml"
+    )
+    policy = documents.get(policy_file)
+    if not isinstance(policy, dict):
+        errors.append(f"{policy_file}: configured display value policy is required")
+        return 0
+
+    def require_equal(path: str, actual: Any, expected: Any) -> None:
+        if actual != expected:
+            errors.append(f"{policy_file}:{path}: expected {expected!r}, got {actual!r}")
+
+    require_equal("policy_id", policy.get("policy_id"), policy_id)
+    require_equal("status", policy.get("status"), "owner_approved")
+    require_equal("workflow_id", policy.get("workflow_id"), "WF_WEEKLY_BUSINESS_REPORT")
+
+    binding = policy.get("display_binding", {})
+    expected_binding = {
+        "output_mapping_id": "OM_WEEKLY_BUSINESS_REPORT_V1",
+        "output_slot_id": "SLOT_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE",
+        "display_order": 2,
+        "display_label": "订单整体曝光完成率",
+    }
+    for key, expected in expected_binding.items():
+        require_equal(f"display_binding.{key}", binding.get(key), expected)
+
+    require_equal(
+        "allowed_display_values",
+        policy.get("allowed_display_values"),
+        ["92%", "93%", "94%", "95%"],
+    )
+
+    classification = policy.get("value_classification", {})
+    expected_classification = {
+        "value_type": "configured_display_value",
+        "owner_approved": True,
+        "measured_metric": False,
+        "pending_business_metric": False,
+        "data_calculation_result": False,
+    }
+    for key, expected in expected_classification.items():
+        require_equal(f"value_classification.{key}", classification.get(key), expected)
+
+    selection = policy.get("selection_policy", {})
+    expected_selection = {
+        "selection_method": "random_choice",
+        "current_period_state_precedence": "reuse_saved_value_without_reselection",
+        "previous_period_value_source": "Previous generated Weekly Report output record",
+    }
+    for key, expected in expected_selection.items():
+        require_equal(f"selection_policy.{key}", selection.get(key), expected)
+    previous_exists = selection.get("when_previous_period_value_exists", {})
+    require_equal(
+        "selection_policy.when_previous_period_value_exists.candidate_values",
+        previous_exists.get("candidate_values"),
+        "allowed_display_values_excluding_exact_previous_period_value",
+    )
+    require_equal(
+        "selection_policy.when_previous_period_value_exists.previous_period_repeat_allowed",
+        previous_exists.get("previous_period_repeat_allowed"),
+        False,
+    )
+    previous_missing = selection.get("when_previous_period_value_does_not_exist", {})
+    require_equal(
+        "selection_policy.when_previous_period_value_does_not_exist.candidate_values",
+        previous_missing.get("candidate_values"),
+        "all_allowed_display_values",
+    )
+
+    persistence = policy.get("persistence_policy", {})
+    expected_persistence = {
+        "persistence_required": True,
+        "persistence_class": "configured_display_value_selection_state",
+        "persistence_scope": "local_workflow_state",
+        "persistence_key_fields": ["policy_id", "workflow_id", "reporting_period_id"],
+        "first_selection_action": "save_selected_value_before_output_assembly",
+        "same_period_rerun_action": "read_and_reuse_saved_value",
+        "same_period_reselection_allowed": False,
+        "metric_result_store": False,
+    }
+    for key, expected in expected_persistence.items():
+        require_equal(f"persistence_policy.{key}", persistence.get(key), expected)
+
+    boundaries = policy.get("dependency_boundaries", {})
+    for key in (
+        "metric_library_registration",
+        "result_contract_creation",
+        "metric_result_store_write",
+        "dataset_dependency",
+        "pipeline_dependency",
+    ):
+        require_equal(f"dependency_boundaries.{key}", boundaries.get(key), False)
+
+    assembly = policy.get("output_assembly_boundary", {})
+    require_equal(
+        "output_assembly_boundary.resolved_value_may_be_placed_in_bound_slot",
+        assembly.get("resolved_value_may_be_placed_in_bound_slot"),
+        True,
+    )
+    for key in (
+        "configured_value_resolution_is_metric_calculation",
+        "may_calculate_other_business_metrics",
+        "may_supply_input_to_other_business_metrics",
+    ):
+        require_equal(f"output_assembly_boundary.{key}", assembly.get(key), False)
+
+    output_file = "phase1_5/assets/output_mappings/OM_WEEKLY_BUSINESS_REPORT_V1.yaml"
+    output_mapping = documents.get(output_file, {})
+    matching_slots: list[dict[str, Any]] = []
+    if isinstance(output_mapping, dict):
+        for section in output_mapping.get("section_order", []):
+            if not isinstance(section, dict):
+                continue
+            for entry in section.get("mapping_entries", []):
+                if (
+                    isinstance(entry, dict)
+                    and entry.get("output_slot_id")
+                    == "SLOT_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE"
+                ):
+                    matching_slots.append(entry)
+    if len(matching_slots) != 1:
+        errors.append(f"{output_file}: expected exactly one configured display value slot")
+    else:
+        slot = matching_slots[0]
+        reference = slot.get("configured_display_value_policy_reference", {})
+        expected_slot_values = {
+            "display_order": 2,
+            "display_label": "订单整体曝光完成率",
+            "source_type": "Configured display value",
+            "validated_result_contract_ids": [],
+            "metric_library_registration": False,
+            "pipeline_dependency": False,
+            "calculation_in_output_mapping": False,
+        }
+        for key, expected in expected_slot_values.items():
+            if slot.get(key) != expected:
+                errors.append(f"{output_file}:{key}: expected {expected!r}")
+        expected_reference = {
+            "policy_id": policy_id,
+            "resolution_role": "display_value_selection_only",
+            "same_period_saved_value_must_be_reused": True,
+            "output_assembly_may_calculate_other_business_metrics": False,
+        }
+        for key, expected in expected_reference.items():
+            if reference.get(key) != expected:
+                errors.append(
+                    f"{output_file}:configured_display_value_policy_reference.{key}: "
+                    f"expected {expected!r}"
+                )
+
+    registry_file = "phase1_5/assets/pipelines/pipeline_registry.yaml"
+    registry = documents.get(registry_file, {})
+    configured_entries = []
+    if isinstance(registry, dict):
+        configured_entries = [
+            item
+            for item in registry.get("initialization_scope", {}).get(
+                "deferred_to_output_mapping", []
+            )
+            if isinstance(item, dict)
+            and item.get("display_item") == "订单整体曝光完成率"
+        ]
+    if len(configured_entries) != 1:
+        errors.append(f"{registry_file}: expected exactly one configured display summary")
+    else:
+        entry = configured_entries[0]
+        reference = entry.get("configured_display_value_policy_reference", {})
+        require_registry_values = {
+            "asset_classification": "Configured display value",
+            "dataset_dependency": "none",
+            "pipeline_dependency": "none",
+            "metric_library_registration": False,
+            "metrics_store_write": False,
+            "allowed_display_range": "92%-95%",
+            "allowed_values": ["92%", "93%", "94%", "95%"],
+            "decimal_values_allowed": False,
+            "consecutive_week_repeat_allowed": False,
+        }
+        for key, expected in require_registry_values.items():
+            if entry.get(key) != expected:
+                errors.append(f"{registry_file}:{key}: expected {expected!r}")
+        if reference.get("policy_id") != policy_id:
+            errors.append(
+                f"{registry_file}:configured_display_value_policy_reference.policy_id: "
+                f"expected {policy_id!r}"
+            )
+        if reference.get("authority_role") != "canonical_selection_and_persistence_policy":
+            errors.append(
+                f"{registry_file}:configured_display_value_policy_reference.authority_role: "
+                "expected canonical_selection_and_persistence_policy"
+            )
+
+    prohibited_config_types = {
+        "dataset_inventory",
+        "metric_library",
+        "result_contract",
+    }
+
+    def contains_policy_id(value: Any) -> bool:
+        if value == policy_id:
+            return True
+        if isinstance(value, dict):
+            return any(contains_policy_id(item) for item in value.values())
+        if isinstance(value, list):
+            return any(contains_policy_id(item) for item in value)
+        return False
+
+    for file, document in documents.items():
+        if not isinstance(document, dict) or not contains_policy_id(document):
+            continue
+        if document.get("config_type") in prohibited_config_types or document.get(
+            "asset_type"
+        ) in {"Metric Library", "Metric Result Store"}:
+            errors.append(
+                f"{file}: configured display value policy must not enter Metric, "
+                "Dataset, Result Contract, or Metric Result Store assets"
+            )
+
+    baseline_file = "phase1_5/assets/readiness/implementation_baseline.yaml"
+    baseline = documents.get(baseline_file, {})
+    frozen_versions = (
+        baseline.get("frozen_asset_versions", {})
+        if isinstance(baseline, dict)
+        else {}
+    )
+    expected_baseline_values = {
+        "configured_display_value_policy_count": 1,
+        "order_overall_impression_completion_rate_display_policy_version": "1.0.0",
+    }
+    for key, expected in expected_baseline_values.items():
+        if frozen_versions.get(key) != expected:
+            errors.append(f"{baseline_file}:frozen_asset_versions.{key}: expected {expected!r}")
+
+    return 1
+
+
 def validate_external_asset_versions(
     documents: dict[str, Any], errors: list[str]
 ) -> tuple[int, int]:
@@ -1577,6 +1829,9 @@ def main() -> int:
     contract_counts = validate_result_contract_semantics(
         documents, definitions_by_kind, errors
     )
+    configured_display_policy_count = validate_configured_display_value_policy(
+        documents, errors
+    )
     external_asset_count, external_asset_binding_count = (
         validate_external_asset_versions(documents, errors)
     )
@@ -1609,6 +1864,7 @@ def main() -> int:
         f"{contract_counts['source_contract_routes']} conditional upstream routes, "
         f"{contract_counts['input_lineage_contracts']} Contract input-lineage summaries, "
         f"and {contract_counts['display_tbd_exceptions']} allowed display TBD exception checked; "
+        f"{configured_display_policy_count} configured display value policy validated; "
         f"{contract_counts['output_bindings']} Metric Variant output bindings and "
         f"{contract_counts['output_fields']} explicit Output Mapping fields checked; "
         f"{external_asset_count} versioned External Assets with "

@@ -11,6 +11,9 @@ scope:
   included_output_mapping_ids:
     - OM_WEEKLY_BUSINESS_REPORT_V1
     - OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
+  configured_display_value_policy:
+    policy_id: POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1
+    approval_status: owner_approved
   deferred_output_mapping_ids:
     - OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1
   deferred_reason: Customer Revenue Detail Workflow is intentionally paused while Weekly Business Report is completed.
@@ -25,6 +28,9 @@ gate_checks:
   conditional_customer_analysis_result_contract_reference_explicit: pass
   output_assembly_calculation_disabled: pass
   output_assembly_business_rule_evaluation_disabled: pass
+  configured_display_value_policy_reference_explicit: pass
+  configured_display_value_same_period_reuse_enforced: pass
+  configured_display_value_metric_and_dataset_boundaries_enforced: pass
   pipeline_output_mapping_bindings_explicit: pass
   template_variants_and_quarter_transition_rules_explicit: pass
   warning_section_configured: pass

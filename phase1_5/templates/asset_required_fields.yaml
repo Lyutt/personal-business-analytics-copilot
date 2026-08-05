@@ -292,6 +292,25 @@ asset_rules:
       - on_recovery_failure
       - constraints
 
+  - asset_type: configured_display_value_policy
+    selector: { key: config_type, value: configured_display_value_policy }
+    required_paths:
+      - config_type
+      - policy_id
+      - policy_name
+      - policy_version
+      - status
+      - owner
+      - workflow_id
+      - display_binding
+      - value_classification
+      - allowed_display_values
+      - selection_policy
+      - persistence_policy
+      - dependency_boundaries
+      - output_assembly_boundary
+      - governance
+
   - asset_type: pipeline_policy
     selector: { key: asset_type, value: Pipeline Policy }
     required_paths:

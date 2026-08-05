@@ -64,6 +64,10 @@ initialization_scope:
     - Outlook Draft creation
     - display_item: 订单整体曝光完成率
       asset_classification: Configured display value
+      configured_display_value_policy_reference:
+        policy_id: POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1
+        authority_role: canonical_selection_and_persistence_policy
+      inline_configuration_role: compatibility_summary_must_match_referenced_policy
       dataset_dependency: none
       pipeline_dependency: none
       metric_library_registration: false

@@ -24,6 +24,7 @@ baseline_scope:
     - Metric Result Store logical contract
     - External Asset reference contract
     - Output Mapping
+    - Configured Display Value Policy
     - Readiness and Implementation Entry
   excluded_runtime_material:
     - Raw business data and customer rows
@@ -45,6 +46,8 @@ frozen_asset_versions:
   result_contract_count: 12
   result_contract_field_count: 67
   inventory_advertising_policy_gate_version: 1.0.0
+  configured_display_value_policy_count: 1
+  order_overall_impression_completion_rate_display_policy_version: 1.0.0
   weekly_output_mapping_version: 1.0.0
   outlook_draft_mapping_version: 1.0.0
 
@@ -83,6 +86,11 @@ change_control:
     - Re-run repository safety validation
     - Re-run asset integrity validation
     - Owner review before Code Implementation approval
+  latest_baseline_version_impact_review:
+    change_class: owner_approved_configured_display_value_policy_formalization
+    behavior_or_output_change: false
+    baseline_version_increment_required: false
+    rationale: Existing approved generation logic is unchanged; the independent policy and validation boundary are now explicit before Owner code implementation approval.
   force_push_allowed: false
   auto_merge_allowed: false
   automatic_next_stage_allowed: false
