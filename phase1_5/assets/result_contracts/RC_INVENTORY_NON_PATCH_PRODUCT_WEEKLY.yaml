@@ -8,7 +8,17 @@ business_domain: Inventory
 business_context_id: CTX_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
 producer: { producer_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY, producer_pipeline_version_constraint: 0.1.0-draft, producer_must_be_unique: true }
 contract_shape: parameterized_single_record
-record_grain: [explicit_product_rule_id, reporting_period]
+record_grain: [target_ad_product_name, reporting_period]
+contract_dimensions:
+  - dimension_id: target_ad_product_name
+    dimension_type: string
+    source_type: policy_parameter
+    source_parameter_id: explicit_product_rule_id
+    resolution_requirement: Resolve by the exact approved local product rule; automatic product inference is prohibited.
+  - dimension_id: reporting_period
+    dimension_type: reporting_period
+    source_type: workflow_context
+    source_context_id: reporting_period
 contract_fields:
   - field_id: gross_inventory_count
     field_name: 非贴片产品总库存

@@ -13,6 +13,10 @@ contract_shape: composite
 record_sets:
   - record_set_id: daily_activity
     record_grain: [activity_date, full_platform]
+    record_dimensions:
+      - dimension_id: full_platform
+        dimension_type: fixed_scope
+        fixed_value: full_platform
     expected_record_count: 7
     fixed_dimensions:
       platform_scope: full_platform

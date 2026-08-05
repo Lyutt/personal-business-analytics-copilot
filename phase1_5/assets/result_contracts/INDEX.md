@@ -31,7 +31,12 @@
 ## Contract rules
 
 - Every Metric Variant has one explicit `output_binding` to one Contract Field.
-- True upstream reads use `input_contract_fields`; output bindings are not dependencies.
+- Metric Library `metric_variants[].input_contract_fields` is the unique
+  authority for field-level Input Contract Dependencies. Result Contracts keep
+  only a validated derived lineage summary, and Pipeline Registry declarations
+  are orchestration routing only.
+- Every `record_grain` item must resolve to a field or an explicitly declared
+  dimension in the same Contract or record set.
 - Numeric fields use `data_type: number` plus explicit numeric semantics, unit,
   integer-only behavior, precision and bounds.
 - DAU daily detail uses `activity_date x full_platform` records and keeps
@@ -39,4 +44,6 @@
 - Customer analysis is analysis-only and may source fields from standardized
   fields, upstream Contract Fields and approved policy derivations without a
   fabricated Metric Variant.
+- Customer-analysis upstream Contract Field routes are mutually explicit by
+  regular patch, other non-patch, and Brand Moment route conditions.
 - Output Mapping consumes explicit Contract Fields and does not select Metric Variants.

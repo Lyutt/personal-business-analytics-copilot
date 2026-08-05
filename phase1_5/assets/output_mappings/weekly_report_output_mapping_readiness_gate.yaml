@@ -21,6 +21,7 @@ gate_checks:
   weekly_result_contract_field_bindings_explicit: pass
   metric_variant_parallel_lists_absent: pass
   display_field_parallel_lists_absent: pass
+  display_fields_tbd_limited_to_conditional_customer_analysis_slot: pass
   conditional_customer_analysis_result_contract_reference_explicit: pass
   output_assembly_calculation_disabled: pass
   output_assembly_business_rule_evaluation_disabled: pass

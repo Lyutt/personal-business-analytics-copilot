@@ -21,6 +21,11 @@ generation_policy:
 record_sets:
   - record_set_id: customer_delivery_changes
     record_grain: [target_ad_product_name, current_reporting_period, customer_id]
+    record_dimensions:
+      - dimension_id: current_reporting_period
+        dimension_type: period_range
+        start_field_id: current_period_start_date
+        end_field_id: current_period_end_date
     cross_period_customer_match_key: customer_id
     customer_name_fuzzy_matching_allowed: false
     missing_side_impression_count: 0
@@ -108,8 +113,21 @@ record_sets:
         business_definition: 触发当前单产品客户分析的已验证售卖率环比百分点变化。
         source_type: upstream_contract_field
         source_contract_routes:
-          - { result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY, result_field_ids: [patch_brand_sell_through_wow_change_pp, non_patch_product_brand_sell_through_wow_change_pp] }
-          - { result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY, result_field_ids: [sell_through_wow_change_pp] }
+          - route_id: regular_patch_products
+            route_condition: target_ad_product_name resolves through the explicit product route as a regular patch product
+            result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+            result_field_ids: [patch_brand_sell_through_wow_change_pp]
+          - route_id: all_products_except_regular_patch_and_brand_moment
+            route_condition: target_ad_product_name resolves through the explicit product route as neither a regular patch product nor Brand Moment
+            result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+            result_field_ids: [non_patch_product_brand_sell_through_wow_change_pp]
+          - route_id: brand_moment
+            route_condition: target_ad_product_name resolves through the explicit product route as Brand Moment
+            result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+            result_field_ids: [sell_through_wow_change_pp]
+        route_resolution:
+          exactly_one_route_required: true
+          unresolved_or_multiple_route_action: Omit the product customer analysis, notify owner, and continue Weekly Workflow.
         data_type: number
         base_unit: Decimal rate-point difference
         numeric_constraints: { numeric_semantics: percentage_point_change, unit: percentage_point, integer_only: false, precision: preserve_source_precision, minimum: null, maximum: null }

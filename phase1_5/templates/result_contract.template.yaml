@@ -13,6 +13,16 @@ producer:
   producer_must_be_unique: true
 
 contract_shape: single_record
+contract_dimensions: []
+
+input_dependency_authority:
+  canonical_source_asset: phase1_5/assets/metrics/METRIC_LIBRARY_TBD.yaml
+  canonical_source_path: metric_variants[].input_contract_fields
+  contract_lineage_role: derived_validation_summary
+  pipeline_registry_role: orchestration_routing_only
+
+input_contract_fields: []
+input_contract_field_routes: []
 
 contract_fields:
   - field_id: TBD
@@ -42,7 +52,12 @@ contract_fields:
     validation_requirement: TBD
     lineage_required: true
 
-record_sets: []
+record_sets:
+  - record_set_id: TBD
+    record_grain: [TBD]
+    record_dimensions: []
+    context_fields: []
+    record_fields: []
 
 mode_semantics:
   allowed_value_statuses:

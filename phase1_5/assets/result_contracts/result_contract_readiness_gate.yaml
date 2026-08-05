@@ -26,8 +26,13 @@ gate_checks:
   contract_field_source_binding_complete: pass
   metric_output_binding_complete: pass
   input_contract_field_dependencies_complete: pass
+  input_contract_dependency_unique_authority: pass
+  contract_input_lineage_matches_metric_dependencies: pass
+  record_grain_fields_or_dimensions_resolve: pass
+  upstream_contract_field_route_conditions_explicit: pass
   output_mapping_contract_field_references_complete: pass
   parallel_list_mapping_removed: pass
+  output_mapping_tbd_exception_scope_enforced: pass
   result_contract_cycle_check: pass
   numeric_field_semantics_complete: pass
   dau_record_set_grain_and_cardinality_complete: pass

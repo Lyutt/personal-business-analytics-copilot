@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -708,6 +709,13 @@ def validate_result_contract_semantics(
     standardized_fields: set[str] = set()
     pipelines: dict[str, tuple[str, dict[str, Any]]] = {}
     metric_variants: dict[str, tuple[str, dict[str, Any]]] = {}
+    metric_inputs_by_output_contract: dict[
+        str, set[tuple[str, str, str | None, str]]
+    ] = defaultdict(set)
+    record_grains_checked = 0
+    source_contract_routes_checked = 0
+    input_lineage_contracts_checked = 0
+    display_tbd_checked = 0
 
     for file, document in documents.items():
         if not isinstance(document, dict):
@@ -741,6 +749,73 @@ def validate_result_contract_semantics(
         fields, record_sets = result_contract_field_entries(document, file, errors)
         contract_fields[contract_id] = fields
         contract_record_sets[contract_id] = record_sets
+
+        def declared_dimension_ids(
+            dimensions: Any, location: str
+        ) -> set[str]:
+            dimension_ids: set[str] = set()
+            if dimensions is None:
+                return dimension_ids
+            if not isinstance(dimensions, list):
+                errors.append(f"{file}:{location}: expected list")
+                return dimension_ids
+            for index, dimension in enumerate(dimensions):
+                if not isinstance(dimension, dict) or not isinstance(
+                    dimension.get("dimension_id"), str
+                ):
+                    errors.append(
+                        f"{file}:{location}[{index}].dimension_id: missing or invalid"
+                    )
+                    continue
+                dimension_id = dimension["dimension_id"]
+                if dimension_id in dimension_ids:
+                    errors.append(
+                        f"{file}:{location}[{index}].dimension_id: duplicate "
+                        f"dimension {dimension_id}"
+                    )
+                dimension_ids.add(dimension_id)
+            return dimension_ids
+
+        def validate_grain(
+            grain: Any, allowed: set[str], location: str
+        ) -> None:
+            nonlocal record_grains_checked
+            record_grains_checked += 1
+            if not isinstance(grain, list) or not grain:
+                errors.append(f"{file}:{location}: expected non-empty list")
+                return
+            for item in grain:
+                if not isinstance(item, str) or item not in allowed:
+                    errors.append(
+                        f"{file}:{location}: grain item {item!r} is not a "
+                        "declared field or dimension"
+                    )
+
+        top_dimensions = declared_dimension_ids(
+            document.get("contract_dimensions"), "contract_dimensions"
+        )
+        if "record_grain" in document:
+            top_fields = {
+                field_id for field_id in fields if "." not in field_id
+            }
+            validate_grain(
+                document.get("record_grain"),
+                top_fields | top_dimensions,
+                "record_grain",
+            )
+        for set_index, record_set in enumerate(document.get("record_sets", [])):
+            if not isinstance(record_set, dict) or "record_grain" not in record_set:
+                continue
+            record_set_id = record_set.get("record_set_id")
+            set_dimensions = declared_dimension_ids(
+                record_set.get("record_dimensions"),
+                f"record_sets[{set_index}].record_dimensions",
+            )
+            validate_grain(
+                record_set.get("record_grain"),
+                record_sets.get(record_set_id, set()) | set_dimensions,
+                f"record_sets[{set_index}].record_grain",
+            )
         required_fields = document.get("validation", {}).get("required_fields", [])
         for field_id in required_fields:
             if field_id not in fields:
@@ -840,6 +915,23 @@ def validate_result_contract_semantics(
             )
             if isinstance(input_contract, str) and isinstance(output_contract, str):
                 dependency_graph[input_contract].add(output_contract)
+            if all(
+                isinstance(value, str) and value
+                for value in (
+                    output_contract,
+                    input_contract,
+                    dependency.get("result_field_id"),
+                    dependency.get("required_or_optional"),
+                )
+            ):
+                metric_inputs_by_output_contract[output_contract].add(
+                    (
+                        input_contract,
+                        dependency["result_field_id"],
+                        dependency.get("record_set_id"),
+                        dependency["required_or_optional"],
+                    )
+                )
 
     for contract_id, (file, document) in contract_documents.items():
         for field_id, field in contract_fields[contract_id].items():
@@ -863,12 +955,47 @@ def validate_result_contract_semantics(
                 if not isinstance(routes, list) or not routes:
                     errors.append(f"{file}:{field_id}: source_contract_routes is required")
                     continue
+                route_resolution = field.get("route_resolution")
+                if not isinstance(route_resolution, dict) or route_resolution.get(
+                    "exactly_one_route_required"
+                ) is not True:
+                    errors.append(
+                        f"{file}:{field_id}: route_resolution must require exactly one route"
+                    )
+                seen_route_ids: set[str] = set()
                 for route_index, route in enumerate(routes):
+                    source_contract_routes_checked += 1
                     if not isinstance(route, dict):
                         errors.append(f"{file}:{field_id}: invalid source route")
                         continue
                     upstream_contract = route.get("result_contract_id")
-                    for upstream_field in route.get("result_field_ids", []):
+                    route_id = route.get("route_id")
+                    route_condition = route.get("route_condition")
+                    if not isinstance(route_id, str) or not route_id:
+                        errors.append(
+                            f"{file}:{field_id}.source_contract_routes[{route_index}]: "
+                            "route_id is required"
+                        )
+                    elif route_id in seen_route_ids:
+                        errors.append(
+                            f"{file}:{field_id}.source_contract_routes[{route_index}]: "
+                            f"duplicate route_id {route_id}"
+                        )
+                    else:
+                        seen_route_ids.add(route_id)
+                    if not isinstance(route_condition, str) or not route_condition.strip():
+                        errors.append(
+                            f"{file}:{field_id}.source_contract_routes[{route_index}]: "
+                            "explicit route_condition is required"
+                        )
+                    upstream_fields = route.get("result_field_ids", [])
+                    if not isinstance(upstream_fields, list) or not upstream_fields:
+                        errors.append(
+                            f"{file}:{field_id}.source_contract_routes[{route_index}]: "
+                            "at least one result_field_id is required"
+                        )
+                        upstream_fields = []
+                    for upstream_field in upstream_fields:
                         validate_contract_field_reference(
                             upstream_contract,
                             upstream_field,
@@ -876,6 +1003,88 @@ def validate_result_contract_semantics(
                         )
                     if isinstance(upstream_contract, str):
                         dependency_graph[upstream_contract].add(contract_id)
+
+        declared_inputs: set[tuple[str, str, str | None, str]] = set()
+        direct_inputs = document.get("input_contract_fields", [])
+        routed_inputs = document.get("input_contract_field_routes", [])
+        input_groups: list[tuple[str, Any]] = [("input_contract_fields", direct_inputs)]
+        if isinstance(routed_inputs, list):
+            for route_index, route in enumerate(routed_inputs):
+                if not isinstance(route, dict):
+                    errors.append(
+                        f"{file}:input_contract_field_routes[{route_index}]: expected mapping"
+                    )
+                    continue
+                if not isinstance(route.get("route_condition"), str) or not route.get(
+                    "route_condition", ""
+                ).strip():
+                    errors.append(
+                        f"{file}:input_contract_field_routes[{route_index}]: "
+                        "explicit route_condition is required"
+                    )
+                input_groups.append(
+                    (
+                        f"input_contract_field_routes[{route_index}].input_fields",
+                        route.get("input_fields", []),
+                    )
+                )
+        elif routed_inputs is not None:
+            errors.append(f"{file}:input_contract_field_routes: expected list")
+        for group_path, dependencies in input_groups:
+            if not isinstance(dependencies, list):
+                errors.append(f"{file}:{group_path}: expected list")
+                continue
+            for input_index, dependency in enumerate(dependencies):
+                if not isinstance(dependency, dict):
+                    errors.append(
+                        f"{file}:{group_path}[{input_index}]: expected mapping"
+                    )
+                    continue
+                input_contract = dependency.get("result_contract_id")
+                input_field = dependency.get("result_field_id")
+                requiredness = dependency.get("required_or_optional")
+                validate_contract_field_reference(
+                    input_contract,
+                    input_field,
+                    f"{file}:{group_path}[{input_index}]",
+                    dependency.get("record_set_id"),
+                )
+                if all(
+                    isinstance(value, str) and value
+                    for value in (input_contract, input_field, requiredness)
+                ):
+                    declared_inputs.add(
+                        (
+                            input_contract,
+                            input_field,
+                            dependency.get("record_set_id"),
+                            requiredness,
+                        )
+                    )
+                    dependency_graph[input_contract].add(contract_id)
+
+        canonical_inputs = metric_inputs_by_output_contract.get(contract_id, set())
+        if declared_inputs != canonical_inputs:
+            errors.append(
+                f"{file}: Contract input lineage {sorted(declared_inputs)} does not "
+                f"match canonical Metric input dependencies {sorted(canonical_inputs)}"
+            )
+        if declared_inputs or canonical_inputs:
+            input_lineage_contracts_checked += 1
+            authority = document.get("input_dependency_authority")
+            if not isinstance(authority, dict):
+                errors.append(f"{file}: input_dependency_authority is required")
+            else:
+                expected_authority = {
+                    "canonical_source_path": "metric_variants[].input_contract_fields",
+                    "contract_lineage_role": "derived_validation_summary",
+                    "pipeline_registry_role": "orchestration_routing_only",
+                }
+                for key, expected in expected_authority.items():
+                    if authority.get(key) != expected:
+                        errors.append(
+                            f"{file}:input_dependency_authority.{key}: expected {expected!r}"
+                        )
         if document.get("analysis_only_pipeline") is True and document.get(
             "metric_variant_required"
         ) is False:
@@ -903,12 +1112,26 @@ def validate_result_contract_semantics(
             continue
 
         def walk_output(value: Any, path: str = "") -> None:
-            nonlocal explicit_output_fields
+            nonlocal explicit_output_fields, display_tbd_checked
             if isinstance(value, dict):
                 if "metric_variant_ids" in value:
                     errors.append(f"{file}:{path}.metric_variant_ids: parallel list is prohibited")
                 if isinstance(value.get("display_fields"), list):
                     errors.append(f"{file}:{path}.display_fields: parallel list is prohibited")
+                if value.get("display_fields") == "TBD" and value.get(
+                    "output_slot_id"
+                ) != "SLOT_CONDITIONAL_PRODUCT_CUSTOMER_ANALYSIS":
+                    errors.append(
+                        f"{file}:{path}.display_fields: TBD is allowed only for "
+                        "SLOT_CONDITIONAL_PRODUCT_CUSTOMER_ANALYSIS"
+                    )
+                elif value.get("display_fields") == "TBD":
+                    display_tbd_checked += 1
+                    if not isinstance(value.get("result_record_set_binding"), dict):
+                        errors.append(
+                            f"{file}:{path}: conditional customer-analysis TBD "
+                            "requires result_record_set_binding"
+                        )
                 output_fields = value.get("output_fields")
                 if isinstance(output_fields, list):
                     seen_output_ids: set[str] = set()
@@ -972,6 +1195,33 @@ def validate_result_contract_semantics(
     for contract_id in contract_documents:
         visit(contract_id, [])
 
+    pipeline_registry = next(
+        (
+            document
+            for document in documents.values()
+            if isinstance(document, dict)
+            and document.get("config_type") == "pipeline_registry"
+        ),
+        None,
+    )
+    authority = (
+        pipeline_registry.get("input_contract_dependency_authority", {})
+        if isinstance(pipeline_registry, dict)
+        else {}
+    )
+    expected_registry_authority = {
+        "canonical_source_path": "metric_variants[].input_contract_fields",
+        "result_contract_role": "derived_input_lineage_summary",
+        "pipeline_registry_role": "orchestration_routing_only",
+        "duplicate_field_level_dependency_authority_allowed": False,
+    }
+    for key, expected in expected_registry_authority.items():
+        if authority.get(key) != expected:
+            errors.append(
+                "phase1_5/assets/pipelines/pipeline_registry.yaml:"
+                f"input_contract_dependency_authority.{key}: expected {expected!r}"
+            )
+
     return {
         "contracts": len(contract_documents),
         "contract_fields": sum(
@@ -981,6 +1231,10 @@ def validate_result_contract_semantics(
         "output_bindings": output_bound_variants,
         "output_fields": explicit_output_fields,
         "record_sets": sum(len(value) for value in contract_record_sets.values()),
+        "record_grains": record_grains_checked,
+        "source_contract_routes": source_contract_routes_checked,
+        "input_lineage_contracts": input_lineage_contracts_checked,
+        "display_tbd_exceptions": display_tbd_checked,
     }
 
 
@@ -1171,21 +1425,34 @@ def validate_implementation_baseline(
             )
         checked += 1
 
-    try:
-        origin_main = subprocess.run(
-            ["git", "rev-parse", "origin/main"],
-            cwd=REPOSITORY_ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        ).stdout.strip()
-        if baseline.get("source_main_commit_sha") != origin_main:
-            errors.append(
-                f"{baseline_file}: source_main_commit_sha does not match origin/main"
+    base_sha = os.environ.get("ASSET_VALIDATION_BASE_SHA", "").strip()
+    base_sha_source = "ASSET_VALIDATION_BASE_SHA"
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", base_sha):
+        base_sha = ""
+        for candidate in ("origin/main", "main", "HEAD^1"):
+            result = subprocess.run(
+                ["git", "rev-parse", "--verify", candidate],
+                cwd=REPOSITORY_ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
             )
-    except subprocess.CalledProcessError as exc:
-        errors.append(f"{baseline_file}: cannot resolve origin/main: {exc}")
+            resolved = result.stdout.strip()
+            if result.returncode == 0 and re.fullmatch(r"[0-9a-fA-F]{40}", resolved):
+                base_sha = resolved
+                base_sha_source = candidate
+                break
+    if not base_sha:
+        errors.append(
+            f"{baseline_file}: cannot resolve validation Base SHA from the "
+            "Actions context or local Git refs"
+        )
+    elif baseline.get("source_main_commit_sha") != base_sha:
+        errors.append(
+            f"{baseline_file}: source_main_commit_sha does not match Base SHA "
+            f"resolved from {base_sha_source}"
+        )
     checked += 1
     return checked
 
@@ -1338,6 +1605,10 @@ def main() -> int:
         f"{contract_counts['contracts']} formal Result Contracts with "
         f"{contract_counts['contract_fields']} fields and "
         f"{contract_counts['record_sets']} record sets validated; "
+        f"{contract_counts['record_grains']} record grains, "
+        f"{contract_counts['source_contract_routes']} conditional upstream routes, "
+        f"{contract_counts['input_lineage_contracts']} Contract input-lineage summaries, "
+        f"and {contract_counts['display_tbd_exceptions']} allowed display TBD exception checked; "
         f"{contract_counts['output_bindings']} Metric Variant output bindings and "
         f"{contract_counts['output_fields']} explicit Output Mapping fields checked; "
         f"{external_asset_count} versioned External Assets with "

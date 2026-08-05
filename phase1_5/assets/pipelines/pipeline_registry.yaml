@@ -37,6 +37,12 @@ output_mapping_stage:
   output_mapping_id: OM_WEEKLY_BUSINESS_REPORT_V1
   outlook_draft_mapping_id: OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
   customer_revenue_detail_status: deferred_by_owner
+input_contract_dependency_authority:
+  canonical_source_asset: phase1_5/assets/metrics/metric_library_inventory_baseline_v1.yaml
+  canonical_source_path: metric_variants[].input_contract_fields
+  result_contract_role: derived_input_lineage_summary
+  pipeline_registry_role: orchestration_routing_only
+  duplicate_field_level_dependency_authority_allowed: false
 initialization_scope:
   included_workflows:
     - WF_WEEKLY_BUSINESS_REPORT
@@ -1768,6 +1774,11 @@ pipelines:
       product_override_supported: true
       one_run_per_triggered_product: true
       multiple_product_runs_may_execute_in_parallel: true
+      upstream_trigger_field_routing:
+        authoritative_result_contract_id: RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+        authoritative_result_field_id: trigger_sell_through_wow_change_pp
+        authoritative_route_path: record_sets.customer_delivery_changes.context_fields.trigger_sell_through_wow_change_pp.source_contract_routes
+        exactly_one_route_required: true
 
     dataset_dependencies:
       - dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS

@@ -8,6 +8,11 @@ business_domain: Inventory
 business_context_id: CTX_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
 producer: { producer_pipeline_id: PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY, producer_pipeline_version_constraint: 0.1.0-draft, producer_must_be_unique: true }
 contract_shape: single_record
+input_dependency_authority:
+  canonical_source_asset: phase1_5/assets/metrics/metric_library_inventory_baseline_v1.yaml
+  canonical_source_path: metric_variants[].input_contract_fields
+  contract_lineage_role: derived_validation_summary
+  pipeline_registry_role: orchestration_routing_only
 input_contract_fields:
   - { result_contract_id: RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY, result_field_id: impression_count, required_or_optional: required }
   - { result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY, result_field_id: brand_moment_available_inventory_count, required_or_optional: required }
