@@ -2,6 +2,7 @@ config_type: business_asset_status_index
 index_version: 1.0.0
 status: synchronized
 assessment_date: 2026-08-03
+last_semantic_sync_date: 2026-08-06
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 current_stage: Implementation Baseline Frozen - Awaiting Explicit Owner Code Implementation Approval
 
@@ -73,6 +74,25 @@ scope_boundaries:
   unresolved_metric_definition_count: 0
   unresolved_asset_reference_count: 0
   registered_versioned_external_asset_count: 10
+  customer_analysis_output_implementation: fixed_narrative_template_rendering
+  customer_analysis_output_section: inventory_and_sell_through
+  customer_analysis_output_positions:
+    - patch_and_similar_resource_commentary
+    - page_resource_commentary
+  customer_analysis_dynamic_table_renderer_required: false
+  customer_analysis_initial_mvp_status: included
+  physical_metric_store_strategy: shared_local_sqlite
+  shared_metric_store_table: metric_results
+  shared_metric_store_discriminator_fields: [store_id, store_asset_id]
+  revenue_metric_store_strategy: existing_excel_history_store
+  mvp_execution_mode: sequential
+  mvp_recovery_mode: rerun_pipeline_from_start
+  development_complexity_reduction: true
+  code_implementation_owner_approved: false
+  mvp_implementation_sequence:
+    - Local input -> standardization -> rules -> metrics -> Result Contract -> fixed narrative output -> Weekly Report preview -> Store
+    - Outlook Draft with auto_send=false
+    - Progressively integrate Outlook, Apollo, and NovaBI Adapters
 
 source_of_truth_order:
   - phase1_5/assets/readiness/status_index.yaml

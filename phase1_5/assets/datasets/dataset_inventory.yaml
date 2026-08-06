@@ -1479,8 +1479,8 @@ query_assets:
         block_workflow: false
         diagnostic_scope: Query parameters, filters, period, source availability, and result acquisition
     external_dependency_candidates:
-      - asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
-        asset_type: Business Rule
+      - product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+        asset_type: local-only External Asset
         registration_status: registered
         reference_contract_version: 1.0.0
         runtime_version_reference: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'

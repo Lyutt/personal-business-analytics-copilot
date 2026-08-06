@@ -452,9 +452,9 @@ def reference_kind(key: str) -> str | None:
         "prior_year_source_rule_id": "business_rule",
         "relationship_rule_id": "business_rule",
         "rule_id": "business_rule",
-        "trigger_rule_id": "policy",
+        "trigger_policy_id": "policy",
         "business_rule_processing_policy_id": "policy",
-        "join_or_relationship_rule_id": "policy",
+        "join_or_relationship_rule_id": "business_rule",
         "normalization_rule_id": "normalization_rule",
         "output_mapping_id": "output_mapping",
         "output_mapping_ids": "output_mapping",
@@ -483,8 +483,7 @@ def reference_kind(key: str) -> str | None:
         "local_knowledge_pack_dependency": "external_asset",
         "template_id": "external_asset",
         "recipient_configuration_id": "external_asset",
-        "routing_rule_id": "external_asset",
-        "exact_product_membership_rule_id": "external_asset",
+        "product_routing_asset_id": "external_asset",
         "field_mapping_gate_id": "gate",
         "implementation_readiness_gate_id": "gate",
         "final_code_implementation_gate_id": "gate",
@@ -1133,20 +1132,11 @@ def validate_result_contract_semantics(
                     errors.append(f"{file}:{path}.metric_variant_ids: parallel list is prohibited")
                 if isinstance(value.get("display_fields"), list):
                     errors.append(f"{file}:{path}.display_fields: parallel list is prohibited")
-                if value.get("display_fields") == "TBD" and value.get(
-                    "output_slot_id"
-                ) != "SLOT_CONDITIONAL_PRODUCT_CUSTOMER_ANALYSIS":
-                    errors.append(
-                        f"{file}:{path}.display_fields: TBD is allowed only for "
-                        "SLOT_CONDITIONAL_PRODUCT_CUSTOMER_ANALYSIS"
-                    )
-                elif value.get("display_fields") == "TBD":
+                if value.get("display_fields") == "TBD":
                     display_tbd_checked += 1
-                    if not isinstance(value.get("result_record_set_binding"), dict):
-                        errors.append(
-                            f"{file}:{path}: conditional customer-analysis TBD "
-                            "requires result_record_set_binding"
-                        )
+                    errors.append(
+                        f"{file}:{path}.display_fields: TBD is prohibited in all active MVP outputs"
+                    )
                 output_fields = value.get("output_fields")
                 if isinstance(output_fields, list):
                     seen_output_ids: set[str] = set()
@@ -1536,7 +1526,7 @@ def validate_mvp_acceptance_semantics(
     customer_id = "PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS"
     sell_through_id = "PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY"
     policy_id = "POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1"
-    external_rule_id = "BR_APOLLO_PRODUCT_FILTER_MAPPING"
+    product_routing_asset_id = "BR_APOLLO_PRODUCT_FILTER_MAPPING"
     customer = pipelines.get(customer_id, {})
     sell_through = pipelines.get(sell_through_id, {})
 
@@ -1565,6 +1555,23 @@ def validate_mvp_acceptance_semantics(
     if set(execution.get("business_rule_processing_responsibilities", [])) != expected_responsibilities:
         errors.append(f"{registry_file}:{customer_id}: incomplete business-rule responsibilities")
 
+    policy_file = (
+        "phase1_5/assets/pipelines/"
+        "PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_policy_v1.yaml"
+    )
+    policy = documents.get(policy_file, {})
+    allowed_source_types = policy.get("output_boundary", {}).get(
+        "field_source_types_allowed", []
+    )
+    if allowed_source_types != [
+        "upstream_contract_field",
+        "standardized_field",
+        "policy_derived_field",
+    ]:
+        errors.append(f"{policy_file}: field_source_types_allowed must exclude metric_variant")
+    if policy.get("trigger", {}).get("trigger_policy_id") != policy_id:
+        errors.append(f"{policy_file}: trigger_policy_id must use {policy_id}")
+
     customer_dependencies = {
         item.get("dataset_id"): item
         for item in customer.get("dataset_dependencies", [])
@@ -1580,6 +1587,10 @@ def validate_mvp_acceptance_semantics(
     if "required" in customer_dataset:
         errors.append(
             f"{registry_file}:{customer_id}: unconditional Dataset required flag is prohibited"
+        )
+    if customer_dataset.get("business_rule_processing_policy_id") != policy_id:
+        errors.append(
+            f"{registry_file}:{customer_id}: Dataset processing policy must use {policy_id}"
         )
 
     readiness_file = "phase1_5/assets/datasets/dataset_readiness_matrix.yaml"
@@ -1612,8 +1623,8 @@ def validate_mvp_acceptance_semantics(
         errors.append(f"{readiness_file}: customer Dataset trigger requiredness is inconsistent")
 
     trigger = customer.get("trigger_contract", {})
-    if trigger.get("trigger_rule_id") != policy_id:
-        errors.append(f"{registry_file}:{customer_id}: trigger_rule_id must use {policy_id}")
+    if trigger.get("trigger_policy_id") != policy_id:
+        errors.append(f"{registry_file}:{customer_id}: trigger_policy_id must use {policy_id}")
     runtime_routing = trigger.get("upstream_trigger_field_routing", {})
     expected_routes = {
         (
@@ -1643,18 +1654,22 @@ def validate_mvp_acceptance_semantics(
         errors.append(f"{registry_file}:{customer_id}: Result Contract routes must be lineage-only")
 
     if sell_through.get("result_contract_dependency_routing", {}).get(
-        "routing_rule_id"
-    ) != external_rule_id:
-        errors.append(f"{registry_file}:{sell_through_id}: routing_rule_id must use {external_rule_id}")
+        "product_routing_asset_id"
+    ) != product_routing_asset_id:
+        errors.append(
+            f"{registry_file}:{sell_through_id}: product_routing_asset_id must use "
+            f"{product_routing_asset_id}"
+        )
     advertising_routing = registry.get("constraints", {}).get(
         "advertising_product_inventory_source_routing", {}
     )
     for route_name in ("regular_patch_products", "all_products_except_regular_patch"):
         if advertising_routing.get(route_name, {}).get(
-            "exact_product_membership_rule_id"
-        ) != external_rule_id:
+            "product_routing_asset_id"
+        ) != product_routing_asset_id:
             errors.append(
-                f"{registry_file}:constraints.{route_name}: exact membership must use {external_rule_id}"
+                f"{registry_file}:constraints.{route_name}: product routing must use "
+                f"{product_routing_asset_id}"
             )
 
     for pipeline_id in (sell_through_id, customer_id):
@@ -1689,6 +1704,15 @@ def validate_mvp_acceptance_semantics(
         "RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS.yaml"
     )
     customer_contract = documents.get(customer_contract_file, {})
+    if customer_contract.get("validation", {}).get("metric_variant_binding_check") is not False:
+        errors.append(f"{customer_contract_file}: metric_variant_binding_check must be false")
+    lineage = customer_contract.get("lineage", {})
+    if lineage.get("metric_variant_versions") != [] or lineage.get(
+        "metric_variant_versions_applicability"
+    ) != "not_applicable" or "metric_variant_versions" in lineage.get(
+        "required_instance_fields", []
+    ):
+        errors.append(f"{customer_contract_file}: metric_variant_versions must be empty and not applicable")
     trigger_field = None
     for record_set in customer_contract.get("record_sets", []):
         for field in record_set.get("context_fields", []):
@@ -1698,6 +1722,31 @@ def validate_mvp_acceptance_semantics(
         "source_contract_routes_role"
     ) != "lineage_summary_only":
         errors.append(f"{customer_contract_file}: source_contract_routes must be lineage summary only")
+
+    expected_omission = {
+        "trigger_not_met": ("normal_omission", False),
+        "qualified_customer_zero_rows": ("normal_omission", False),
+        "raw_query_zero_rows": ("source_or_routing_exception", True),
+        "query_failure": ("source_or_routing_exception", True),
+        "invalid_product_mapping": ("source_or_routing_exception", True),
+    }
+    for container_file, container in (
+        (policy_file, policy.get("failure_handling", {})),
+        (
+            customer_contract_file,
+            customer_contract.get("generation_policy", {}).get("omission_semantics", {}),
+        ),
+        (
+            registry_file,
+            customer.get("workflow_bindings", [{}])[0].get("failure_handling", {}),
+        ),
+    ):
+        for reason, (classification, notify_owner) in expected_omission.items():
+            semantics = container.get(reason, {})
+            if semantics.get("classification") != classification or semantics.get(
+                "notify_owner"
+            ) is not notify_owner:
+                errors.append(f"{container_file}: omission semantics invalid for {reason}")
 
     non_patch_file = (
         "phase1_5/assets/result_contracts/RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY.yaml"
@@ -1750,19 +1799,396 @@ def validate_mvp_acceptance_semantics(
         "STORE_WEEKLY_USER_ANALYTICS_HISTORICAL",
         "STORE_WEEKLY_ADVERTISING_HISTORICAL",
     }
-    if strategy.get("shared_generic_local_adapter_required") is not True or set(
+    if strategy.get("shared_generic_local_adapter_required") is not True or strategy.get(
+        "physical_store_strategy"
+    ) != "shared_local_sqlite" or strategy.get("provider") != "SQLite" or strategy.get(
+        "shared_table_name"
+    ) != "metric_results" or strategy.get("logical_store_discriminator_fields") != [
+        "store_id", "store_asset_id"
+    ] or set(
         strategy.get("applies_to_logical_store_ids", [])
     ) != expected_store_ids or strategy.get(
         "separate_storage_engine_per_logical_store_required"
-    ) is not False:
-        errors.append(f"{store_file}: MVP shared Store Adapter strategy is incomplete")
+    ) is not False or any(
+        strategy.get(key) is not False
+        for key in (
+            "physical_store_file_created_by_this_configuration_change",
+            "multi_provider_architecture_required",
+            "plugin_store_architecture_required",
+            "complex_orm_required",
+        )
+    ):
+        errors.append(f"{store_file}: MVP shared local SQLite strategy is incomplete")
     for store in stores.get("metric_result_stores", []):
-        if store.get("store_id") in expected_store_ids and store.get(
-            "storage_type"
-        ) != "Shared generic local physical Store Adapter for MVP":
-            errors.append(f"{store_file}:{store.get('store_id')}: must use shared MVP adapter")
+        if store.get("store_id") in expected_store_ids and (
+            store.get("storage_type") != "Shared local SQLite metric_results table"
+            or store.get("storage_location")
+            != "${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}"
+            or store.get("physical_table_name") != "metric_results"
+            or store.get("discriminator_fields") != ["store_id", "store_asset_id"]
+        ):
+            errors.append(f"{store_file}:{store.get('store_id')}: must use shared SQLite table")
+    revenue_store = next(
+        (
+            store
+            for store in stores.get("metric_result_stores", [])
+            if store.get("store_id") == "STORE_WEEKLY_REVENUE_HISTORICAL"
+        ),
+        {},
+    )
+    if revenue_store.get("storage_type") != "Excel Workbooks in Fixed Directory":
+        errors.append(f"{store_file}: Revenue must retain its Excel historical Store")
 
-    return 6
+    store_readiness_file = (
+        "phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml"
+    )
+    store_readiness_strategy = documents.get(store_readiness_file, {}).get(
+        "mvp_physical_store_adapter_strategy", {}
+    )
+    for key, expected in {
+        "physical_store_strategy": "shared_local_sqlite",
+        "provider": "SQLite",
+        "physical_store_file_created_by_this_configuration_change": False,
+        "shared_table_name": "metric_results",
+        "logical_store_discriminator_fields": ["store_id", "store_asset_id"],
+        "separate_storage_engine_per_logical_store_required": False,
+        "multi_provider_architecture_required": False,
+        "plugin_store_architecture_required": False,
+        "complex_orm_required": False,
+    }.items():
+        if store_readiness_strategy.get(key) != expected:
+            errors.append(f"{store_readiness_file}:mvp_physical_store_adapter_strategy.{key}: expected {expected!r}")
+
+    mvp_execution = registry.get("constraints", {}).get(
+        "mvp_product_scoped_execution", {}
+    )
+    if mvp_execution.get("first_phase_scheduling_mode") != "sequential" or mvp_execution.get(
+        "failed_run_recovery"
+    ) != "rerun_pipeline_from_start" or mvp_execution.get(
+        "parallel_scheduler_required"
+    ) is not False or mvp_execution.get("stage_checkpointing_required") is not False or mvp_execution.get(
+        "resume_from_failed_stage_required"
+    ) is not False:
+        errors.append(f"{registry_file}: lean MVP execution and recovery semantics are incomplete")
+
+    dataset_file = "phase1_5/assets/datasets/dataset_inventory.yaml"
+    dataset_document = documents.get(dataset_file, {})
+    customer_query = next(
+        (
+            item
+            for item in dataset_document.get("query_assets", [])
+            if item.get("query_asset_id")
+            == "QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS"
+        ),
+        {},
+    )
+    product_route = next(
+        (
+            item
+            for item in customer_query.get("external_dependency_candidates", [])
+            if item.get("product_routing_asset_id") == product_routing_asset_id
+        ),
+        {},
+    )
+    if product_route.get("asset_type") != "local-only External Asset":
+        errors.append(f"{dataset_file}: product routing must reference the local-only External Asset")
+
+    return 12
+
+
+def validate_customer_analysis_narrative_mapping(
+    documents: dict[str, Any], errors: list[str]
+) -> int:
+    """Require the fixed Inventory narrative mapping and prohibit dynamic tables."""
+    mapping_file = "phase1_5/assets/output_mappings/OM_WEEKLY_BUSINESS_REPORT_V1.yaml"
+    mapping = documents.get(mapping_file, {})
+    sections = {
+        section.get("section_id"): section
+        for section in mapping.get("section_order", [])
+        if isinstance(section, dict)
+    } if isinstance(mapping, dict) else {}
+    inventory = sections.get("INVENTORY_AND_SELL_THROUGH", {})
+    revenue = sections.get("REVENUE", {})
+    narrative = inventory.get("customer_analysis_narrative_mapping", {})
+
+    if any(
+        isinstance(entry, dict)
+        and entry.get("output_slot_id") == "SLOT_CONDITIONAL_PRODUCT_CUSTOMER_ANALYSIS"
+        for entry in revenue.get("mapping_entries", [])
+    ):
+        errors.append(f"{mapping_file}: Revenue dynamic customer-analysis slot is prohibited")
+
+    if narrative.get("implementation_method") != "fixed_narrative_template_rendering":
+        errors.append(f"{mapping_file}: customer analysis must use fixed_narrative_template_rendering")
+    if narrative.get("validated_result_contract_id") != (
+        "RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS"
+    ) or narrative.get("record_set_id") != "customer_delivery_changes":
+        errors.append(f"{mapping_file}: customer narrative Result Contract binding is invalid")
+    if narrative.get("business_rule_processing_policy_id") != (
+        "POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1"
+    ):
+        errors.append(f"{mapping_file}: customer narrative processing Policy reference is invalid")
+
+    if narrative.get("rendering_sequence") != [
+        "render_inventory_and_sell_through_overview",
+        "append_triggered_product_sentences",
+    ]:
+        errors.append(f"{mapping_file}: inventory overview must precede abnormal-product sentences")
+    trigger_semantics = narrative.get("precomputed_trigger_and_scenario", {})
+    expected_trigger_semantics = {
+        "trigger_decision_consumed_from_policy": True,
+        "scenario_consumed_from_result_contract": True,
+        "output_mapping_may_evaluate_trigger_threshold": False,
+        "output_mapping_may_derive_scenario": False,
+    }
+    for key, expected in expected_trigger_semantics.items():
+        if trigger_semantics.get(key) != expected:
+            errors.append(f"{mapping_file}:precomputed_trigger_and_scenario.{key}: expected {expected!r}")
+
+    expected_positions = [
+        {
+            "output_field_id": "patch_and_similar_resource_commentary",
+            "resource_module": "patch_and_similar_resources",
+        },
+        {
+            "output_field_id": "page_resource_commentary",
+            "resource_module": "page_resources",
+        },
+    ]
+    if narrative.get("target_output_positions") != expected_positions:
+        errors.append(f"{mapping_file}: customer narrative output positions must remain fixed")
+
+    route = narrative.get("product_module_and_fixed_order_resolution", {})
+    if route.get("product_routing_asset_id") != "BR_APOLLO_PRODUCT_FILTER_MAPPING" or route.get(
+        "product_name_inference_allowed"
+    ) is not False or route.get("fixed_product_order_required") is not True:
+        errors.append(f"{mapping_file}: product module and order must use approved mapping")
+
+    expected_fields = [
+        "target_ad_product_name",
+        "analysis_scenario",
+        "trigger_sell_through_wow_change_pp",
+        "customer_name",
+        "current_period_impression_count",
+        "impression_change_count",
+        "customer_rank",
+        "applied_output_limit",
+    ]
+    if narrative.get("fixed_consumed_result_fields") != expected_fields:
+        errors.append(f"{mapping_file}: customer narrative must consume exactly eight fixed fields")
+
+    contract_file = (
+        "phase1_5/assets/result_contracts/"
+        "RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS.yaml"
+    )
+    contract = documents.get(contract_file, {})
+    contract_fields = {
+        field.get("field_id")
+        for record_set in contract.get("record_sets", [])
+        if isinstance(record_set, dict)
+        for group in ("context_fields", "record_fields")
+        for field in record_set.get(group, [])
+        if isinstance(field, dict)
+    }
+    if not set(expected_fields).issubset(contract_fields):
+        errors.append(f"{mapping_file}: fixed customer narrative fields do not resolve")
+
+    selection = narrative.get("precomputed_customer_selection", {})
+    expected_selection = {
+        "inclusion_condition": "customer_rank <= applied_output_limit",
+        "output_mapping_may_resort": False,
+        "output_mapping_may_recalculate_impression_change": False,
+        "output_mapping_may_reapply_materiality_threshold": False,
+        "output_mapping_may_change_applied_output_limit": False,
+    }
+    for key, expected in expected_selection.items():
+        if selection.get(key) != expected:
+            errors.append(f"{mapping_file}:precomputed_customer_selection.{key}: expected {expected!r}")
+
+    templates = narrative.get("fixed_templates", {})
+    expected_templates = {
+        "positive_product_template": "{product_name}售卖率环比上涨{absolute_change_pp}pp，主要投放客户为{ranked_customer_text}。",
+        "negative_product_template": "{product_name}售卖率环比下降{absolute_change_pp}pp，主要减投客户为{ranked_customer_text}。",
+        "positive_product_change_only_template": "{product_name}售卖率环比上涨{absolute_change_pp}pp。",
+        "negative_product_change_only_template": "{product_name}售卖率环比下降{absolute_change_pp}pp。",
+        "positive_customer_template": "{customer_name}（本周曝光{current_period_impression_count}）",
+        "negative_customer_template": "{customer_name}（较上周减少{absolute_impression_change_count}曝光）",
+        "template_selection_source_field": "analysis_scenario",
+        "scenario_derivation_in_output_mapping_allowed": False,
+        "absolute_change_pp_source_field": "trigger_sell_through_wow_change_pp",
+        "absolute_impression_change_count_source_field": "impression_change_count",
+        "absolute_value_handling": "presentation_magnitude_format_only",
+        "absolute_value_handling_is_metric_calculation": False,
+    }
+    for key, expected in expected_templates.items():
+        if templates.get(key) != expected:
+            errors.append(f"{mapping_file}:fixed_templates.{key}: expected {expected!r}")
+
+    concatenation = narrative.get("concatenation", {})
+    if concatenation.get("unit") != "one_sentence_per_triggered_product" or concatenation.get(
+        "product_order_source"
+    ) != "approved_mapping_fixed_order" or concatenation.get(
+        "dynamic_table_generation_allowed"
+    ) is not False:
+        errors.append(f"{mapping_file}: abnormal products must use fixed-order sentence concatenation")
+
+    omissions = narrative.get("omission_and_empty_selection", {})
+    expected_omissions = {
+        "trigger_not_met": ("normal_omission", False),
+        "qualified_customer_zero_rows": ("normal_omission", False),
+        "raw_query_zero_rows": ("source_or_routing_exception", True),
+        "query_failure": ("source_or_routing_exception", True),
+        "invalid_product_mapping": ("source_or_routing_exception", True),
+    }
+    if set(omissions) != set(expected_omissions):
+        errors.append(f"{mapping_file}: customer narrative omission semantics are incomplete")
+    for reason, (classification, notify_owner) in expected_omissions.items():
+        semantics = omissions.get(reason, {})
+        if semantics.get("classification") != classification or semantics.get(
+            "notify_owner"
+        ) is not notify_owner or semantics.get("fail_workflow") is not False:
+            errors.append(f"{mapping_file}: omission semantics invalid for {reason}")
+    if "fabricate" not in omissions.get("qualified_customer_zero_rows", {}).get(
+        "action", ""
+    ):
+        errors.append(f"{mapping_file}: qualified-customer empty result must not fabricate")
+
+    prohibitions = narrative.get("implementation_prohibitions", {})
+    required_prohibitions = {
+        "generic_dynamic_table_renderer_allowed",
+        "arbitrary_record_set_to_table_conversion_allowed",
+        "dynamic_field_selection_framework_allowed",
+        "generic_record_set_display_engine_allowed",
+        "dynamic_html_column_generation_allowed",
+        "new_metric_variant_allowed",
+        "new_result_contract_allowed",
+    }
+    if set(prohibitions) != required_prohibitions or any(
+        prohibitions.get(key) is not False for key in required_prohibitions
+    ):
+        errors.append(f"{mapping_file}: dynamic-rendering implementation prohibitions are incomplete")
+    if narrative.get("allowed_output_assembly_operations") != [
+        "fixed_template_field_substitution",
+        "fixed_order_sentence_concatenation",
+    ]:
+        errors.append(f"{mapping_file}: Output Assembly operations exceed fixed rendering")
+    if narrative.get("output_mapping_may_calculate_metric") is not False or narrative.get(
+        "output_mapping_may_apply_business_judgment"
+    ) is not False:
+        errors.append(f"{mapping_file}: Output Mapping calculation or judgment is prohibited")
+
+    baseline_file = "phase1_5/assets/readiness/implementation_baseline.yaml"
+    baseline_constraints = documents.get(baseline_file, {}).get(
+        "mvp_development_constraints", {}
+    )
+    expected_baseline = {
+        "customer_analysis_output_implementation": "fixed_narrative_template_rendering",
+        "customer_analysis_output_section": "inventory_and_sell_through",
+        "customer_analysis_output_positions": [
+            "patch_and_similar_resource_commentary",
+            "page_resource_commentary",
+        ],
+        "generic_dynamic_table_renderer_required": False,
+        "generic_record_set_display_engine_required": False,
+        "dynamic_html_column_generation_required": False,
+    }
+    for key, expected in expected_baseline.items():
+        if baseline_constraints.get(key) != expected:
+            errors.append(f"{baseline_file}:mvp_development_constraints.{key}: expected {expected!r}")
+    impact_review = documents.get(baseline_file, {}).get("change_control", {}).get(
+        "latest_baseline_version_impact_review", {}
+    )
+    expected_impact_review = {
+        "review_date": "2026-08-06",
+        "customer_analysis_output_strategy": "fixed_narrative_template_rendering",
+        "customer_analysis_initial_mvp_status": "included",
+        "physical_metric_store_strategy": "shared_local_sqlite",
+        "mvp_execution_mode": "sequential",
+        "mvp_recovery_mode": "rerun_pipeline_from_start",
+        "development_complexity_reduction": True,
+        "code_implementation_owner_approved": False,
+        "baseline_version_increment_required": False,
+    }
+    for key, expected in expected_impact_review.items():
+        actual = impact_review.get(key)
+        if key == "review_date":
+            actual = str(actual)
+        if actual != expected:
+            errors.append(f"{baseline_file}:latest_baseline_version_impact_review.{key}: expected {expected!r}")
+    if documents.get(baseline_file, {}).get("baseline_version") != "1.0.0":
+        errors.append(f"{baseline_file}: baseline_version must remain 1.0.0")
+
+    baseline_sequence = baseline_constraints.get("implementation_sequence", [])
+    if baseline_constraints.get("mvp_execution_mode") != "sequential" or baseline_constraints.get(
+        "mvp_recovery_mode"
+    ) != "rerun_pipeline_from_start" or baseline_constraints.get(
+        "physical_metric_store_strategy"
+    ) != "shared_local_sqlite" or [item.get("sequence") for item in baseline_sequence] != [1, 2, 3] or baseline_sequence[1].get(
+        "auto_send"
+    ) is not False:
+        errors.append(f"{baseline_file}: lean MVP implementation sequence is incomplete")
+
+    status_file = "phase1_5/assets/readiness/status_index.yaml"
+    status_scope = documents.get(status_file, {}).get("scope_boundaries", {})
+    expected_status = {
+        "customer_analysis_output_implementation": "fixed_narrative_template_rendering",
+        "customer_analysis_output_section": "inventory_and_sell_through",
+        "customer_analysis_output_positions": [
+            "patch_and_similar_resource_commentary",
+            "page_resource_commentary",
+        ],
+        "customer_analysis_dynamic_table_renderer_required": False,
+        "customer_analysis_initial_mvp_status": "included",
+        "physical_metric_store_strategy": "shared_local_sqlite",
+        "shared_metric_store_table": "metric_results",
+        "shared_metric_store_discriminator_fields": ["store_id", "store_asset_id"],
+        "revenue_metric_store_strategy": "existing_excel_history_store",
+        "mvp_execution_mode": "sequential",
+        "mvp_recovery_mode": "rerun_pipeline_from_start",
+        "development_complexity_reduction": True,
+        "code_implementation_owner_approved": False,
+    }
+    for key, expected in expected_status.items():
+        if status_scope.get(key) != expected:
+            errors.append(f"{status_file}:scope_boundaries.{key}: expected {expected!r}")
+    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-06":
+        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-06")
+
+    output_gate_file = (
+        "phase1_5/assets/output_mappings/"
+        "weekly_report_output_mapping_readiness_gate.yaml"
+    )
+    output_gate = documents.get(output_gate_file, {})
+    required_gate_checks = {
+        "customer_analysis_removed_from_revenue_dynamic_table_slot",
+        "customer_analysis_fixed_inventory_commentary_positions",
+        "customer_analysis_fixed_eight_field_selection",
+        "customer_analysis_fixed_narrative_templates",
+        "inventory_overview_precedes_customer_analysis_sentences",
+        "customer_analysis_precomputed_rank_and_limit_consumption",
+        "customer_analysis_dynamic_rendering_prohibited",
+    }
+    gate_checks = output_gate.get("gate_checks", {})
+    if any(gate_checks.get(key) != "pass" for key in required_gate_checks):
+        errors.append(f"{output_gate_file}: fixed narrative Gate checks must pass")
+
+    code_gate_file = "phase1_5/assets/readiness/code_implementation_readiness_gate.yaml"
+    code_gate = documents.get(code_gate_file, {})
+    if code_gate.get("scope", {}).get("code_implementation_started") is not False or code_gate.get(
+        "implementation_entry_decision", {}
+    ).get("code_implementation_may_start") is not False:
+        errors.append(f"{code_gate_file}: code implementation must remain unauthorized")
+    if code_gate.get("governance", {}).get("outlook_auto_send") is not False:
+        errors.append(f"{code_gate_file}: outlook_auto_send must remain false")
+    entry = code_gate.get("implementation_entry_decision", {})
+    if entry.get("mvp_execution_mode") != "sequential" or entry.get(
+        "mvp_recovery_mode"
+    ) != "rerun_pipeline_from_start" or entry.get("physical_metric_store_strategy") != (
+        "shared_local_sqlite"
+    ) or entry.get("metric_store_table") != "metric_results":
+        errors.append(f"{code_gate_file}: lean MVP entry semantics are incomplete")
+
+    return 1
 
 
 def validate_external_asset_versions(
@@ -2110,6 +2536,9 @@ def main() -> int:
     mvp_acceptance_check_count = validate_mvp_acceptance_semantics(
         documents, errors
     )
+    customer_narrative_mapping_count = validate_customer_analysis_narrative_mapping(
+        documents, errors
+    )
     external_asset_count, external_asset_binding_count = (
         validate_external_asset_versions(documents, errors)
     )
@@ -2144,6 +2573,7 @@ def main() -> int:
         f"and {contract_counts['display_tbd_exceptions']} allowed display TBD exception checked; "
         f"{configured_display_policy_count} configured display value policy validated; "
         f"{mvp_acceptance_check_count} MVP runtime acceptance boundaries checked; "
+        f"{customer_narrative_mapping_count} fixed customer-analysis narrative mapping validated; "
         f"{contract_counts['output_bindings']} Metric Variant output bindings and "
         f"{contract_counts['output_fields']} explicit Output Mapping fields checked; "
         f"{external_asset_count} versioned External Assets with "

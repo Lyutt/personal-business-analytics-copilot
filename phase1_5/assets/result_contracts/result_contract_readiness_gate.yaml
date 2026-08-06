@@ -32,11 +32,14 @@ gate_checks:
   upstream_contract_field_route_conditions_explicit: pass
   output_mapping_contract_field_references_complete: pass
   parallel_list_mapping_removed: pass
-  output_mapping_tbd_exception_scope_enforced: pass
+  active_output_display_fields_tbd_prohibited: pass
   result_contract_cycle_check: pass
   numeric_field_semantics_complete: pass
   dau_record_set_grain_and_cardinality_complete: pass
   analysis_only_non_metric_sources_explicit: pass
+  analysis_only_metric_variant_binding_not_applicable: pass
+  analysis_only_metric_variant_versions_empty: pass
+  customer_analysis_omission_semantics_explicit: pass
   customer_id_exact_cross_period_matching_required: pass
   empty_customer_analysis_contract_prohibited: pass
   automatic_business_inference_disabled: pass
@@ -49,6 +52,8 @@ owner_confirmations_applied:
   customer_analysis_contract_shape: record_set
   customer_analysis_pipeline_is_analysis_only: true
   customer_analysis_fake_metric_variant_prohibited: true
+  customer_analysis_metric_variant_binding_check: false
+  customer_analysis_metric_variant_versions: []
 
 decision:
   result_contract_initialization_complete: true

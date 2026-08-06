@@ -19,14 +19,14 @@ trigger:
   default_threshold: 10 percentage points
   product_specific_override_supported: true
   no_trigger_action: Do not execute customer query
-  trigger_rule_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+  trigger_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
   runtime_input_routes_are_defined_by_pipeline_registry: true
   result_contract_source_routes_are_lineage_summary_only: true
 
 query_product_selection:
   source_of_truth_asset_name: 奇胜收入表细分产品筛选逻辑
   source_of_truth_asset:
-    asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+    product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
     reference_contract_version: 1.0.0
     runtime_version_reference: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'
     runtime_version_verification_required: true
@@ -83,7 +83,7 @@ customer_selection:
     rule_type: Explicit local product-category limit
     storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
     source_asset:
-      asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+      product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
       reference_contract_version: 1.0.0
       runtime_version_reference: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'
       runtime_version_verification_required: true
@@ -92,28 +92,42 @@ customer_selection:
     if_qualified_customer_count_is_below_limit: Use actual qualified customer count
 
 failure_handling:
-  query_failure:
-    notify_owner: true
-    analyze_failure_reason: true
+  trigger_not_met:
+    classification: normal_omission
+    notify_owner: false
+    fail_pipeline: false
     block_weekly_report: false
-    product_customer_analysis_action: Omit target product customer analysis
-  zero_customer_rows:
+    product_customer_analysis_action: Do not execute customer query or generate a Result Contract
+  qualified_customer_zero_rows:
+    classification: normal_omission
+    notify_owner: false
+    fail_pipeline: false
+    block_weekly_report: false
+    product_customer_analysis_action: Keep the product sell-through change commentary without fabricated customer content
+  raw_query_zero_rows:
+    classification: source_or_routing_exception
     notify_owner: true
     analyze_zero_row_reason: true
+    fail_pipeline: false
     block_weekly_report: false
     product_customer_analysis_action: Omit target product customer analysis
-  invalid_or_missing_explicit_product_mapping:
+  query_failure:
+    classification: source_or_routing_exception
     notify_owner: true
+    analyze_failure_reason: true
+    fail_pipeline: false
+    block_weekly_report: false
+    product_customer_analysis_action: Omit target product customer analysis
+  invalid_product_mapping:
+    classification: source_or_routing_exception
+    notify_owner: true
+    fail_pipeline: false
     block_target_customer_analysis_only: true
     block_weekly_report: false
     auto_fallback_to_similar_product: false
-  trigger_not_met:
-    notify_owner: true
-    block_weekly_report: false
-    product_customer_analysis_action: Omit target product customer analysis
   result_contract_generation:
     generate_placeholder_or_null_contract: false
-    omit_when: [query_failure, zero_customer_rows, trigger_not_met, invalid_or_missing_explicit_product_mapping]
+    omit_when: [trigger_not_met, qualified_customer_zero_rows, raw_query_zero_rows, query_failure, invalid_product_mapping]
     continue_weekly_workflow: true
 
 output_boundary:
@@ -121,7 +135,6 @@ output_boundary:
   result_contract_id: RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
   contract_shape: record_set
   field_source_types_allowed:
-    - metric_variant
     - upstream_contract_field
     - standardized_field
     - policy_derived_field

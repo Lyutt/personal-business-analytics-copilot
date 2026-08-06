@@ -119,6 +119,90 @@ section_order:
           - output_field_id: brand_moment_sell_through_wow_change_pp
             result_field_binding: { result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY, result_field_id: sell_through_wow_change_pp }
 
+    customer_analysis_narrative_mapping:
+      implementation_method: fixed_narrative_template_rendering
+      purpose: Explain inventory and sell-through changes inside the Inventory section.
+      validated_result_contract_id: RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+      record_set_id: customer_delivery_changes
+      business_rule_processing_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+      rendering_sequence:
+        - render_inventory_and_sell_through_overview
+        - append_triggered_product_sentences
+      precomputed_trigger_and_scenario:
+        trigger_decision_consumed_from_policy: true
+        scenario_consumed_from_result_contract: true
+        output_mapping_may_evaluate_trigger_threshold: false
+        output_mapping_may_derive_scenario: false
+      target_output_positions:
+        - output_field_id: patch_and_similar_resource_commentary
+          resource_module: patch_and_similar_resources
+        - output_field_id: page_resource_commentary
+          resource_module: page_resources
+      product_module_and_fixed_order_resolution:
+        product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+        reference_contract_version: 1.0.0
+        runtime_version_reference: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'
+        runtime_version_verification_required: true
+        product_name_inference_allowed: false
+        fixed_product_order_required: true
+      fixed_consumed_result_fields:
+        - target_ad_product_name
+        - analysis_scenario
+        - trigger_sell_through_wow_change_pp
+        - customer_name
+        - current_period_impression_count
+        - impression_change_count
+        - customer_rank
+        - applied_output_limit
+      retained_trace_fields_must_not_enter_report_body: true
+      precomputed_customer_selection:
+        inclusion_condition: customer_rank <= applied_output_limit
+        output_mapping_may_resort: false
+        output_mapping_may_recalculate_impression_change: false
+        output_mapping_may_reapply_materiality_threshold: false
+        output_mapping_may_change_applied_output_limit: false
+      fixed_templates:
+        positive_product_template: "{product_name}售卖率环比上涨{absolute_change_pp}pp，主要投放客户为{ranked_customer_text}。"
+        negative_product_template: "{product_name}售卖率环比下降{absolute_change_pp}pp，主要减投客户为{ranked_customer_text}。"
+        positive_product_change_only_template: "{product_name}售卖率环比上涨{absolute_change_pp}pp。"
+        negative_product_change_only_template: "{product_name}售卖率环比下降{absolute_change_pp}pp。"
+        positive_customer_template: "{customer_name}（本周曝光{current_period_impression_count}）"
+        negative_customer_template: "{customer_name}（较上周减少{absolute_impression_change_count}曝光）"
+        template_selection_source_field: analysis_scenario
+        scenario_derivation_in_output_mapping_allowed: false
+        absolute_change_pp_source_field: trigger_sell_through_wow_change_pp
+        absolute_impression_change_count_source_field: impression_change_count
+        absolute_value_handling: presentation_magnitude_format_only
+        absolute_value_handling_is_metric_calculation: false
+      ranked_customer_text_assembly:
+        consume_customer_records_in_existing_customer_rank_order: true
+        output_mapping_may_resort: false
+        customer_separator_source: fixed_local_weekly_report_template
+      concatenation:
+        unit: one_sentence_per_triggered_product
+        product_order_source: approved_mapping_fixed_order
+        append_to_resolved_resource_module_commentary: true
+        dynamic_table_generation_allowed: false
+      omission_and_empty_selection:
+        trigger_not_met: { classification: normal_omission, notify_owner: false, fail_workflow: false, action: Do not append an abnormal-product sentence or generate an empty Contract. }
+        qualified_customer_zero_rows: { classification: normal_omission, notify_owner: false, fail_workflow: false, action: Keep only the product sell-through change clause and do not fabricate a customer name. }
+        raw_query_zero_rows: { classification: source_or_routing_exception, notify_owner: true, fail_workflow: false, action: Omit the target product customer analysis and continue Workflow. }
+        query_failure: { classification: source_or_routing_exception, notify_owner: true, fail_workflow: false, action: Omit the target product customer analysis and continue Workflow. }
+        invalid_product_mapping: { classification: source_or_routing_exception, notify_owner: true, fail_workflow: false, action: Omit the target product customer analysis and continue Workflow. }
+      implementation_prohibitions:
+        generic_dynamic_table_renderer_allowed: false
+        arbitrary_record_set_to_table_conversion_allowed: false
+        dynamic_field_selection_framework_allowed: false
+        generic_record_set_display_engine_allowed: false
+        dynamic_html_column_generation_allowed: false
+        new_metric_variant_allowed: false
+        new_result_contract_allowed: false
+      allowed_output_assembly_operations:
+        - fixed_template_field_substitution
+        - fixed_order_sentence_concatenation
+      output_mapping_may_calculate_metric: false
+      output_mapping_may_apply_business_judgment: false
+
   - section_id: REVENUE
     display_order: 2
     display_title: 二、本周收入情况
@@ -190,26 +274,6 @@ section_order:
             result_field_binding: { result_contract_id: RC_REVENUE_FAST_VERSION_WEEKLY, result_field_id: weekly_executed_revenue }
           - output_field_id: weekly_executed_revenue_wow
             result_field_binding: { result_contract_id: RC_REVENUE_FAST_VERSION_WEEKLY, result_field_id: weekly_executed_revenue_wow }
-      - output_slot_id: SLOT_CONDITIONAL_PRODUCT_CUSTOMER_ANALYSIS
-        display_order: 6
-        display_label: 产品客户投放变化分析（仅异常触发）
-        applies_when: A validated product sell-through result meets its configured threshold
-        validated_result_contract_ids:
-          - RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
-        selection_and_ranking_policy_reference: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
-        display_fields: TBD
-        result_record_set_binding:
-          result_contract_id: RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
-          record_set_id: customer_delivery_changes
-        output_assembly_may_calculate: false
-        placeholder_or_null_result_contract_allowed: false
-        omission_conditions:
-          - Query failure
-          - Zero customer rows
-          - Trigger not met
-          - Invalid product mapping
-        query_failure_action: Omit this product customer analysis and notify owner; continue Workflow
-
 display_format:
   rounding_mode: half_up
   revenue_amount:

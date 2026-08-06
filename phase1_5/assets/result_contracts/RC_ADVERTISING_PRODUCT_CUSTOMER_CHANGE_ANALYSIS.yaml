@@ -13,11 +13,18 @@ metric_variant_required: false
 generation_policy:
   generate_only_when_valid_records_exist: true
   omit_contract_when:
-    - query_failure
-    - zero_customer_result
     - trigger_not_met
+    - qualified_customer_zero_rows
+    - raw_query_zero_rows
+    - query_failure
     - invalid_product_mapping
-  omitted_contract_behavior: Notify owner when required by existing Policy and continue Weekly Workflow.
+  omission_semantics:
+    trigger_not_met: { classification: normal_omission, notify_owner: false, fail_pipeline: false, continue_weekly_workflow: true }
+    qualified_customer_zero_rows: { classification: normal_omission, notify_owner: false, fail_pipeline: false, retain_product_change_commentary: true, fabricate_customer_content: false, continue_weekly_workflow: true }
+    raw_query_zero_rows: { classification: source_or_routing_exception, notify_owner: true, omit_target_product_analysis_only: true, continue_weekly_workflow: true }
+    query_failure: { classification: source_or_routing_exception, notify_owner: true, omit_target_product_analysis_only: true, continue_weekly_workflow: true }
+    invalid_product_mapping: { classification: source_or_routing_exception, notify_owner: true, omit_target_product_analysis_only: true, continue_weekly_workflow: true }
+  omitted_contract_behavior: Apply the explicit omission semantics without generating a placeholder or null Contract.
 record_sets:
   - record_set_id: customer_delivery_changes
     record_grain: [target_ad_product_name, current_reporting_period, customer_id]
@@ -299,7 +306,10 @@ validation:
   data_type_validation: true
   numeric_constraint_validation: true
   duplicate_field_id_check: true
-  metric_variant_binding_check: true
+  metric_variant_binding_check: false
   contract_completeness_check: true
-lineage: { required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, cutoff_date, report_mode, dataset_instance_ids, mapping_profile_versions, business_rule_versions, metric_variant_versions, generated_at, validation_status, approval_status] }
+lineage:
+  required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, cutoff_date, report_mode, dataset_instance_ids, mapping_profile_versions, business_rule_versions, generated_at, validation_status, approval_status]
+  metric_variant_versions: []
+  metric_variant_versions_applicability: not_applicable
 constraints: { automatic_business_inference_allowed: false, output_mapping_may_calculate: false, unknown_business_values_remain_tbd: true, fake_metric_variant_prohibited: true, customer_rows_must_remain_local_only: true }

@@ -21,12 +21,21 @@ readiness_definitions:
 
 mvp_physical_store_adapter_strategy:
   shared_generic_local_adapter_required: true
+  physical_store_strategy: shared_local_sqlite
+  provider: SQLite
+  physical_store_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+  physical_store_file_created_by_this_configuration_change: false
+  shared_table_name: metric_results
+  logical_store_discriminator_fields: [store_id, store_asset_id]
   applies_to_logical_store_ids:
     - STORE_WEEKLY_INVENTORY_HISTORICAL
     - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
     - STORE_WEEKLY_ADVERTISING_HISTORICAL
   separate_storage_engine_per_logical_store_required: false
-  logical_schema_and_namespace_separation_required: true
+  logical_schema_and_namespace_separation_required: false
+  multi_provider_architecture_required: false
+  plugin_store_architecture_required: false
+  complex_orm_required: false
 
 readiness_records:
   - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
@@ -63,9 +72,9 @@ readiness_records:
     metric_and_formula_definitions_confirmed: true
     local_storage_contract_confirmed: false
     blocking_runtime_items:
-      - Configure WEEKLY_INVENTORY_METRIC_STORE_LOCAL_ONLY
-      - Configure and initialize the shared generic local Store Adapter
-      - Create the five Store Asset schemas from their explicit Metric Variant bindings
+      - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
+      - Initialize the shared local SQLite metric_results table after Owner approves Code Implementation
+      - Bind the five Store Assets through store_id and store_asset_id
       - Validate one prior-week read and one current-week idempotent write
 
   - store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
@@ -81,8 +90,8 @@ readiness_records:
     metric_and_formula_definitions_confirmed: true
     local_storage_contract_confirmed: false
     blocking_runtime_items:
-      - Configure WEEKLY_USER_ANALYTICS_METRIC_STORE_LOCAL_ONLY
-      - Configure and initialize the shared generic local Store Adapter
+      - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
+      - Bind the Store Asset to the shared metric_results table through store_id and store_asset_id
       - Validate one prior-week read and one current-week idempotent write
 
   - store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
@@ -99,8 +108,8 @@ readiness_records:
     local_storage_contract_confirmed: false
     workflow_runtime_impact: non_blocking_persistence_warning
     blocking_runtime_items:
-      - Configure WEEKLY_ADVERTISING_METRIC_STORE_LOCAL_ONLY
-      - Configure and initialize the shared generic local Store Adapter
+      - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
+      - Bind the Store Asset to the shared metric_results table through store_id and store_asset_id
       - Validate one current-week idempotent write
 
 summary:

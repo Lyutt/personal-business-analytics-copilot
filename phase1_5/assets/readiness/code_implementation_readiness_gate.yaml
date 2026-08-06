@@ -2,6 +2,7 @@ config_type: code_implementation_readiness_gate
 gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 assessment_date: 2026-08-03
+last_semantic_sync_date: 2026-08-06
 status: ready_awaiting_explicit_owner_approval
 gate_result: ready_awaiting_explicit_owner_approval
 owner: WORKFLOW_OWNER
@@ -67,7 +68,18 @@ implementation_readiness_checks:
   metric_store_runtime_bootstrap: conditional
   mvp_product_scoped_execution_is_sequential: pass
   mvp_stage_checkpointing_not_required: pass
-  shared_generic_local_metric_store_adapter: pass
+  shared_local_sqlite_metric_store_contract: pass
+  single_metric_results_table_with_logical_discriminators: pass
+  lean_metric_store_implementation_boundary: pass
+  mvp_rerun_pipeline_from_start_recovery: pass
+  mvp_implementation_sequence_fixed: pass
+  customer_analysis_metric_variant_not_applicable: pass
+  customer_analysis_omission_semantics_synchronized: pass
+  reference_key_type_semantics_synchronized: pass
+  customer_analysis_fixed_narrative_rendering: pass
+  customer_analysis_inventory_commentary_positions_fixed: pass
+  customer_analysis_dynamic_table_engine_prohibited: pass
+  customer_analysis_fixed_narrative_semantics_synchronized: pass
 
 implementation_entry_decision:
   asset_baseline_ready: true
@@ -75,14 +87,20 @@ implementation_entry_decision:
   code_implementation_may_start: false
   waiting_for_explicit_owner_approval: true
   allowed_initial_scope:
-    - Generic Analytics Core interfaces
-    - Data acquisition adapters with local runtime configuration
-    - Dataset standardization and validation
-    - Sequential product-scoped Pipeline orchestration and idempotent full-Pipeline retry
-    - Business Rule and Metric Variant execution
-    - One shared generic local physical Store Adapter for Inventory, User Analytics and Advertising logical Stores
-    - Weekly Report Output Assembly
-    - Outlook Draft creation with auto_send=false
+    - "1. Local input -> standardization -> rules -> metrics -> Result Contract -> fixed narrative output -> Weekly Report preview -> Store"
+    - "2. Outlook Draft with auto_send=false"
+    - "3. Progressively integrate Outlook, Apollo, and NovaBI Adapters"
+  mvp_execution_mode: sequential
+  mvp_recovery_mode: rerun_pipeline_from_start
+  parallel_scheduling_implemented: false
+  stage_checkpointing_implemented: false
+  failed_stage_resume_implemented: false
+  physical_metric_store_strategy: shared_local_sqlite
+  metric_store_table: metric_results
+  metric_store_discriminator_fields: [store_id, store_asset_id]
+  multi_provider_store_implemented: false
+  plugin_store_architecture_implemented: false
+  complex_orm_implemented: false
   business_logic_auto_completion_allowed: false
   unknown_tbd_auto_resolution_allowed: false
   external_side_effects_require_runtime_confirmation: true
@@ -92,13 +110,13 @@ runtime_acceptance_decision:
   blocking_items:
     - blocker_id: BLOCKER_METRIC_STORE_INVENTORY_BOOTSTRAP
       store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
-      resolution: Configure the shared generic local Store Adapter namespace, schemas and read/write verification
+      resolution: Configure the shared local SQLite metric_results table and verify store_id/store_asset_id reads and writes
     - blocker_id: BLOCKER_METRIC_STORE_USER_ANALYTICS_BOOTSTRAP
       store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
-      resolution: Configure the shared generic local Store Adapter namespace, schema and read/write verification
+      resolution: Configure the shared local SQLite metric_results table and verify store_id/store_asset_id reads and writes
     - blocker_id: BLOCKER_METRIC_STORE_ADVERTISING_BOOTSTRAP
       store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
-      resolution: Configure the shared generic local Store Adapter namespace, schema and write verification
+      resolution: Configure the shared local SQLite metric_results table and verify store_id/store_asset_id writes
   non_blocking_runtime_conditions:
     - Revenue local workbooks must exist and be accessible for each run
     - Outlook, Apollo and NovaBI sessions may require the confirmed refresh-and-retry policy

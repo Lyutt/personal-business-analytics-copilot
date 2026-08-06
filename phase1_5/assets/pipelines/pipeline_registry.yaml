@@ -1761,19 +1761,36 @@ pipelines:
           Run only after a validated product sell-through result satisfies
           the explicitly configured anomaly trigger.
         failure_handling:
+          trigger_not_met:
+            classification: normal_omission
+            notify_owner: false
+            fail_pipeline: false
+            action: Do not execute the customer query or generate an empty Contract
+          qualified_customer_zero_rows:
+            classification: normal_omission
+            notify_owner: false
+            fail_pipeline: false
+            action: Retain product change commentary without fabricated customer content
+          raw_query_zero_rows:
+            classification: source_or_routing_exception
+            notify_owner: true
+            fail_pipeline: false
+            action: Omit target product customer analysis and continue Workflow
           query_failure:
-            - Notify owner
-            - Analyze technical failure reason
-            - Continue Workflow
-          zero_customer_rows:
-            - Notify owner
-            - Analyze zero-row reason
-            - Continue Workflow
+            classification: source_or_routing_exception
+            notify_owner: true
+            fail_pipeline: false
+            action: Omit target product customer analysis and continue Workflow
+          invalid_product_mapping:
+            classification: source_or_routing_exception
+            notify_owner: true
+            fail_pipeline: false
+            action: Omit target product customer analysis and continue Workflow
           block_workflow: false
 
     trigger_contract:
       producer_result_type: Validated product sell-through result
-      trigger_rule_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+      trigger_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
       confirmed_rule_input: abs(sell_through_rate_wow_change_pp) >= configured threshold
       current_default_threshold: 10pp
       product_override_supported: true
@@ -1804,7 +1821,7 @@ pipelines:
         dataset_version_constraint: TBD
         dependency_role: Product-customer delivery change input
         required_when_triggered: true
-        join_or_relationship_rule_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        business_rule_processing_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
 
     execution:
       schedule:
@@ -1874,11 +1891,12 @@ pipelines:
         - current_reporting_period
         - customer_id
       no_placeholder_result_contract_when:
-        - Query failure
-        - Zero customer rows
-        - Trigger not met
-        - Invalid product mapping
-      omitted_result_behavior: Notify owner under the existing Policy and continue Weekly Workflow
+        - trigger_not_met
+        - qualified_customer_zero_rows
+        - raw_query_zero_rows
+        - query_failure
+        - invalid_product_mapping
+      omitted_result_behavior: Apply explicit normal-omission or exception notification semantics and continue Weekly Workflow
       output_mapping_ids:
         - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: false
@@ -1954,7 +1972,7 @@ pipelines:
     dataset_dependencies: []
 
     result_contract_dependency_routing:
-      routing_rule_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+      product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
       confirmed_routes:
         regular_patch_products:
           producer_pipeline_id: PL_INVENTORY_PATCH_WEEKLY
@@ -2026,7 +2044,7 @@ pipelines:
     downstream_consumers:
       - pipeline_id: PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
         dependency_role: Validated sell-through anomaly trigger input
-        trigger_rule_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+        trigger_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
       - component: Weekly Report Inventory Section Assembly
         behavior: Consume validated product result only
         may_calculate: false
@@ -2088,10 +2106,10 @@ constraints:
   advertising_product_inventory_source_routing:
     regular_patch_products:
       source_pipeline_id: PL_INVENTORY_PATCH_WEEKLY
-      exact_product_membership_rule_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+      product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
     all_products_except_regular_patch:
       source_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
-      exact_product_membership_rule_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+      product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
     confirmed_specific_binding:
       product: Brand Moment
       source_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
@@ -2101,6 +2119,6 @@ constraints:
       - PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
     first_phase_scheduling_mode: sequential
     parallel_scheduler_required: false
-    failed_run_recovery: restart_entire_product_scoped_pipeline_idempotently
+    failed_run_recovery: rerun_pipeline_from_start
     stage_checkpointing_required: false
     resume_from_failed_stage_required: false

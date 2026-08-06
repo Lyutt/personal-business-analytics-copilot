@@ -4,13 +4,22 @@ asset_type: Metric Result Store
 
 mvp_physical_store_adapter_strategy:
   shared_generic_local_adapter_required: true
+  physical_store_strategy: shared_local_sqlite
+  provider: SQLite
+  physical_store_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+  physical_store_file_created_by_this_configuration_change: false
+  shared_table_name: metric_results
+  logical_store_discriminator_fields: [store_id, store_asset_id]
   applies_to_logical_store_ids:
     - STORE_WEEKLY_INVENTORY_HISTORICAL
     - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
     - STORE_WEEKLY_ADVERTISING_HISTORICAL
   logical_store_contracts_remain_distinct: true
   separate_storage_engine_per_logical_store_required: false
-  adapter_configuration_may_use_separate_local_namespaces: true
+  adapter_configuration_may_use_separate_local_namespaces: false
+  multi_provider_architecture_required: false
+  plugin_store_architecture_required: false
+  complex_orm_required: false
 
 metric_result_stores:
   - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
@@ -267,8 +276,10 @@ metric_result_stores:
     readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
     implementation_contract_status: Complete
     runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
-    storage_type: Shared generic local physical Store Adapter for MVP
-    storage_location: ${WEEKLY_INVENTORY_METRIC_STORE_LOCAL_ONLY}
+    storage_type: Shared local SQLite metric_results table
+    storage_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+    physical_table_name: metric_results
+    discriminator_fields: [store_id, store_asset_id]
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
       只保存经过验证的库存Metric Result。
@@ -346,8 +357,10 @@ metric_result_stores:
     readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
     implementation_contract_status: Complete
     runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
-    storage_type: Shared generic local physical Store Adapter for MVP
-    storage_location: ${WEEKLY_USER_ANALYTICS_METRIC_STORE_LOCAL_ONLY}
+    storage_type: Shared local SQLite metric_results table
+    storage_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+    physical_table_name: metric_results
+    discriminator_fields: [store_id, store_asset_id]
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
       只保存经过验证的User Analytics Metric Result。
@@ -373,8 +386,10 @@ metric_result_stores:
     readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
     implementation_contract_status: Complete
     runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
-    storage_type: Shared generic local physical Store Adapter for MVP
-    storage_location: ${WEEKLY_ADVERTISING_METRIC_STORE_LOCAL_ONLY}
+    storage_type: Shared local SQLite metric_results table
+    storage_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+    physical_table_name: metric_results
+    discriminator_fields: [store_id, store_asset_id]
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
       不保存库存或售卖率结果，只保存经过验证的Advertising Metric Result。

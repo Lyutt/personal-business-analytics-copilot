@@ -45,7 +45,11 @@ advertising_policy_coverage:
   missing_side_impression_count_zero: confirmed
   conflicting_customer_name_exclusion: confirmed
   scenario_specific_ranking_measure: confirmed
-  invalid_or_empty_analysis_contract_omission: confirmed
+  trigger_not_met_normal_omission_without_notification: confirmed
+  qualified_customer_zero_rows_normal_omission_without_notification: confirmed
+  raw_query_zero_rows_scoped_owner_notification: confirmed
+  query_failure_scoped_owner_notification: confirmed
+  invalid_product_mapping_scoped_owner_notification: confirmed
   weekly_workflow_continuation_after_scoped_failure: confirmed
 
 external_asset_version_gate:
@@ -67,6 +71,8 @@ gate_checks:
   inventory_failure_scope_explicit: pass
   advertising_failure_scope_explicit: pass
   customer_analysis_result_omission_policy_explicit: pass
+  customer_analysis_normal_omission_and_exception_distinction: pass
+  reference_key_type_semantics_explicit: pass
   outlook_auto_send_false_unchanged: pass
   sensitive_business_rows_absent: pass
   owner_approval_status_unchanged: pass
