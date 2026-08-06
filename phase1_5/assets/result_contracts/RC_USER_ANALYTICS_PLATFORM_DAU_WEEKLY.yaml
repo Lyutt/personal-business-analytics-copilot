@@ -12,9 +12,9 @@ producer: { producer_pipeline_id: PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY, produce
 contract_shape: composite
 record_sets:
   - record_set_id: daily_activity
-    record_grain: [activity_date, full_platform]
+    record_grain: [activity_date, platform_scope]
     record_dimensions:
-      - dimension_id: full_platform
+      - dimension_id: platform_scope
         dimension_type: fixed_scope
         fixed_value: full_platform
     expected_record_count: 7

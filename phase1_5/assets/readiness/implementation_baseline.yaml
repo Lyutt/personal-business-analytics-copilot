@@ -78,6 +78,18 @@ implementation_authorization:
   approval_must_name_this_baseline_id_and_version: true
   automated_gate_pass_does_not_grant_approval: true
 
+mvp_development_constraints:
+  product_scoped_pipeline_scheduling: sequential
+  parallel_product_scheduler_required: false
+  failed_product_scoped_pipeline_retry: idempotent_restart_from_pipeline_start
+  stage_checkpointing_required: false
+  failed_stage_resume_required: false
+  shared_generic_local_store_adapter_for:
+    - STORE_WEEKLY_INVENTORY_HISTORICAL
+    - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+    - STORE_WEEKLY_ADVERTISING_HISTORICAL
+  separate_physical_storage_engine_per_logical_store_required: false
+
 change_control:
   baseline_is_logically_frozen: true
   repository_commit_binding_status: pending_owner_review_and_commit

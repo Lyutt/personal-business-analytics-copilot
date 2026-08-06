@@ -33,7 +33,17 @@ selection_policy:
     previous_period_repeat_allowed: false
   when_previous_period_value_does_not_exist:
     candidate_values: all_allowed_display_values
-  previous_period_value_source: Previous generated Weekly Report output record
+  previous_period_value_source: same_local_configured_display_value_state
+  previous_period_report_body_parsing_allowed: false
+
+execution_responsibility:
+  responsible_component: workflow_orchestrator
+  responsibilities:
+    - select_first_value_for_reporting_period
+    - save_selected_value
+    - read_saved_value_for_same_period_rerun
+    - read_previous_period_value_from_same_local_state
+  output_assembly_responsibility: place_resolved_value_only
 
 persistence_policy:
   persistence_required: true
@@ -46,6 +56,7 @@ persistence_policy:
   first_selection_action: save_selected_value_before_output_assembly
   same_period_rerun_action: read_and_reuse_saved_value
   same_period_reselection_allowed: false
+  previous_period_lookup_uses_same_state: true
   metric_result_store: false
 
 dependency_boundaries:

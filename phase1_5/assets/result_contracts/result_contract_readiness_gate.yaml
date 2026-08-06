@@ -45,7 +45,7 @@ gate_checks:
 owner_confirmations_applied:
   numeric_data_type: number
   dau_daily_shape: record_set
-  dau_record_grain: [activity_date, full_platform]
+  dau_record_grain: [activity_date, platform_scope]
   customer_analysis_contract_shape: record_set
   customer_analysis_pipeline_is_analysis_only: true
   customer_analysis_fake_metric_variant_prohibited: true

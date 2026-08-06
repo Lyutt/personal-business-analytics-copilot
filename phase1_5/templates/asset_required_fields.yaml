@@ -306,6 +306,7 @@ asset_rules:
       - value_classification
       - allowed_display_values
       - selection_policy
+      - execution_responsibility
       - persistence_policy
       - dependency_boundaries
       - output_assembly_boundary

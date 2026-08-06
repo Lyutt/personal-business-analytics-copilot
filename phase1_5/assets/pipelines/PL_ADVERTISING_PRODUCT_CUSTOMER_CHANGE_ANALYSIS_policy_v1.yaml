@@ -19,6 +19,9 @@ trigger:
   default_threshold: 10 percentage points
   product_specific_override_supported: true
   no_trigger_action: Do not execute customer query
+  trigger_rule_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+  runtime_input_routes_are_defined_by_pipeline_registry: true
+  result_contract_source_routes_are_lineage_summary_only: true
 
 query_product_selection:
   source_of_truth_asset_name: 奇胜收入表细分产品筛选逻辑
@@ -48,6 +51,17 @@ comparison_inputs:
     notify_owner: true
     exclude_conflicting_customer_row: true
     automatic_name_selection_or_merge: false
+
+business_rule_processing:
+  execution_stage: BUSINESS_RULE_PROCESSING
+  metric_calculation_stage_required: false
+  responsibilities:
+    - exact_customer_id_cross_period_matching
+    - impression_change_derivation
+    - materiality_filtering
+    - scenario_ranking_measure_derivation
+    - sorting
+    - customer_ranking
 
 customer_selection:
   positive_sell_through_change:

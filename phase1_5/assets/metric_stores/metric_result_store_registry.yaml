@@ -2,6 +2,16 @@ schema_version: "0.2"
 registry_scope: Personal Business Analytics Copilot
 asset_type: Metric Result Store
 
+mvp_physical_store_adapter_strategy:
+  shared_generic_local_adapter_required: true
+  applies_to_logical_store_ids:
+    - STORE_WEEKLY_INVENTORY_HISTORICAL
+    - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+    - STORE_WEEKLY_ADVERTISING_HISTORICAL
+  logical_store_contracts_remain_distinct: true
+  separate_storage_engine_per_logical_store_required: false
+  adapter_configuration_may_use_separate_local_namespaces: true
+
 metric_result_stores:
   - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
     store_name: Weekly Revenue Historical Metric Result Store
@@ -257,7 +267,7 @@ metric_result_stores:
     readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
     implementation_contract_status: Complete
     runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
-    storage_type: Local persistent store; physical format TBD
+    storage_type: Shared generic local physical Store Adapter for MVP
     storage_location: ${WEEKLY_INVENTORY_METRIC_STORE_LOCAL_ONLY}
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
@@ -336,7 +346,7 @@ metric_result_stores:
     readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
     implementation_contract_status: Complete
     runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
-    storage_type: Local persistent store; physical format TBD
+    storage_type: Shared generic local physical Store Adapter for MVP
     storage_location: ${WEEKLY_USER_ANALYTICS_METRIC_STORE_LOCAL_ONLY}
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
@@ -363,7 +373,7 @@ metric_result_stores:
     readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
     implementation_contract_status: Complete
     runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
-    storage_type: Local persistent store; physical format TBD
+    storage_type: Shared generic local physical Store Adapter for MVP
     storage_location: ${WEEKLY_ADVERTISING_METRIC_STORE_LOCAL_ONLY}
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
@@ -390,5 +400,6 @@ notes:
   - 当前登记已同步已批准的Metric Library与Pipeline绑定。
   - Revenue Store已具备实现和本地运行前提；其实际文件可用性在每次运行时验证。
   - Inventory、User Analytics与Advertising Store的逻辑契约已完成，物理格式和本地位置仍是Runtime Bootstrap阻断项。
+  - MVP只实现一个供Inventory、User Analytics与Advertising逻辑Store共用的通用本地物理Store Adapter；不分别开发三个存储引擎。
   - 技术线与CTV既有工作簿的已确认修正记录见Discovery文档。
   - 智能音箱与极速版两个空白Store Asset已于2026-07-29创建并完成表头验证。

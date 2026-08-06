@@ -65,6 +65,9 @@ implementation_readiness_checks:
   personal_and_business_data_git_boundary: pass
   metric_store_logical_contracts: pass
   metric_store_runtime_bootstrap: conditional
+  mvp_product_scoped_execution_is_sequential: pass
+  mvp_stage_checkpointing_not_required: pass
+  shared_generic_local_metric_store_adapter: pass
 
 implementation_entry_decision:
   asset_baseline_ready: true
@@ -75,9 +78,9 @@ implementation_entry_decision:
     - Generic Analytics Core interfaces
     - Data acquisition adapters with local runtime configuration
     - Dataset standardization and validation
-    - Pipeline orchestration and pipeline-level recovery
+    - Sequential product-scoped Pipeline orchestration and idempotent full-Pipeline retry
     - Business Rule and Metric Variant execution
-    - Metric Result Store interfaces and bootstrap tooling
+    - One shared generic local physical Store Adapter for Inventory, User Analytics and Advertising logical Stores
     - Weekly Report Output Assembly
     - Outlook Draft creation with auto_send=false
   business_logic_auto_completion_allowed: false
@@ -89,13 +92,13 @@ runtime_acceptance_decision:
   blocking_items:
     - blocker_id: BLOCKER_METRIC_STORE_INVENTORY_BOOTSTRAP
       store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
-      resolution: Configure local format, location, schemas and read/write verification
+      resolution: Configure the shared generic local Store Adapter namespace, schemas and read/write verification
     - blocker_id: BLOCKER_METRIC_STORE_USER_ANALYTICS_BOOTSTRAP
       store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
-      resolution: Configure local format, location, schema and read/write verification
+      resolution: Configure the shared generic local Store Adapter namespace, schema and read/write verification
     - blocker_id: BLOCKER_METRIC_STORE_ADVERTISING_BOOTSTRAP
       store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
-      resolution: Configure local format, location, schema and write verification
+      resolution: Configure the shared generic local Store Adapter namespace, schema and write verification
   non_blocking_runtime_conditions:
     - Revenue local workbooks must exist and be accessible for each run
     - Outlook, Apollo and NovaBI sessions may require the confirmed refresh-and-retry policy

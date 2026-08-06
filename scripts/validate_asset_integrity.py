@@ -452,6 +452,9 @@ def reference_kind(key: str) -> str | None:
         "prior_year_source_rule_id": "business_rule",
         "relationship_rule_id": "business_rule",
         "rule_id": "business_rule",
+        "trigger_rule_id": "policy",
+        "business_rule_processing_policy_id": "policy",
+        "join_or_relationship_rule_id": "policy",
         "normalization_rule_id": "normalization_rule",
         "output_mapping_id": "output_mapping",
         "output_mapping_ids": "output_mapping",
@@ -480,6 +483,8 @@ def reference_kind(key: str) -> str | None:
         "local_knowledge_pack_dependency": "external_asset",
         "template_id": "external_asset",
         "recipient_configuration_id": "external_asset",
+        "routing_rule_id": "external_asset",
+        "exact_product_membership_rule_id": "external_asset",
         "field_mapping_gate_id": "gate",
         "implementation_readiness_gate_id": "gate",
         "final_code_implementation_gate_id": "gate",
@@ -1301,7 +1306,8 @@ def validate_configured_display_value_policy(
     expected_selection = {
         "selection_method": "random_choice",
         "current_period_state_precedence": "reuse_saved_value_without_reselection",
-        "previous_period_value_source": "Previous generated Weekly Report output record",
+        "previous_period_value_source": "same_local_configured_display_value_state",
+        "previous_period_report_body_parsing_allowed": False,
     }
     for key, expected in expected_selection.items():
         require_equal(f"selection_policy.{key}", selection.get(key), expected)
@@ -1323,6 +1329,28 @@ def validate_configured_display_value_policy(
         "all_allowed_display_values",
     )
 
+    responsibility = policy.get("execution_responsibility", {})
+    require_equal(
+        "execution_responsibility.responsible_component",
+        responsibility.get("responsible_component"),
+        "workflow_orchestrator",
+    )
+    require_equal(
+        "execution_responsibility.responsibilities",
+        responsibility.get("responsibilities"),
+        [
+            "select_first_value_for_reporting_period",
+            "save_selected_value",
+            "read_saved_value_for_same_period_rerun",
+            "read_previous_period_value_from_same_local_state",
+        ],
+    )
+    require_equal(
+        "execution_responsibility.output_assembly_responsibility",
+        responsibility.get("output_assembly_responsibility"),
+        "place_resolved_value_only",
+    )
+
     persistence = policy.get("persistence_policy", {})
     expected_persistence = {
         "persistence_required": True,
@@ -1332,6 +1360,7 @@ def validate_configured_display_value_policy(
         "first_selection_action": "save_selected_value_before_output_assembly",
         "same_period_rerun_action": "read_and_reuse_saved_value",
         "same_period_reselection_allowed": False,
+        "previous_period_lookup_uses_same_state": True,
         "metric_result_store": False,
     }
     for key, expected in expected_persistence.items():
@@ -1431,6 +1460,8 @@ def validate_configured_display_value_policy(
             "allowed_values": ["92%", "93%", "94%", "95%"],
             "decimal_values_allowed": False,
             "consecutive_week_repeat_allowed": False,
+            "prior_display_value_source": "Same local configured display value state for the previous reporting period",
+            "previous_report_body_parsing_allowed": False,
         }
         for key, expected in require_registry_values.items():
             if entry.get(key) != expected:
@@ -1488,6 +1519,250 @@ def validate_configured_display_value_policy(
             errors.append(f"{baseline_file}:frozen_asset_versions.{key}: expected {expected!r}")
 
     return 1
+
+
+def validate_mvp_acceptance_semantics(
+    documents: dict[str, Any], errors: list[str]
+) -> int:
+    """Validate the accepted MVP runtime boundaries without adding asset layers."""
+    registry_file = "phase1_5/assets/pipelines/pipeline_registry.yaml"
+    registry = documents.get(registry_file, {})
+    pipelines = {
+        item.get("pipeline_id"): item
+        for item in registry.get("pipelines", [])
+        if isinstance(item, dict) and isinstance(item.get("pipeline_id"), str)
+    } if isinstance(registry, dict) else {}
+
+    customer_id = "PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS"
+    sell_through_id = "PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY"
+    policy_id = "POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1"
+    external_rule_id = "BR_APOLLO_PRODUCT_FILTER_MAPPING"
+    customer = pipelines.get(customer_id, {})
+    sell_through = pipelines.get(sell_through_id, {})
+
+    if customer.get("analysis_only_pipeline") is not True:
+        errors.append(f"{registry_file}:{customer_id}: analysis_only_pipeline must be true")
+    execution = customer.get("execution", {})
+    stages = execution.get("stages", [])
+    if "METRIC_CALCULATION" in stages:
+        errors.append(f"{registry_file}:{customer_id}: METRIC_CALCULATION is prohibited")
+    if "BUSINESS_RULE_PROCESSING" not in stages:
+        errors.append(f"{registry_file}:{customer_id}: BUSINESS_RULE_PROCESSING is required")
+    if execution.get("metric_variant_ids") != []:
+        errors.append(f"{registry_file}:{customer_id}: metric_variant_ids must remain empty")
+    if execution.get("business_rule_processing_policy_id") != policy_id:
+        errors.append(
+            f"{registry_file}:{customer_id}: business-rule processing must use {policy_id}"
+        )
+    expected_responsibilities = {
+        "exact_customer_id_cross_period_matching",
+        "impression_change_derivation",
+        "materiality_filtering",
+        "scenario_ranking_measure_derivation",
+        "sorting",
+        "customer_ranking",
+    }
+    if set(execution.get("business_rule_processing_responsibilities", [])) != expected_responsibilities:
+        errors.append(f"{registry_file}:{customer_id}: incomplete business-rule responsibilities")
+
+    customer_dependencies = {
+        item.get("dataset_id"): item
+        for item in customer.get("dataset_dependencies", [])
+        if isinstance(item, dict)
+    }
+    customer_dataset = customer_dependencies.get(
+        "DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS", {}
+    )
+    if customer_dataset.get("required_when_triggered") is not True:
+        errors.append(
+            f"{registry_file}:{customer_id}: customer Dataset must be required_when_triggered"
+        )
+    if "required" in customer_dataset:
+        errors.append(
+            f"{registry_file}:{customer_id}: unconditional Dataset required flag is prohibited"
+        )
+
+    readiness_file = "phase1_5/assets/datasets/dataset_readiness_matrix.yaml"
+    readiness = documents.get(readiness_file, {})
+    readiness_record = next(
+        (
+            item
+            for item in readiness.get("dataset_readiness", [])
+            if isinstance(item, dict)
+            and item.get("dataset_id")
+            == "DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS"
+        ),
+        {},
+    )
+    if not readiness_record:
+        readiness_record = next(
+            (
+                item
+                for item in readiness.get("readiness_records", [])
+                if isinstance(item, dict)
+                and item.get("dataset_id")
+                == "DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS"
+            ),
+            {},
+        )
+    usage = readiness_record.get("workflow_usage", {})
+    if usage.get("usage_role") != "conditional_required_when_triggered" or usage.get(
+        "triggered_behavior"
+    ) != "Dataset instance is required for the triggered product analysis":
+        errors.append(f"{readiness_file}: customer Dataset trigger requiredness is inconsistent")
+
+    trigger = customer.get("trigger_contract", {})
+    if trigger.get("trigger_rule_id") != policy_id:
+        errors.append(f"{registry_file}:{customer_id}: trigger_rule_id must use {policy_id}")
+    runtime_routing = trigger.get("upstream_trigger_field_routing", {})
+    expected_routes = {
+        (
+            "RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY",
+            "patch_brand_sell_through_wow_change_pp",
+        ),
+        (
+            "RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY",
+            "non_patch_product_brand_sell_through_wow_change_pp",
+        ),
+        (
+            "RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY",
+            "sell_through_wow_change_pp",
+        ),
+    }
+    actual_routes = {
+        (route.get("result_contract_id"), route.get("result_field_id"))
+        for route in runtime_routing.get("routes", [])
+        if isinstance(route, dict) and isinstance(route.get("route_condition"), str)
+        and route.get("route_condition", "").strip()
+    }
+    if actual_routes != expected_routes or len(runtime_routing.get("routes", [])) != 3:
+        errors.append(f"{registry_file}:{customer_id}: runtime trigger routes are not exact")
+    if any(contract_id == "RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS" for contract_id, _ in actual_routes):
+        errors.append(f"{registry_file}:{customer_id}: output Contract cannot be runtime trigger input")
+    if runtime_routing.get("result_contract_lineage_summary_is_runtime_input") is not False:
+        errors.append(f"{registry_file}:{customer_id}: Result Contract routes must be lineage-only")
+
+    if sell_through.get("result_contract_dependency_routing", {}).get(
+        "routing_rule_id"
+    ) != external_rule_id:
+        errors.append(f"{registry_file}:{sell_through_id}: routing_rule_id must use {external_rule_id}")
+    advertising_routing = registry.get("constraints", {}).get(
+        "advertising_product_inventory_source_routing", {}
+    )
+    for route_name in ("regular_patch_products", "all_products_except_regular_patch"):
+        if advertising_routing.get(route_name, {}).get(
+            "exact_product_membership_rule_id"
+        ) != external_rule_id:
+            errors.append(
+                f"{registry_file}:constraints.{route_name}: exact membership must use {external_rule_id}"
+            )
+
+    for pipeline_id in (sell_through_id, customer_id):
+        pipeline = pipelines.get(pipeline_id, {})
+        pipeline_trigger = pipeline.get("trigger_contract", {})
+        pipeline_execution = pipeline.get("execution", {})
+        parallel_value = (
+            pipeline_trigger.get("multiple_product_runs_may_execute_in_parallel")
+            if pipeline_id == customer_id
+            else pipeline_execution.get("multiple_product_runs_may_execute_in_parallel")
+        )
+        scheduling_mode = (
+            pipeline_trigger.get("first_phase_scheduling_mode")
+            if pipeline_id == customer_id
+            else pipeline_execution.get("first_phase_scheduling_mode")
+        )
+        if parallel_value is not False or scheduling_mode != "sequential":
+            errors.append(f"{registry_file}:{pipeline_id}: MVP product runs must be sequential")
+        recovery = pipeline.get("recovery", {})
+        expected_recovery = {
+            "resume_from_failed_stage": False,
+            "restart_from_pipeline_start": True,
+            "restart_must_be_idempotent": True,
+            "stage_checkpoint_persistence_required": False,
+        }
+        for key, expected in expected_recovery.items():
+            if recovery.get(key) != expected:
+                errors.append(f"{registry_file}:{pipeline_id}.recovery.{key}: expected {expected!r}")
+
+    customer_contract_file = (
+        "phase1_5/assets/result_contracts/"
+        "RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS.yaml"
+    )
+    customer_contract = documents.get(customer_contract_file, {})
+    trigger_field = None
+    for record_set in customer_contract.get("record_sets", []):
+        for field in record_set.get("context_fields", []):
+            if field.get("field_id") == "trigger_sell_through_wow_change_pp":
+                trigger_field = field
+    if not isinstance(trigger_field, dict) or trigger_field.get(
+        "source_contract_routes_role"
+    ) != "lineage_summary_only":
+        errors.append(f"{customer_contract_file}: source_contract_routes must be lineage summary only")
+
+    non_patch_file = (
+        "phase1_5/assets/result_contracts/RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY.yaml"
+    )
+    non_patch = documents.get(non_patch_file, {})
+    brand_field = next(
+        (
+            field
+            for field in non_patch.get("contract_fields", [])
+            if field.get("field_id") == "brand_moment_available_inventory_count"
+        ),
+        {},
+    )
+    validation = non_patch.get("validation", {})
+    if "brand_moment_available_inventory_count" in validation.get("required_fields", []):
+        errors.append(f"{non_patch_file}: Brand Moment field must not be globally required")
+    conditional_ids = {
+        field_id
+        for item in validation.get("conditional_fields", [])
+        if isinstance(item, dict)
+        for field_id in item.get("field_ids", [])
+    }
+    if "brand_moment_available_inventory_count" not in conditional_ids:
+        errors.append(f"{non_patch_file}: Brand Moment field must be conditional")
+    if brand_field.get("non_brand_moment_instance_value_status") != "not_applicable":
+        errors.append(f"{non_patch_file}: non-Brand-Moment value status must be not_applicable")
+
+    dau_file = "phase1_5/assets/result_contracts/RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY.yaml"
+    dau = documents.get(dau_file, {})
+    daily = next(
+        (item for item in dau.get("record_sets", []) if item.get("record_set_id") == "daily_activity"),
+        {},
+    )
+    if daily.get("record_grain") != ["activity_date", "platform_scope"]:
+        errors.append(f"{dau_file}: DAU grain must use platform_scope")
+    dimension_ids = {
+        item.get("dimension_id") for item in daily.get("record_dimensions", [])
+        if isinstance(item, dict)
+    }
+    if dimension_ids != {"platform_scope"} or daily.get("fixed_dimensions") != {
+        "platform_scope": "full_platform"
+    }:
+        errors.append(f"{dau_file}: DAU fixed dimension must be platform_scope=full_platform")
+
+    store_file = "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
+    stores = documents.get(store_file, {})
+    strategy = stores.get("mvp_physical_store_adapter_strategy", {})
+    expected_store_ids = {
+        "STORE_WEEKLY_INVENTORY_HISTORICAL",
+        "STORE_WEEKLY_USER_ANALYTICS_HISTORICAL",
+        "STORE_WEEKLY_ADVERTISING_HISTORICAL",
+    }
+    if strategy.get("shared_generic_local_adapter_required") is not True or set(
+        strategy.get("applies_to_logical_store_ids", [])
+    ) != expected_store_ids or strategy.get(
+        "separate_storage_engine_per_logical_store_required"
+    ) is not False:
+        errors.append(f"{store_file}: MVP shared Store Adapter strategy is incomplete")
+    for store in stores.get("metric_result_stores", []):
+        if store.get("store_id") in expected_store_ids and store.get(
+            "storage_type"
+        ) != "Shared generic local physical Store Adapter for MVP":
+            errors.append(f"{store_file}:{store.get('store_id')}: must use shared MVP adapter")
+
+    return 6
 
 
 def validate_external_asset_versions(
@@ -1832,6 +2107,9 @@ def main() -> int:
     configured_display_policy_count = validate_configured_display_value_policy(
         documents, errors
     )
+    mvp_acceptance_check_count = validate_mvp_acceptance_semantics(
+        documents, errors
+    )
     external_asset_count, external_asset_binding_count = (
         validate_external_asset_versions(documents, errors)
     )
@@ -1865,6 +2143,7 @@ def main() -> int:
         f"{contract_counts['input_lineage_contracts']} Contract input-lineage summaries, "
         f"and {contract_counts['display_tbd_exceptions']} allowed display TBD exception checked; "
         f"{configured_display_policy_count} configured display value policy validated; "
+        f"{mvp_acceptance_check_count} MVP runtime acceptance boundaries checked; "
         f"{contract_counts['output_bindings']} Metric Variant output bindings and "
         f"{contract_counts['output_fields']} explicit Output Mapping fields checked; "
         f"{external_asset_count} versioned External Assets with "

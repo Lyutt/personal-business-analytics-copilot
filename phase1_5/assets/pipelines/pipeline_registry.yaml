@@ -81,7 +81,8 @@ initialization_scope:
       decimal_values_allowed: false
       weekly_selection_method: Select any allowed integer value excluding prior week's displayed value
       consecutive_week_repeat_allowed: false
-      prior_display_value_source: Previous generated Weekly Report output record
+      prior_display_value_source: Same local configured display value state for the previous reporting period
+      previous_report_body_parsing_allowed: false
       prior_display_value_unavailable_action:
         selection_method: Randomly select one allowed integer value
         notify_owner: false
@@ -1772,25 +1773,38 @@ pipelines:
 
     trigger_contract:
       producer_result_type: Validated product sell-through result
-      trigger_rule_id: TBD
+      trigger_rule_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
       confirmed_rule_input: abs(sell_through_rate_wow_change_pp) >= configured threshold
       current_default_threshold: 10pp
       product_override_supported: true
       one_run_per_triggered_product: true
-      multiple_product_runs_may_execute_in_parallel: true
+      multiple_product_runs_may_execute_in_parallel: false
+      first_phase_scheduling_mode: sequential
       upstream_trigger_field_routing:
-        authoritative_result_contract_id: RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
-        authoritative_result_field_id: trigger_sell_through_wow_change_pp
-        authoritative_route_path: record_sets.customer_delivery_changes.context_fields.trigger_sell_through_wow_change_pp.source_contract_routes
+        routing_role: runtime_trigger_input
+        result_contract_lineage_summary_is_runtime_input: false
         exactly_one_route_required: true
+        routes:
+          - route_id: regular_patch_products
+            route_condition: target_ad_product_name is explicitly classified as a regular patch product
+            result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+            result_field_id: patch_brand_sell_through_wow_change_pp
+          - route_id: all_products_except_regular_patch_and_brand_moment
+            route_condition: target_ad_product_name is explicitly classified as neither a regular patch product nor Brand Moment
+            result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+            result_field_id: non_patch_product_brand_sell_through_wow_change_pp
+          - route_id: brand_moment
+            route_condition: target_ad_product_name is explicitly classified as Brand Moment
+            result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+            result_field_id: sell_through_wow_change_pp
 
     dataset_dependencies:
       - dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
         query_asset_id: QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
         dataset_version_constraint: TBD
         dependency_role: Product-customer delivery change input
-        required: false
-        join_or_relationship_rule_id: TBD
+        required_when_triggered: true
+        join_or_relationship_rule_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
 
     execution:
       schedule:
@@ -1835,11 +1849,18 @@ pipelines:
         - DATA_COLLECTION
         - DATA_STANDARDIZATION
         - BUSINESS_RULE_PROCESSING
-        - METRIC_CALCULATION
         - VALIDATION
       mapping_profile_ids:
         - MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1
       ordered_rule_set_ids: []
+      business_rule_processing_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+      business_rule_processing_responsibilities:
+        - exact_customer_id_cross_period_matching
+        - impression_change_derivation
+        - materiality_filtering
+        - scenario_ranking_measure_derivation
+        - sorting
+        - customer_ranking
       metric_variant_ids: []
       validation_rule_ids: []
 
@@ -1864,7 +1885,10 @@ pipelines:
 
     recovery:
       retry_scope: One product-scoped Pipeline Run only
-      resume_from_failed_stage: true
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: Triggered product explanation only
 
     governance:
@@ -1930,7 +1954,7 @@ pipelines:
     dataset_dependencies: []
 
     result_contract_dependency_routing:
-      routing_rule_id: TBD
+      routing_rule_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
       confirmed_routes:
         regular_patch_products:
           producer_pipeline_id: PL_INVENTORY_PATCH_WEEKLY
@@ -1966,7 +1990,8 @@ pipelines:
         - Target business period
         - Explicit Metric Variant ID
       one_run_per_product: true
-      multiple_product_runs_may_execute_in_parallel: true
+      multiple_product_runs_may_execute_in_parallel: false
+      first_phase_scheduling_mode: sequential
       stages:
         - DATA_COLLECTION
         - DATA_STANDARDIZATION
@@ -2001,14 +2026,17 @@ pipelines:
     downstream_consumers:
       - pipeline_id: PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
         dependency_role: Validated sell-through anomaly trigger input
-        trigger_rule_id: TBD
+        trigger_rule_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
       - component: Weekly Report Inventory Section Assembly
         behavior: Consume validated product result only
         may_calculate: false
 
     recovery:
       retry_scope: One product-scoped Pipeline Run only
-      resume_from_failed_stage: true
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       upstream_rerun_required_only_if_contract_invalidated: true
       downstream_impact_rule: Target product outputs only
 
@@ -2060,10 +2088,19 @@ constraints:
   advertising_product_inventory_source_routing:
     regular_patch_products:
       source_pipeline_id: PL_INVENTORY_PATCH_WEEKLY
-      exact_product_membership_rule_id: TBD
+      exact_product_membership_rule_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
     all_products_except_regular_patch:
       source_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
-      exact_product_membership_rule_id: TBD
+      exact_product_membership_rule_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
     confirmed_specific_binding:
       product: Brand Moment
       source_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+  mvp_product_scoped_execution:
+    pipeline_ids:
+      - PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+      - PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+    first_phase_scheduling_mode: sequential
+    parallel_scheduler_required: false
+    failed_run_recovery: restart_entire_product_scoped_pipeline_idempotently
+    stage_checkpointing_required: false
+    resume_from_failed_stage_required: false

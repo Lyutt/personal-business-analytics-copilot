@@ -189,23 +189,23 @@ dataset_readiness:
     query_asset_id: QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
     registration_status: confirmed
     workflow_usage:
-      usage_role: conditional_optional
+      usage_role: conditional_required_when_triggered
       report_section_or_usage: Weekly Business Report Inventory Diagnosis - Product customer delivery change analysis
       execution_condition: Refer to PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS trigger_contract
       no_trigger_behavior: No dataset instance is expected
+      triggered_behavior: Dataset instance is required for the triggered product analysis
     readiness:
       status: conditional
       blocking_tbd_items: []
       non_blocking_tbd_items:
         - No dataset instance when the anomaly trigger is not met
-        - Formal trigger Rule ID and product override rules remain deferred to Business Rules
         - Runtime product input must be explicit; no product inference is allowed
         - Query failure is non-blocking and requires a technical failure-reason analysis
         - Zero-row result is non-blocking and requires a reason analysis
     standardization: { status: completed, exceptions: [] }
     gate:
       pipeline_registry_eligible: allow
-      decision_reason: Conditional optional Pipeline and explicit trigger contract are registered; formal Rule IDs remain a non-blocking later-stage asset
+      decision_reason: Dataset is not instantiated without a trigger and is required when the approved customer-analysis Policy triggers the Pipeline
       owner: 广告数据团队
 
 constraints:

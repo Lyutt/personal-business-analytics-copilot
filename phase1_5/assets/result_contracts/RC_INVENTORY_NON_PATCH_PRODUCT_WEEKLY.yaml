@@ -119,8 +119,10 @@ contract_fields:
     data_type: number
     base_unit: Individual inventory unit
     numeric_constraints: { numeric_semantics: integer_count, unit: inventory_unit, integer_only: true, precision: integer, minimum: 0, maximum: null, minimum_inclusive: false }
-    nullable: false
-    value_status_allowed: [valid_value, calculation_failed, pending_confirmation]
+    nullable: true
+    value_status_allowed: [valid_value, calculation_failed, not_applicable, pending_confirmation]
+    applicability_condition: target_ad_product_name resolves exactly to Brand Moment through BR_APOLLO_PRODUCT_FILTER_MAPPING
+    non_brand_moment_instance_value_status: not_applicable
     applicable_report_modes: [regular_week, quarter_transition_week]
     validation_requirement: Empty, zero, negative or non-numeric value blocks only Brand Moment sell-through and notifies owner.
     lineage_required: true
@@ -128,8 +130,9 @@ record_sets: []
 mode_semantics: { allowed_value_statuses: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation], missing_must_not_be_mapped_to_not_applicable: true }
 validation:
   producer_pipeline_validation_required: true
-  required_fields: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow, brand_moment_available_inventory_count]
-  conditional_fields: []
+  required_fields: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+  conditional_fields:
+    - { field_ids: [brand_moment_available_inventory_count], condition: target_ad_product_name resolves exactly to Brand Moment through BR_APOLLO_PRODUCT_FILTER_MAPPING, otherwise_value_status: not_applicable }
   unit_validation: true
   data_type_validation: true
   numeric_constraint_validation: true

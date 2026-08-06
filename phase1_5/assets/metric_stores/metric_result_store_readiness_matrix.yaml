@@ -19,6 +19,15 @@ readiness_definitions:
     The logical baseline may be reviewed, but end-to-end runtime acceptance is
     blocked until a local physical format, location and initial schema exist.
 
+mvp_physical_store_adapter_strategy:
+  shared_generic_local_adapter_required: true
+  applies_to_logical_store_ids:
+    - STORE_WEEKLY_INVENTORY_HISTORICAL
+    - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+    - STORE_WEEKLY_ADVERTISING_HISTORICAL
+  separate_storage_engine_per_logical_store_required: false
+  logical_schema_and_namespace_separation_required: true
+
 readiness_records:
   - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
     store_name: Weekly Revenue Historical Metric Result Store
@@ -55,7 +64,7 @@ readiness_records:
     local_storage_contract_confirmed: false
     blocking_runtime_items:
       - Configure WEEKLY_INVENTORY_METRIC_STORE_LOCAL_ONLY
-      - Select and initialize the local physical storage format
+      - Configure and initialize the shared generic local Store Adapter
       - Create the five Store Asset schemas from their explicit Metric Variant bindings
       - Validate one prior-week read and one current-week idempotent write
 
@@ -73,7 +82,7 @@ readiness_records:
     local_storage_contract_confirmed: false
     blocking_runtime_items:
       - Configure WEEKLY_USER_ANALYTICS_METRIC_STORE_LOCAL_ONLY
-      - Select and initialize the local physical storage format
+      - Configure and initialize the shared generic local Store Adapter
       - Validate one prior-week read and one current-week idempotent write
 
   - store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
@@ -91,7 +100,7 @@ readiness_records:
     workflow_runtime_impact: non_blocking_persistence_warning
     blocking_runtime_items:
       - Configure WEEKLY_ADVERTISING_METRIC_STORE_LOCAL_ONLY
-      - Select and initialize the local physical storage format
+      - Configure and initialize the shared generic local Store Adapter
       - Validate one current-week idempotent write
 
 summary:

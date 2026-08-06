@@ -112,6 +112,7 @@ record_sets:
         field_name: 触发售卖率环比变化
         business_definition: 触发当前单产品客户分析的已验证售卖率环比百分点变化。
         source_type: upstream_contract_field
+        source_contract_routes_role: lineage_summary_only
         source_contract_routes:
           - route_id: regular_patch_products
             route_condition: target_ad_product_name resolves through the explicit product route as a regular patch product
