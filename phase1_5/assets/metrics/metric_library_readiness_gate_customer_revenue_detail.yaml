@@ -9,6 +9,11 @@ scope:
   metric_variant_count: 14
 gate_checks:
   monetary_field_authority: pass
+  full_quarter_C_source_is_distinct_from_comparable_K_L_source: pass
+  signed_comparable_values_supported: pass
+  current_missing_customer_F_J_zero_fill: pass
+  forecast_D_blank_vs_explicit_zero_semantics: pass
+  previous_reporting_period_output_and_same_week_rerun_semantics: pass
   formula_semantics_E_G_H_I: pass
   full_precision_calculation: pass
   invalid_denominator_blank_semantics: pass

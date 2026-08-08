@@ -34,13 +34,18 @@ inputs:
   required_result_contract_ids: []
 
 applicability:
-  report_modes:
-    - regular_week
-    - quarter_transition_week
+  report_modes_by_workflow:
+    WF_WEEKLY_BUSINESS_REPORT:
+      - regular_week
+      - quarter_transition_week
+    WF_CUSTOMER_REVENUE_DETAIL:
+      - regular_week
+      - quarter_first_week
   data_roles:
     - current_quarter_qtd
     - quarter_transition_previous_quarter_final
     - prior_year_comparable
+    - prior_year_full_quarter
 
 conditions:
   include_when_all:

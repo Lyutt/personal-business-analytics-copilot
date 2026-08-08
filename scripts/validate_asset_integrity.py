@@ -3236,6 +3236,7 @@ def validate_implementation_baseline(
     status_indexes: dict[str, tuple[str, dict[str, Any]]] = {}
     code_gates: dict[str, tuple[str, dict[str, Any]]] = {}
     contract_workflows: dict[str, str] = {}
+    pipelines_by_workflow: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for file, document in documents.items():
         if not isinstance(document, dict):
             continue
@@ -3255,6 +3256,18 @@ def validate_implementation_baseline(
             contract_id = document.get("result_contract_id")
             if isinstance(contract_id, str):
                 contract_workflows[contract_id] = workflow_id
+        if config_type == "pipeline_registry":
+            for pipeline in document.get("pipelines", []):
+                if not isinstance(pipeline, dict):
+                    continue
+                for binding in pipeline.get("workflow_bindings", []):
+                    bound_workflow = (
+                        binding.get("workflow_id")
+                        if isinstance(binding, dict)
+                        else None
+                    )
+                    if isinstance(bound_workflow, str):
+                        pipelines_by_workflow[bound_workflow].append(pipeline)
 
     workflow_ids = set(baselines) | set(status_indexes) | set(code_gates)
     checked = 0
@@ -3356,6 +3369,99 @@ def validate_implementation_baseline(
                     f"for {workflow_id}"
                 )
             checked += 1
+
+        declared_dependency_counts = baseline.get("workflow_dependency_counts")
+        if declared_dependency_counts is not None:
+            workflow_pipelines = pipelines_by_workflow.get(workflow_id, [])
+
+            def distinct_values(values: list[Any]) -> set[str]:
+                return {value for value in values if isinstance(value, str) and value}
+
+            dataset_ids = distinct_values(
+                [
+                    dependency.get("dataset_id")
+                    for pipeline in workflow_pipelines
+                    for section in ("dataset_dependencies", "historical_input_dependencies")
+                    for dependency in pipeline.get(section, [])
+                    if isinstance(dependency, dict)
+                ]
+            )
+            mapping_ids = distinct_values(
+                [
+                    mapping_id
+                    for pipeline in workflow_pipelines
+                    for mapping_id in pipeline.get("execution", {}).get(
+                        "mapping_profile_ids", []
+                    )
+                ]
+            )
+            rule_ids = distinct_values(
+                [
+                    rule_id
+                    for pipeline in workflow_pipelines
+                    for rule_id in pipeline.get("execution", {}).get(
+                        "ordered_rule_set_ids", []
+                    )
+                ]
+            )
+            variant_ids = distinct_values(
+                [
+                    variant_id
+                    for pipeline in workflow_pipelines
+                    for variant_id in pipeline.get("execution", {}).get(
+                        "metric_variant_ids", []
+                    )
+                ]
+            )
+            result_contract_ids = distinct_values(
+                [
+                    contract_id
+                    for pipeline in workflow_pipelines
+                    for contract_id in pipeline.get("outputs", {}).get(
+                        "result_contract_ids", []
+                    )
+                ]
+            )
+            output_mapping_ids = distinct_values(
+                [
+                    mapping_id
+                    for pipeline in workflow_pipelines
+                    for mapping_id in pipeline.get("outputs", {}).get(
+                        "output_mapping_ids", []
+                    )
+                ]
+            )
+            policy_ids = distinct_values(
+                [
+                    pipeline.get("execution", {}).get("source_wait_policy_id")
+                    for pipeline in workflow_pipelines
+                ]
+            )
+            external_asset_ids = distinct_values(
+                [
+                    dependency.get("external_asset_id")
+                    for pipeline in workflow_pipelines
+                    for dependency in pipeline.get("local_input_dependencies", [])
+                    if isinstance(dependency, dict)
+                ]
+            )
+            expected_dependency_counts = {
+                "pipeline_count": len(workflow_pipelines),
+                "dataset_dependency_count": len(dataset_ids),
+                "mapping_profile_dependency_count": len(mapping_ids),
+                "business_rule_dependency_count": len(rule_ids),
+                "metric_variant_dependency_count": len(variant_ids),
+                "result_contract_dependency_count": len(result_contract_ids),
+                "output_mapping_dependency_count": len(output_mapping_ids),
+                "policy_dependency_count": len(policy_ids),
+                "external_asset_dependency_count": len(external_asset_ids),
+            }
+            if declared_dependency_counts != expected_dependency_counts:
+                errors.append(
+                    f"{baseline_file}:workflow_dependency_counts must be isolated to "
+                    f"{workflow_id}; expected {expected_dependency_counts}"
+                )
+            checked += len(expected_dependency_counts)
 
         if workflow_id == "WF_WEEKLY_BUSINESS_REPORT":
             store_gate_file = (

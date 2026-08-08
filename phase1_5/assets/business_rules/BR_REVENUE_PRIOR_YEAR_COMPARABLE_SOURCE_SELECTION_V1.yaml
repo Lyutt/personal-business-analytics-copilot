@@ -6,11 +6,9 @@ business_domains:
   - Revenue
 applicable_workflow_ids:
   - WF_WEEKLY_BUSINESS_REPORT
-  - WF_CUSTOMER_REVENUE_DETAIL
 applicable_pipeline_ids:
   - PL_REVENUE_TECHNICAL_WEEKLY
   - PL_REVENUE_CTV_WEEKLY
-  - PL_CUSTOMER_REVENUE_DETAIL_WEEKLY
 business_context_ids:
   - CTX_REVENUE_PRIOR_YEAR_COMPARABLE
 owner: WORKFLOW_OWNER
@@ -104,6 +102,10 @@ governance:
     - phase1_5/assets/datasets/dataset_inventory.yaml
     - phase1_5/assets/pipelines/pipeline_registry.yaml
   change_reason: Initial confirmed 2026 prior-year comparable source-selection rule
+  customer_workflow_reuse_prohibited: true
+  customer_workflow_replacement_rules:
+    - BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
+    - BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
 
 constraints:
   automatic_field_inference_allowed: false

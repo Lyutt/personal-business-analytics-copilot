@@ -12,6 +12,11 @@ gate_checks:
   exactly_one_producer: pass
   one_detail_row_per_customer_group: pass
   top20_static_result_sets: pass
+  template_existing_top20_membership_preservation: pass
+  generated_top20_rank_and_tie_break_semantics: pass
+  forecast_D_availability_bound_to_run_context: pass
+  forecast_D_unavailable_remains_blank: pass
+  current_missing_customer_F_J_zero_fill: pass
   metric_variant_output_bindings: pass
   local_only_lineage_boundary: pass
 owner_confirmations_applied:

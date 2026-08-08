@@ -2195,25 +2195,50 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
         dataset_version_constraint: ">=0.1.0,<0.2.0"
-        dependency_role: Current QTD and exact prior-year comparable Technical revenue input
+        dependency_role: Current QTD Technical revenue input
         required: true
         join_or_relationship_rule_id: not_applicable
         run_input_manifest_required: true
         period_context_source: workflow_run_context
 
+    historical_input_dependencies:
+      - dependency_type: Local historical revenue archive
+        dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+        input_role: prior_year_full_quarter_history_for_C
+        relationship_rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
+        period_context_source: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+        exact_single_readable_source_required: true
+      - dependency_type: Local historical revenue archive
+        dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+        input_role: prior_year_comparable_qtd_snapshot_for_K_L
+        relationship_rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+        period_context_source: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+        exact_single_readable_source_required: true
+
     local_input_dependencies:
       - input_role: quarter_baseline_and_template
         external_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
         required: false_when_absent_at_quarter_start
-        fallback: Use prior output for layout/customer list/industry only; rebuild C and leave D/O/P blank.
+        fallback: Require the previous reporting period validated output for layout/customer list/industry; rebuild C and leave D/O/P blank.
       - input_role: immediately_preceding_approved_output
         producer_workflow_id: WF_CUSTOMER_REVENUE_DETAIL
-        required: true_except_quarter_first_week
+        required: true_for_regular_week_or_when_quarter_first_week_template_is_unavailable
         read_only: true
         output_mapping_id: OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1
+        selection_contract:
+          reporting_period_must_equal_run_context_previous_reporting_period_id: true
+          validation_status_required: passed
+          same_reporting_period_attempt_allowed: false
+          unique_highest_output_version_required: true
+          ambiguous_or_missing_action: block_customer_workflow
+        same_week_rerun:
+          reuse_locked_previous_reporting_period_selection: true
+          earlier_same_week_attempt_must_not_shift_M_N_Q_R: true
 
     execution:
       execution_mode: sequential
+      workflow_run_context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+      workflow_run_context_lock_required_before_data_collection: true
       schedule: { day_of_week: Thursday, start_time: "17:40", timezone: Asia/Shanghai }
       source_wait_policy_id: POLICY_CUSTOMER_REVENUE_DETAIL_V1
       manual_trigger_allowed: true
@@ -2224,7 +2249,8 @@ pipelines:
         - MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
       ordered_rule_set_ids:
         - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
-        - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+        - BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
+        - BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
       metric_variant_ids:
         - MV_CUSTOMER_PRIOR_YEAR_QUARTER_REVENUE_V1
         - MV_CUSTOMER_CURRENT_QUARTER_FORECAST_V1
@@ -2241,6 +2267,10 @@ pipelines:
         - MV_CUSTOMER_PERFORMANCE_YOY_V1
         - MV_CUSTOMER_WEEKLY_INCREMENTAL_PERFORMANCE_V1
       validation_rule_ids: []
+      missing_current_customer_semantics:
+        applies_after_customer_universe_is_built: true
+        customer_absent_from_validated_current_snapshot: { F: 0, J: 0 }
+        missing_value_status_allowed: false
 
     outputs:
       result_contract_ids: [RC_CUSTOMER_REVENUE_DETAIL_WEEKLY]

@@ -13,13 +13,15 @@ architecture_constraints:
   excel_formula_cells_are_audit_mirrors_only: true
   full_precision_calculation_required: true
   customer_rows_and_amounts_must_remain_local_only: true
+  workflow_report_modes: [regular_week, quarter_first_week]
+  run_context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
 
 metric_definitions:
   - metric_id: METRIC_CUSTOMER_REVENUE_FORECAST_YOY
     metric_name: Customer Forecast YoY
     business_name: 分客户预估同比
     business_domain: Revenue
-    definition: Current-quarter forecast divided by prior-year quarter revenue minus one; blank when the denominator is invalid.
+    definition: Current-quarter forecast divided by prior-year quarter revenue minus one; blank when forecast D is unavailable or the denominator is invalid.
     base_unit: Decimal ratio
     result_precision: Preserve full precision
     version: 1.0.0
@@ -27,7 +29,7 @@ metric_definitions:
     metric_name: Customer Forecast Completion Rate
     business_name: 分客户业绩完成率
     business_domain: Revenue
-    definition: Current QTD performance divided by current-quarter forecast; blank when the denominator is invalid.
+    definition: Current QTD performance divided by current-quarter forecast; blank when forecast D is unavailable or the denominator is invalid.
     base_unit: Decimal ratio
     result_precision: Preserve full precision
     version: 1.0.0
@@ -53,7 +55,9 @@ metric_variants:
     metric_id: METRIC_REVENUE_PERFORMANCE
     metric_name: Customer Prior-Year Quarter Revenue
     business_context: Customer Revenue Detail
-    calculation_method: Use populated quarter baseline C, otherwise aggregate the exact prior-year archive by mapped customer; default missing customer to zero.
+    calculation_method: Use populated quarter baseline C; otherwise aggregate the separately selected prior-year full-quarter history by mapped customer and default a missing customer to zero.
+    business_rule_dependencies: [BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1]
+    prohibited_source_role: prior_year_comparable_qtd_snapshot
     period_type: Prior-year full fiscal quarter
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -63,7 +67,10 @@ metric_variants:
     metric_id: METRIC_REVENUE_PERFORMANCE
     metric_name: Customer Current-Quarter Forecast
     business_context: Customer Revenue Detail
-    calculation_method: Use owner-supplied quarter baseline D; never infer; new customer defaults to zero.
+    calculation_method: Preserve owner-supplied quarter baseline D. When locked forecast_D_availability is unavailable, D remains blank for every customer; when available, a new customer without an explicit forecast receives zero.
+    availability_context_field: forecast_D_availability
+    explicit_zero_is_available_value: true
+    blank_must_not_be_coerced_to_zero: true
     period_type: Current full fiscal quarter forecast
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -73,7 +80,8 @@ metric_variants:
     metric_id: METRIC_REVENUE_PERFORMANCE
     metric_name: Customer Current QTD Performance
     business_context: Customer Revenue Detail
-    calculation_method: Aggregate eligible Technical records by exact mapped customer/group.
+    calculation_method: Aggregate eligible Technical records by exact mapped customer/group; after building the union, zero-fill a retained customer absent from the validated current snapshot.
+    missing_current_customer_value: 0
     period_type: Current fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -83,7 +91,8 @@ metric_variants:
     metric_id: METRIC_REVENUE_EXECUTED
     metric_name: Customer Current QTD Executed
     business_context: Customer Revenue Detail
-    calculation_method: Aggregate eligible Technical records by exact mapped customer/group.
+    calculation_method: Aggregate eligible Technical records by exact mapped customer/group; after building the union, zero-fill a retained customer absent from the validated current snapshot.
+    missing_current_customer_value: 0
     period_type: Current fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -93,7 +102,9 @@ metric_variants:
     metric_id: METRIC_REVENUE_PERFORMANCE
     metric_name: Customer Prior-Year Comparable QTD Performance
     business_context: Customer Revenue Detail
-    calculation_method: Aggregate the exact prior-year comparable archive with the same eligibility and mapping rules.
+    calculation_method: Aggregate the Customer-specific exact prior-year comparable QTD snapshot with the same eligibility and mapping rules; signed, zero and negative values remain valid.
+    business_rule_dependencies: [BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1]
+    prohibited_source_role: prior_year_full_quarter_history
     period_type: Prior-year comparable fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -103,7 +114,9 @@ metric_variants:
     metric_id: METRIC_REVENUE_EXECUTED
     metric_name: Customer Prior-Year Comparable QTD Executed
     business_context: Customer Revenue Detail
-    calculation_method: Aggregate the exact prior-year comparable archive with the same eligibility and mapping rules.
+    calculation_method: Aggregate the Customer-specific exact prior-year comparable QTD snapshot with the same eligibility and mapping rules; signed, zero and negative values remain valid.
+    business_rule_dependencies: [BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1]
+    prohibited_source_role: prior_year_full_quarter_history
     period_type: Prior-year comparable fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -113,7 +126,7 @@ metric_variants:
     metric_id: METRIC_REVENUE_PERFORMANCE
     metric_name: Customer Prior-Week QTD Performance
     business_context: Customer Revenue Detail
-    calculation_method: Read F from the immediately preceding approved output; blank in quarter week one.
+    calculation_method: Read F from the locked validated output for previous_reporting_period_id; never use an earlier same-week attempt; blank in quarter week one.
     period_type: Prior-week fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -123,7 +136,7 @@ metric_variants:
     metric_id: METRIC_REVENUE_EXECUTED
     metric_name: Customer Prior-Week QTD Executed
     business_context: Customer Revenue Detail
-    calculation_method: Read J from the immediately preceding approved output; blank in quarter week one.
+    calculation_method: Read J from the locked validated output for previous_reporting_period_id; never use an earlier same-week attempt; blank in quarter week one.
     period_type: Prior-week fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -133,7 +146,7 @@ metric_variants:
     metric_id: METRIC_REVENUE_PERFORMANCE
     metric_name: Customer Prior-Output Comparable Performance
     business_context: Customer Revenue Detail
-    calculation_method: Read K from the immediately preceding approved output; blank in quarter week one.
+    calculation_method: Read K from the locked validated output for previous_reporting_period_id; never use an earlier same-week attempt; blank in quarter week one.
     period_type: Prior output's prior-year comparable fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -143,7 +156,7 @@ metric_variants:
     metric_id: METRIC_REVENUE_EXECUTED
     metric_name: Customer Prior-Output Comparable Executed
     business_context: Customer Revenue Detail
-    calculation_method: Read L from the immediately preceding approved output; blank in quarter week one.
+    calculation_method: Read L from the locked validated output for previous_reporting_period_id; never use an earlier same-week attempt; blank in quarter week one.
     period_type: Prior output's prior-year comparable fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -154,7 +167,7 @@ metric_variants:
     metric_name: Customer Forecast YoY
     business_context: Customer Revenue Detail
     calculation_method: Direct ratio
-    formula: 'IFERROR(current_quarter_forecast / prior_year_quarter_revenue - 1, blank)'
+    formula: 'IF(current_quarter_forecast is blank, blank, IFERROR(current_quarter_forecast / prior_year_quarter_revenue - 1, blank))'
     period_type: Fiscal quarter comparison
     base_unit: Decimal ratio
     result_precision: Preserve full precision
@@ -165,7 +178,7 @@ metric_variants:
     metric_name: Customer Forecast Completion Rate
     business_context: Customer Revenue Detail
     calculation_method: Direct ratio
-    formula: 'IFERROR(current_qtd_performance / current_quarter_forecast, blank)'
+    formula: 'IF(current_quarter_forecast is blank, blank, IFERROR(current_qtd_performance / current_quarter_forecast, blank))'
     period_type: Current fiscal-quarter-to-date versus full-quarter forecast
     base_unit: Decimal ratio
     result_precision: Preserve full precision

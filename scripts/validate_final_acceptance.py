@@ -13,9 +13,17 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS = ROOT / "phase1_5/tests/final_acceptance_scenarios.yaml"
+CUSTOMER_SCENARIOS = ROOT / "phase1_5/tests/customer_revenue_detail_acceptance_scenarios.yaml"
 RUNTIME = ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
 DCP = ROOT / "phase1_5/assets/analysis/dcp_registry_v1.yaml"
 STORE = ROOT / "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
+CUSTOMER_CONTEXT = ROOT / "phase1_5/assets/execution/customer_revenue_detail_run_context_v1.yaml"
+CUSTOMER_POLICY = ROOT / "phase1_5/assets/policies/PL_CUSTOMER_REVENUE_DETAIL_POLICY_V1.yaml"
+CUSTOMER_OUTPUT = ROOT / "phase1_5/assets/output_mappings/OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1.yaml"
+TECHNICAL_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1.yaml"
+WEEKLY_COMPARABLE_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml"
+CUSTOMER_FULL_QUARTER_RULE = ROOT / "phase1_5/assets/business_rules/BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1.yaml"
+CUSTOMER_COMPARABLE_RULE = ROOT / "phase1_5/assets/business_rules/BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml"
 
 
 def load(path: Path) -> dict[str, Any]:
@@ -32,6 +40,43 @@ def scenario_map(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
     for item in scenarios:
         assert item.get("expected_result"), f"{item.get('scenario_id')}: Expected Result is required"
     return {item["scenario_id"]: item for item in scenarios}
+
+
+def resolve_forecast_d(
+    customers: list[str], owner_values: dict[str, float], available: bool
+) -> dict[str, float | None]:
+    if not available:
+        return {customer: None for customer in customers}
+    return {customer: owner_values.get(customer, 0) for customer in customers}
+
+
+def select_previous_period_output(
+    outputs: list[dict[str, Any]], previous_reporting_period_id: str
+) -> str:
+    candidates = [
+        item
+        for item in outputs
+        if item.get("reporting_period_id") == previous_reporting_period_id
+        and item.get("validation_status") == "passed"
+    ]
+    assert candidates, "previous reporting period validated output is required"
+    highest_version = max(item["output_version"] for item in candidates)
+    selected = [item for item in candidates if item["output_version"] == highest_version]
+    assert len(selected) == 1, "previous output highest version must be unique"
+    return selected[0]["result_id"]
+
+
+def rank_customer_top20(
+    rows: list[dict[str, Any]], ranking: str, forecast_d_available: bool = True
+) -> list[str]:
+    if ranking == "prior_year":
+        if forecast_d_available:
+            ordered = sorted(rows, key=lambda row: (-row["C"], -row["D"], row["customer"]))
+        else:
+            ordered = sorted(rows, key=lambda row: (-row["C"], row["customer"]))
+    else:
+        ordered = sorted(rows, key=lambda row: (-row["D"], -row["C"], row["customer"]))
+    return [row["customer"] for row in ordered]
 
 
 def semantic_case_map(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -157,14 +202,27 @@ def natural_language_brief_to_arc(
 
 def main() -> int:
     suite = load(SCENARIOS)
+    customer_suite = load(CUSTOMER_SCENARIOS)
     runtime = load(RUNTIME)
     dcp = load(DCP)
     store = load(STORE)
+    customer_context = load(CUSTOMER_CONTEXT)
+    customer_policy = load(CUSTOMER_POLICY)
+    customer_output = load(CUSTOMER_OUTPUT)
+    technical_rule = load(TECHNICAL_RULE)
+    weekly_comparable_rule = load(WEEKLY_COMPARABLE_RULE)
+    full_quarter_rule = load(CUSTOMER_FULL_QUARTER_RULE)
+    comparable_rule = load(CUSTOMER_COMPARABLE_RULE)
     scenarios = scenario_map(suite)
+    customer_scenarios = scenario_map(customer_suite)
     semantic_cases = semantic_case_map(suite)
 
     assert suite.get("contains_real_business_data") is False
     assert suite.get("external_side_effects_allowed") is False
+    assert customer_suite.get("contains_real_business_data") is False
+    assert customer_suite.get("external_side_effects_allowed") is False
+    assert customer_suite.get("suite_id") == "CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1"
+    assert len(customer_scenarios) == 12
 
     context = runtime["workflow_run_context"]
     assert context["query_parameter_authority"]["actual_execution_date_business_date_inference_allowed"] is False
@@ -292,9 +350,172 @@ def main() -> int:
         )
         assert exact_dcp_match(dcp, comparison_arc) == ["DCP_REVENUE_TECHNICAL_V1"]
 
+    source_roles = customer_scenarios["source_role_separation"]
+    source_input = source_roles["synthetic_input"]
+    assert {
+        "C": source_input["full_quarter_C"],
+        "K": source_input["comparable_K"],
+        "L": source_input["comparable_L"],
+        "source_roles_distinct": True,
+    } == source_roles["expected_result"]
+    source_policy = customer_policy["processing"]["prior_year_source_roles"]
+    assert source_policy["C_full_quarter"]["rule_id"] == full_quarter_rule["rule_id"]
+    assert source_policy["K_L_comparable_qtd"]["rule_id"] == comparable_rule["rule_id"]
+    assert full_quarter_rule["conditions"]["comparable_cutoff_snapshot_allowed"] is False
+    assert comparable_rule["conditions"]["full_quarter_history_allowed"] is False
+    assert "WF_CUSTOMER_REVENUE_DETAIL" not in weekly_comparable_rule["applicable_workflow_ids"]
+
+    signed = customer_scenarios["signed_comparable_values"]
+    assert signed["expected_result"] == {
+        "accepted": True,
+        "K": signed["synthetic_input"]["comparable_K"],
+        "L": signed["synthetic_input"]["comparable_L"],
+    }
+    assert comparable_rule["conditions"]["signed_numeric_values_allowed"] is True
+    assert comparable_rule["conditions"]["zero_or_negative_value_allowed"] is True
+    assert customer_scenarios["quarter_first_week_applicability"]["expected_result"][
+        "technical_eligibility_applies"
+    ] is True
+    assert "quarter_first_week" in technical_rule["applicability"][
+        "report_modes_by_workflow"
+    ]["WF_CUSTOMER_REVENUE_DETAIL"]
+    assert customer_scenarios[
+        "quarter_first_week_without_template_requires_previous_output"
+    ]["expected_result"] == {
+        "workflow_blocked": True,
+        "missing_dependency": "previous_reporting_period_validated_output",
+    }
+    first_week_dependency = customer_policy["processing"][
+        "quarter_first_week_prior_output_dependency"
+    ]
+    assert first_week_dependency["template_available"] == "optional"
+    assert first_week_dependency["template_unavailable"] == "required_for_layout_customer_list_and_industry"
+    assert first_week_dependency["template_and_previous_output_both_unavailable"] == "block_customer_workflow"
+
+    forecast = customer_scenarios["forecast_D_availability_blank_vs_zero"]
+    forecast_input = forecast["synthetic_input"]
+    unavailable = resolve_forecast_d(
+        forecast_input["customers"], forecast_input["unavailable_owner_values"], False
+    )
+    available = resolve_forecast_d(
+        forecast_input["customers"], forecast_input["available_owner_values"], True
+    )
+    assert unavailable | {"top20_mode": "header_only"} == forecast["expected_result"][
+        "unavailable"
+    ]
+    assert available | {"top20_mode": "frozen_members_plus_Other"} == forecast[
+        "expected_result"
+    ]["available"]
+    forecast_policy = customer_policy["processing"]["forecast_D_semantics"]
+    assert "including an explicit zero" in forecast_policy["available_when"]
+    assert "Preserve D as blank" in forecast_policy["unavailable_behavior"]
+    assert customer_policy["processing"]["formulas"]["E"].startswith('IF(D="",""')
+    assert customer_policy["processing"]["formulas"]["G"].startswith('IF(D="",""')
+
+    coverage = customer_scenarios["explicit_output_binding_coverage"]["expected_result"]
+    assert coverage == {
+        "detail_binding_count": 18,
+        "prior_top20_binding_count": 7,
+        "forecast_top20_binding_count": 7,
+    }
+    output_sheets = {
+        sheet["sheet_id"]: sheet for sheet in customer_output["workbook_layout"]["sheets"]
+    }
+    expected_columns = {
+        "CUSTOMER_DETAIL_LIST": list("ABCDEFGHIJKLMNOPQR"),
+        "PRIOR_YEAR_TOP20": list("ABCDEFG"),
+        "CURRENT_QUARTER_TOP20": list("ABCDEFG"),
+    }
+    for sheet_id, columns in expected_columns.items():
+        fields = output_sheets[sheet_id]["output_fields"]
+        assert [field["target_column"] for field in fields] == columns
+        assert all(
+            set(field["result_field_binding"])
+            == {"result_contract_id", "record_set_id", "result_field_id"}
+            for field in fields
+        )
+    template_membership = customer_scenarios["template_top20_membership_preserved"]
+    assert template_membership["synthetic_input"]["template_members"] == template_membership[
+        "expected_result"
+    ]["frozen_members"]
+    assert template_membership["expected_result"]["reranked"] is False
+    top20_policy = customer_policy["processing"]["top20"]
+    assert top20_policy["existing_template_membership"][
+        "preserve_and_freeze_without_reranking"
+    ] is True
+    generated = customer_scenarios["generated_top20_rankings"]
+    assert rank_customer_top20(generated["synthetic_input"]["rows"], "prior_year") == generated[
+        "expected_result"
+    ]["prior_year_order"]
+    assert rank_customer_top20(generated["synthetic_input"]["rows"], "forecast") == generated[
+        "expected_result"
+    ]["forecast_order"]
+    assert rank_customer_top20(
+        generated["synthetic_input"]["D_unavailable_rows"],
+        "prior_year",
+        forecast_d_available=False,
+    ) == generated["expected_result"]["prior_year_order_when_D_unavailable"]
+    assert top20_policy["prior_year_ranking"] == {
+        "D_available": ["C_desc", "D_desc", "customer_name_asc"],
+        "D_unavailable": ["C_desc", "customer_name_asc"],
+    }
+    assert top20_policy["forecast_ranking"] == {
+        "D_available": ["D_desc", "C_desc", "customer_name_asc"],
+        "D_unavailable": "not_applicable_header_only",
+    }
+    assert top20_policy["forecast_availability"]["unavailable_output"] == "header_only"
+
+    rerun = customer_scenarios["same_week_rerun_previous_period_selection"]
+    selected_previous = select_previous_period_output(
+        rerun["synthetic_input"]["outputs"],
+        rerun["synthetic_input"]["previous_reporting_period_id"],
+    )
+    assert selected_previous == rerun["expected_result"]["selected_previous_result_id"]
+    assert rerun["expected_result"]["same_week_attempt_used"] is False
+    previous_policy = customer_policy["processing"]["previous_output_selection"]
+    assert previous_policy["same_reporting_period_attempt_allowed"] is False
+    assert previous_policy["same_week_rerun_reuses_locked_selection"] is True
+
+    locked = customer_scenarios["customer_run_context_lock"]
+    changed_locked_key = any(
+        locked["synthetic_input"]["locked"].get(key) != value
+        for key, value in locked["synthetic_input"]["attempted_update"].items()
+    )
+    assert changed_locked_key is locked["expected_result"]["update_rejected"] is True
+    assert locked["expected_result"]["workflow_blocked"] is True
+    assert customer_context["lock_policy"]["lock_before_stage"] == "DATA_COLLECTION"
+    assert customer_context["lock_policy"]["immutable_after_lock"] is True
+    assert customer_context["selection_and_rerun_semantics"][
+        "same_reporting_period_attempt_may_be_previous_output"
+    ] is False
+
+    zero_fill = customer_scenarios["missing_current_customer_zero_fill"]
+    zero_filled = {
+        customer: zero_fill["synthetic_input"]["current_values"].get(
+            customer, {"F": 0, "J": 0}
+        )
+        for customer in zero_fill["synthetic_input"]["customer_universe"]
+    }
+    assert zero_filled == zero_fill["expected_result"]
+    assert customer_policy["processing"]["missing_current_customer_zero_fill"] == {
+        "condition": "Customer is in the union but has no eligible row in the validated current snapshot.",
+        "F": 0,
+        "J": 0,
+        "missing_or_blank_allowed": False,
+    }
+
+    expected_dependencies = customer_scenarios[
+        "workflow_dependency_count_isolation"
+    ]["expected_result"]
+    customer_baseline = load(
+        ROOT / "phase1_5/assets/readiness/implementation_baseline_customer_revenue_detail.yaml"
+    )
+    assert customer_baseline["workflow_dependency_counts"] == expected_dependencies
+
     print(
         "Phase 1.5 final acceptance passed: "
         f"{len(scenarios)} synthetic scenarios and {len(semantic_cases)} DCP semantic cases; "
+        f"{len(customer_scenarios)} Customer Revenue Detail scenarios; "
         "no real business data or external side effects."
     )
     return 0

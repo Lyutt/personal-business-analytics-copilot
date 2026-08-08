@@ -31,14 +31,22 @@ local paths remain outside Git.
 The pipeline reads four logical inputs before Output Mapping:
 
 1. Current QTD revenue from `DS_REVENUE_SALES_ROLLING_DECK_QTD`.
-2. The exact prior-year comparable Rolling Deck archive instance.
+2. The prior-year full-quarter Technical history used only for C, plus the
+   separately selected exact prior-year comparable QTD snapshot used only for K/L.
 3. The quarter baseline workbook referenced by
    `TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY`.
-4. The immediately preceding approved output of this Workflow, except in the
-   first week of a quarter.
+4. The validated output for the immediately previous reporting period. It is
+   optional in quarter week one only when the quarter template is available;
+   without that template it is required for layout, customer list and industry.
 
 The quarter baseline and prior output are read-only local inputs ingested by the
 pipeline. Output Mapping must not read a preceding workbook directly.
+
+Every run locks `CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1` before data collection.
+Business dates, source roles, template/D availability, mapping version and the
+selected previous-period output cannot change within that run. A same-week rerun
+must reuse the locked previous reporting period selection; an earlier attempt
+from the same reporting period can never become M/N/Q/R history.
 
 The Calculation Engine Result Contract is authoritative. Excel formula cells
 E/G/H/I are display-and-audit mirrors only; a formula result mismatch blocks
@@ -56,13 +64,18 @@ change business values.
   week only.
 - One customer/group produces exactly one detail row. Duplicate output rows are
   a Workflow error and block output.
-- F/J are current QTD grouped performance/executed revenue. K/L use the exact
+- F/J are current QTD grouped performance/executed revenue. A customer retained
+  in the union but absent from the validated current snapshot receives F=0 and
+  J=0, never blank. K/L use the exact
   prior-year comparable archive with identical filtering, mapping and grouping.
   M/N are the preceding output F/J; Q/R are its K/L. In quarter week one,
   M/N/Q/R are blank and I equals F.
 - Customer universe is the union of quarter baseline, prior output, current F/J
   and prior-year C/K/L. Retain existing quarter customers even when all values
-  become zero. New customers default C=0, D=0, O/P blank.
+  become zero. New customers default C=0 and O/P blank. D is zero only when the
+  quarter forecast is available; while D is unavailable it remains blank.
+- C archive supplementation uses a separate prior-year full-quarter history and
+  must never use the K/L comparable QTD snapshot.
 - C uses the quarter baseline value when populated; otherwise it is supplemented
   from the prior-year archive, with a missing customer set to zero. D/O/P are
   owner-supplied quarter values and are never inferred.
@@ -70,7 +83,7 @@ change business values.
   industry by descending signed current performance, then executed revenue,
   then preceding-week industry, then industry name ascending; notify when the
   final fallback is needed.
-- E=`IFERROR(D/C-1,"")`; G=`IFERROR(F/D,"")`;
+- E=`IF(D="","",IFERROR(D/C-1,""))`; G=`IF(D="","",IFERROR(F/D,""))`，确保 D 不可用时 E/G 同步为空；
   H=`IFERROR(F/K-1,"")`; I=`F-M`, except quarter week one where I=F.
   Calculation uses full precision. Money displays as integer with thousands
   separators and rates as integer percentages.
@@ -82,11 +95,20 @@ change business values.
   customers, including zero and negative values, aggregate into `Other`.
   Ratios are recomputed from aggregate amounts. Top20 sheets contain validated
   static A:G values only.
+- A valid Top20 membership already present in the quarter template is preserved
+  and frozen without reranking. Otherwise, when D is available, prior-year
+  membership ranks by C descending, D descending, customer name ascending and
+  forecast membership ranks by D descending, C descending, customer name
+  ascending. When D is unavailable, prior-year membership ranks by C descending
+  then customer name ascending, while forecast Top20 remains header-only. After
+  freeze, newly eligible customers remain in Other. The locked D-availability
+  state distinguishes explicit zero from blank.
 - If no quarter baseline exists, use the previous output only for layout,
   customer list and A. Do not inherit prior-quarter C/D/O/P. Rebuild C from the
   archive, leave D/O/P blank, generate/freeze prior-year Top20, and retain only
   the forecast Top20 header until D becomes available. If D remains absent all
-  quarter, the empty forecast Top20 is non-blocking.
+  quarter, the empty forecast Top20 is non-blocking. If both the quarter template
+  and previous-period validated output are unavailable, block the Workflow.
 
 ## Validation, warnings and output
 

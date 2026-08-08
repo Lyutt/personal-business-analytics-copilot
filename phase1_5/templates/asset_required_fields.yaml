@@ -132,6 +132,21 @@ asset_rules:
       - checks
       - decision
 
+  - asset_type: customer_revenue_detail_run_context
+    selector: { key: config_type, value: customer_revenue_detail_run_context }
+    required_paths:
+      - config_type
+      - context_id
+      - context_version
+      - status
+      - workflow_id
+      - owner
+      - one_context_per_workflow_run
+      - lock_policy
+      - required_fields
+      - selection_and_rerun_semantics
+      - constraints
+
   - asset_type: field_mapping_profile
     selector: { key: config_type, value: field_mapping_profile }
     required_paths:

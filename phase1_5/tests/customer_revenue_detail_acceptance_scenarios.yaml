@@ -1,0 +1,76 @@
+config_type: customer_revenue_detail_synthetic_acceptance
+suite_id: CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1
+suite_version: 1.0.0
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+contains_real_business_data: false
+external_side_effects_allowed: false
+scenarios:
+  - scenario_id: source_role_separation
+    synthetic_input: { full_quarter_C: 120, comparable_K: 30, comparable_L: 20 }
+    expected_result: { C: 120, K: 30, L: 20, source_roles_distinct: true }
+  - scenario_id: signed_comparable_values
+    synthetic_input: { comparable_K: -5, comparable_L: 0 }
+    expected_result: { accepted: true, K: -5, L: 0 }
+  - scenario_id: quarter_first_week_applicability
+    synthetic_input: { workflow_id: WF_CUSTOMER_REVENUE_DETAIL, report_mode: quarter_first_week }
+    expected_result: { technical_eligibility_applies: true }
+  - scenario_id: quarter_first_week_without_template_requires_previous_output
+    synthetic_input: { report_mode: quarter_first_week, template_available: false, previous_output_available: false }
+    expected_result: { workflow_blocked: true, missing_dependency: previous_reporting_period_validated_output }
+  - scenario_id: forecast_D_availability_blank_vs_zero
+    synthetic_input:
+      customers: [SYNTH_A, SYNTH_B]
+      unavailable_owner_values: {}
+      available_owner_values: { SYNTH_B: 50 }
+    expected_result:
+      unavailable: { SYNTH_A: null, SYNTH_B: null, top20_mode: header_only }
+      available: { SYNTH_A: 0, SYNTH_B: 50, top20_mode: frozen_members_plus_Other }
+  - scenario_id: explicit_output_binding_coverage
+    synthetic_input: { detail_columns: A:R, top20_columns: A:G }
+    expected_result: { detail_binding_count: 18, prior_top20_binding_count: 7, forecast_top20_binding_count: 7 }
+  - scenario_id: template_top20_membership_preserved
+    synthetic_input: { template_members: [SYNTH_A, SYNTH_B], generated_order: [SYNTH_B, SYNTH_A] }
+    expected_result: { frozen_members: [SYNTH_A, SYNTH_B], reranked: false }
+  - scenario_id: generated_top20_rankings
+    synthetic_input:
+      rows:
+        - { customer: SYNTH_A, C: 100, D: 10 }
+        - { customer: SYNTH_B, C: 100, D: 20 }
+        - { customer: SYNTH_C, C: 90, D: 30 }
+      D_unavailable_rows:
+        - { customer: SYNTH_B, C: 100, D: null }
+        - { customer: SYNTH_A, C: 100, D: null }
+        - { customer: SYNTH_C, C: 90, D: null }
+    expected_result:
+      prior_year_order: [SYNTH_B, SYNTH_A, SYNTH_C]
+      prior_year_order_when_D_unavailable: [SYNTH_A, SYNTH_B, SYNTH_C]
+      forecast_order: [SYNTH_C, SYNTH_B, SYNTH_A]
+  - scenario_id: same_week_rerun_previous_period_selection
+    synthetic_input:
+      reporting_period_id: SYNTH-P2
+      previous_reporting_period_id: SYNTH-P1
+      outputs:
+        - { result_id: PREV-V1, reporting_period_id: SYNTH-P1, output_version: 1, validation_status: passed }
+        - { result_id: SAME-WEEK, reporting_period_id: SYNTH-P2, output_version: 2, validation_status: passed }
+    expected_result: { selected_previous_result_id: PREV-V1, same_week_attempt_used: false }
+  - scenario_id: customer_run_context_lock
+    synthetic_input:
+      locked: { reporting_period_id: SYNTH-P2, current_revenue_cutoff_date: "2026-08-06", forecast_D_availability: unavailable }
+      attempted_update: { current_revenue_cutoff_date: "2026-08-07" }
+    expected_result: { update_rejected: true, workflow_blocked: true }
+  - scenario_id: missing_current_customer_zero_fill
+    synthetic_input:
+      customer_universe: [SYNTH_A, SYNTH_B]
+      current_values: { SYNTH_A: { F: 10, J: 8 } }
+    expected_result: { SYNTH_A: { F: 10, J: 8 }, SYNTH_B: { F: 0, J: 0 } }
+  - scenario_id: workflow_dependency_count_isolation
+    expected_result:
+      pipeline_count: 1
+      dataset_dependency_count: 1
+      mapping_profile_dependency_count: 2
+      business_rule_dependency_count: 3
+      metric_variant_dependency_count: 14
+      result_contract_dependency_count: 1
+      output_mapping_dependency_count: 1
+      policy_dependency_count: 1
+      external_asset_dependency_count: 1

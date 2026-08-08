@@ -6,6 +6,7 @@ workflow_id: WF_CUSTOMER_REVENUE_DETAIL
 current_stage: Implementation Baseline Frozen - Awaiting Explicit Owner Code Implementation Approval
 phase_status:
   phase_1_5_business_asset_initialization: completed
+  customer_synthetic_acceptance: passed
   code_implementation: awaiting_explicit_owner_approval
   end_to_end_runtime_acceptance: not_started
 asset_stage_gates:
@@ -23,6 +24,12 @@ implementation_baseline:
   status: frozen_awaiting_explicit_owner_code_implementation_approval
   source_artifact: phase1_5/assets/readiness/implementation_baseline_customer_revenue_detail.yaml
   explicit_owner_code_implementation_approval_received: false
+synthetic_acceptance:
+  suite_id: CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1
+  suite_version: 1.0.0
+  scenario_count: 12
+  status: passed
+  ci_command: python scripts/validate_final_acceptance.py
 scope_boundaries:
   output: local_only_xlsx
   weekly_report_dependency: none

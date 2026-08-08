@@ -1,0 +1,43 @@
+config_type: business_rule
+rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
+rule_name: Customer Revenue Prior-Year Full-Quarter Source Selection
+rule_category: Revenue Historical Source Selection
+business_domains: [Revenue]
+applicable_workflow_ids: [WF_CUSTOMER_REVENUE_DETAIL]
+applicable_pipeline_ids: [PL_CUSTOMER_REVENUE_DETAIL_WEEKLY]
+business_context_ids: [CTX_CUSTOMER_REVENUE_DETAIL_WEEKLY]
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved_design_only
+effective_from: 2026-08-08
+purpose: Select the prior-year full-quarter Technical revenue history used only to supplement detail column C and prior-year Top20 ranking.
+inputs:
+  required_context_fields: [CurrentYear, PriorYear, Quarter]
+  required_standard_fields: [business_line_level_1, fiscal_quarter, advertiser_name, performance_revenue_amount]
+  required_result_contract_ids: []
+conditions:
+  source_role: prior_year_full_quarter_history
+  required_period: PriorYear and Quarter full-quarter final history
+  exact_single_readable_source_required: true
+  technical_eligibility_rule_id: BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+  signed_numeric_values_allowed: true
+  zero_or_negative_value_allowed: true
+  comparable_cutoff_snapshot_allowed: false
+actions:
+  on_exact_source: aggregate_per_exact_mapped_customer_for_C
+  on_customer_missing_from_source: set_C_to_zero
+  on_missing_multiple_or_unreadable_source: block_customer_workflow_and_notify_owner
+validation:
+  deterministic: true
+  exact_full_quarter_period_required: true
+  source_role_must_not_equal_comparable_snapshot: true
+  reconciliation_absolute_tolerance_CNY: 1
+governance:
+  evidence_sources: [Owner corrections for PR 6]
+  change_reason: Separate C full-quarter history from K/L comparable snapshot history.
+constraints:
+  automatic_nearby_date_selection_allowed: false
+  weekly_prior_year_rule_reuse_allowed: false
+  metric_formula_allowed: false
+  customer_data_must_remain_local_only: true

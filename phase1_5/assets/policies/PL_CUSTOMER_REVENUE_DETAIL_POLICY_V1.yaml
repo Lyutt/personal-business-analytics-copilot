@@ -27,10 +27,24 @@ trigger:
   prior_year_date_rule:
     workflow_year_2026: current cutoff minus one year plus one day
     workflow_year_2027_or_later: block_for_owner_reconfirmation
+  run_context:
+    context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+    lock_before_data_collection: true
+    immutable_after_lock: true
 
 processing:
   technical_filter_and_single_count_rule_id: BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
-  prior_year_source_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+  prior_year_source_roles:
+    C_full_quarter:
+      rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
+      period_role: prior_year_full_quarter_history
+      may_supply_fields: [C]
+      may_supply_fields_forbidden: [K, L]
+    K_L_comparable_qtd:
+      rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+      period_role: prior_year_comparable_qtd_snapshot
+      may_supply_fields: [K, L]
+      may_supply_fields_forbidden: [C]
   advertiser_mapping:
     matching: exact_only
     fuzzy_matching_allowed: false
@@ -46,11 +60,33 @@ processing:
   duplicate_result_row_action: block_workflow
   customer_universe: union_of_quarter_baseline_prior_output_current_and_prior_year_results
   retain_zero_customers_through_quarter: true
+  missing_current_customer_zero_fill:
+    condition: Customer is in the union but has no eligible row in the validated current snapshot.
+    F: 0
+    J: 0
+    missing_or_blank_allowed: false
+  forecast_D_semantics:
+    availability_source: locked Run Context forecast_D_availability
+    available_when: At least one owner-supplied D value, including an explicit zero, is present in the authoritative quarter baseline.
+    unavailable_behavior: Preserve D as blank for every customer; do not convert blank to zero.
+    new_customer_when_available: D equals zero unless an owner-supplied value exists.
+    new_customer_when_unavailable: D remains blank.
   quarter_first_week_prior_output_fields: blank_M_N_Q_R
+  quarter_first_week_prior_output_dependency:
+    template_available: optional
+    template_unavailable: required_for_layout_customer_list_and_industry
+    template_and_previous_output_both_unavailable: block_customer_workflow
   quarter_first_week_incremental_performance: I_equals_F
+  previous_output_selection:
+    required_period: locked previous_reporting_period_id
+    validation_status: passed
+    same_reporting_period_attempt_allowed: false
+    unique_highest_output_version_required: true
+    same_week_rerun_reuses_locked_selection: true
+    same_week_rerun_must_not_shift_M_N_Q_R: true
   formulas:
-    E: 'IFERROR(D/C-1,"")'
-    G: 'IFERROR(F/D,"")'
+    E: 'IF(D="","",IFERROR(D/C-1,""))'
+    G: 'IF(D="","",IFERROR(F/D,""))'
     H: 'IFERROR(F/K-1,"")'
     I_regular_week: F-M
     I_quarter_first_week: F
@@ -63,11 +99,27 @@ processing:
     other_includes_all_remaining_values: true
     ratios_recomputed_after_aggregation: true
     output_cells: static_validated_values_A_to_G
+    existing_template_membership:
+      valid_existing_list_is_authoritative: true
+      preserve_and_freeze_without_reranking: true
+      invalid_or_missing_list_action: generate_by_confirmed_ranking_then_freeze
+    prior_year_ranking:
+      D_available: [C_desc, D_desc, customer_name_asc]
+      D_unavailable: [C_desc, customer_name_asc]
+    forecast_ranking:
+      D_available: [D_desc, C_desc, customer_name_asc]
+      D_unavailable: not_applicable_header_only
+    newly_eligible_customer_after_freeze: aggregate_into_Other
+    forecast_availability:
+      source: locked Run Context forecast_D_availability
+      unavailable_output: header_only
+      available_output: freeze_20_members_plus_Other
 
 failure_handling:
   blocking_conditions:
     - required_source_missing_unreadable_or_ambiguous
-    - prior_output_missing_except_quarter_first_week
+    - prior_output_missing_for_regular_week
+    - prior_output_missing_when_quarter_first_week_template_unavailable
     - duplicate_customer_result_row
     - reconciliation_outside_absolute_CNY_1
     - required_template_structure_invalid

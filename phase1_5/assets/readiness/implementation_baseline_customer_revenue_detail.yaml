@@ -21,6 +21,22 @@ frozen_asset_versions:
   result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
   output_mapping_version: 1.0.0
   pipeline_policy_version: 1.0.0
+  run_context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+  run_context_version: 1.0.0
+  explicit_output_field_binding_count: 32
+  synthetic_acceptance_suite_id: CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1
+  synthetic_acceptance_suite_version: 1.0.0
+  synthetic_acceptance_scenario_count: 12
+workflow_dependency_counts:
+  pipeline_count: 1
+  dataset_dependency_count: 1
+  mapping_profile_dependency_count: 2
+  business_rule_dependency_count: 3
+  metric_variant_dependency_count: 14
+  result_contract_dependency_count: 1
+  output_mapping_dependency_count: 1
+  policy_dependency_count: 1
+  external_asset_dependency_count: 1
 frozen_gate_results:
   - { gate_id: GATE_DATASET_READINESS_WF_CUSTOMER_REVENUE_DETAIL_V1, status: passed }
   - { gate_id: GATE_PIPELINE_REGISTRY_WF_CUSTOMER_REVENUE_DETAIL_V1, status: passed }
@@ -33,6 +49,7 @@ validation_contract:
   repository_safety_validation_required: true
   asset_integrity_validation_required: true
   multi_workflow_scope_validation_required: true
+  customer_synthetic_acceptance_required: true
   exact_diff_sensitive_data_review_required_before_git_operation: true
 implementation_authorization:
   asset_baseline_ready: true

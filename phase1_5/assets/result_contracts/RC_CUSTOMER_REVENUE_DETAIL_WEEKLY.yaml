@@ -61,16 +61,16 @@ record_sets:
         lineage_required: true
       - field_id: current_quarter_forecast
         field_name: Current-Quarter Forecast
-        business_definition: Owner-supplied quarter forecast D; new customers default to zero and no forecast is inferred.
+        business_definition: Owner-supplied quarter forecast D; blank is preserved while forecast D is unavailable, and a new customer defaults to zero only after forecast availability is established.
         source_type: metric_variant
         source_metric_variant_id: MV_CUSTOMER_CURRENT_QUARTER_FORECAST_V1
         data_type: number
         base_unit: CNY yuan
         numeric_constraints: *money_constraints
-        nullable: false
-        value_status_allowed: [valid_value, calculation_failed]
+        nullable: true
+        value_status_allowed: [valid_value, missing, calculation_failed]
         applicable_report_modes: [regular_week, quarter_first_week]
-        validation_requirement: Must originate from the approved quarter baseline or the confirmed new-customer zero default.
+        validation_requirement: Must originate from the approved quarter baseline or the availability-aware new-customer default; blank must not be coerced to zero.
         lineage_required: true
       - &ratio_nullable
         field_id: forecast_yoy
@@ -84,11 +84,11 @@ record_sets:
         nullable: true
         value_status_allowed: [valid_value, missing, calculation_failed]
         applicable_report_modes: [regular_week, quarter_first_week]
-        validation_requirement: Invalid denominator produces blank; absolute value at least 100 percent warns only.
+        validation_requirement: Unavailable forecast D or an invalid denominator produces blank; absolute value at least 100 percent warns only.
         lineage_required: true
       - field_id: current_qtd_performance
         field_name: Current QTD Performance
-        business_definition: Eligible Technical performance revenue grouped by exact mapped customer/group.
+        business_definition: Eligible Technical performance revenue grouped by exact mapped customer/group; zero when a retained union customer is absent from the validated current snapshot.
         source_type: metric_variant
         source_metric_variant_id: MV_CUSTOMER_CURRENT_QTD_PERFORMANCE_V1
         data_type: number
@@ -97,7 +97,7 @@ record_sets:
         nullable: false
         value_status_allowed: [valid_value, calculation_failed]
         applicable_report_modes: [regular_week, quarter_first_week]
-        validation_requirement: Reconcile to the filtered Technical source total within absolute CNY 1.
+        validation_requirement: Reconcile to the filtered Technical source total within absolute CNY 1; missing/blank is prohibited after zero-fill.
         lineage_required: true
       - field_id: performance_completion_rate
         field_name: Performance Completion Rate
@@ -110,7 +110,7 @@ record_sets:
         nullable: true
         value_status_allowed: [valid_value, missing, calculation_failed]
         applicable_report_modes: [regular_week, quarter_first_week]
-        validation_requirement: Invalid denominator produces blank; absolute value at least 100 percent warns only.
+        validation_requirement: Unavailable forecast D or an invalid denominator produces blank; absolute value at least 100 percent warns only.
         lineage_required: true
       - field_id: performance_yoy
         field_name: Performance YoY
@@ -140,7 +140,7 @@ record_sets:
         lineage_required: true
       - field_id: current_qtd_executed
         field_name: Current QTD Executed
-        business_definition: Eligible Technical executed revenue grouped by exact mapped customer/group.
+        business_definition: Eligible Technical executed revenue grouped by exact mapped customer/group; zero when a retained union customer is absent from the validated current snapshot.
         source_type: metric_variant
         source_metric_variant_id: MV_CUSTOMER_CURRENT_QTD_EXECUTED_V1
         data_type: number
@@ -149,11 +149,11 @@ record_sets:
         nullable: false
         value_status_allowed: [valid_value, calculation_failed]
         applicable_report_modes: [regular_week, quarter_first_week]
-        validation_requirement: Reconcile to the filtered Technical source total within absolute CNY 1.
+        validation_requirement: Reconcile to the filtered Technical source total within absolute CNY 1; missing/blank is prohibited after zero-fill.
         lineage_required: true
       - field_id: prior_year_qtd_performance
         field_name: Prior-Year Comparable QTD Performance
-        business_definition: Performance revenue from the exact prior-year comparable archive using identical filtering and grouping.
+        business_definition: Performance revenue from the Customer-specific exact prior-year comparable QTD snapshot using identical filtering and grouping; it is not the C full-quarter source.
         source_type: metric_variant
         source_metric_variant_id: MV_CUSTOMER_PRIOR_YEAR_QTD_PERFORMANCE_V1
         data_type: number
@@ -166,7 +166,7 @@ record_sets:
         lineage_required: true
       - field_id: prior_year_qtd_executed
         field_name: Prior-Year Comparable QTD Executed
-        business_definition: Executed revenue from the exact prior-year comparable archive using identical filtering and grouping.
+        business_definition: Executed revenue from the Customer-specific exact prior-year comparable QTD snapshot using identical filtering and grouping; it is not the C full-quarter source.
         source_type: metric_variant
         source_metric_variant_id: MV_CUSTOMER_PRIOR_YEAR_QTD_EXECUTED_V1
         data_type: number
@@ -295,10 +295,10 @@ record_sets:
         data_type: number
         base_unit: CNY yuan
         numeric_constraints: *money_constraints
-        nullable: false
-        value_status_allowed: [valid_value, calculation_failed]
+        nullable: true
+        value_status_allowed: [valid_value, missing, calculation_failed]
         applicable_report_modes: [regular_week, quarter_first_week]
-        validation_requirement: Must aggregate from the authoritative detail Result Contract.
+        validation_requirement: Aggregate from the authoritative detail Result Contract; blank is required while forecast D is unavailable.
         lineage_required: true
       - field_id: py_top20_current_qtd_performance
         field_name: Current QTD Performance
@@ -357,7 +357,20 @@ record_sets:
   - record_set_id: forecast_top20
     record_grain: [forecast_top20_customer_name]
     record_dimensions: []
-    context_fields: []
+    context_fields:
+      - field_id: forecast_top20_D_availability
+        field_name: Forecast D Availability
+        business_definition: Locked run-level availability that distinguishes explicit zero forecasts from blank/unavailable forecasts.
+        source_type: policy_derived_field
+        source_policy_id: POLICY_CUSTOMER_REVENUE_DETAIL_V1
+        data_type: string
+        base_unit: status
+        allowed_values: [available, unavailable]
+        nullable: false
+        value_status_allowed: [valid_value]
+        applicable_report_modes: [regular_week, quarter_first_week]
+        validation_requirement: Must equal the locked Customer Run Context forecast_D_availability.
+        lineage_required: true
     record_fields:
       - field_id: forecast_top20_customer_name
         field_name: Forecast Top20 Customer
@@ -474,6 +487,16 @@ validation:
   contract_completeness_check: true
   customer_row_uniqueness_required: true
   source_reconciliation_absolute_tolerance_CNY: 1
+  top20_membership_validation:
+    valid_template_membership_preserved_and_frozen: true
+    prior_year_generated_ranking:
+      D_available: [C_desc, D_desc, customer_name_asc]
+      D_unavailable: [C_desc, customer_name_asc]
+    forecast_generated_ranking:
+      D_available: [D_desc, C_desc, customer_name_asc]
+      D_unavailable: not_applicable_header_only
+    post_freeze_new_customer_routes_to_Other: true
+    forecast_record_set_requires_D_availability: true
 
 lineage:
   required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, cutoff_date, report_mode, dataset_instance_ids, local_input_instance_ids, mapping_profile_versions, business_rule_versions, metric_variant_versions, generated_at, validation_status, approval_status]

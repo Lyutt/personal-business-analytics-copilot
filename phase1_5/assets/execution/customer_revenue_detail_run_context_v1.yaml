@@ -1,0 +1,47 @@
+config_type: customer_revenue_detail_run_context
+context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+context_version: 1.0.0
+status: approved_design_only
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+owner: WORKFLOW_OWNER
+one_context_per_workflow_run: true
+lock_policy:
+  lock_before_stage: DATA_COLLECTION
+  immutable_after_lock: true
+  missing_or_conflicting_field_action: block_customer_workflow
+required_fields:
+  workflow_run_id: { data_type: string, nullable: false }
+  run_attempt: { data_type: integer, minimum: 1, nullable: false }
+  run_type: { data_type: string, allowed_values: [scheduled, manual, rerun] }
+  workflow_execution_date: { data_type: date, nullable: false }
+  current_revenue_cutoff_date: { data_type: date, nullable: false }
+  current_year: { data_type: integer, nullable: false }
+  prior_year: { data_type: integer, nullable: false }
+  quarter: { data_type: integer, allowed_values: [1, 2, 3, 4] }
+  report_mode: { data_type: string, allowed_values: [regular_week, quarter_first_week] }
+  reporting_period_id: { data_type: string, nullable: false }
+  previous_reporting_period_id: { data_type: string, nullable: true }
+  prior_comparable_as_of_date: { data_type: date, nullable: false }
+  prior_year_full_quarter_period_id: { data_type: string, nullable: false }
+  quarter_template_availability: { data_type: string, allowed_values: [available, unavailable] }
+  forecast_D_availability: { data_type: string, allowed_values: [available, unavailable] }
+  selected_template_version: { data_type: string, nullable: true }
+  selected_previous_output_result_id: { data_type: string, nullable: true }
+  selected_previous_output_version: { data_type: string, nullable: true }
+  advertiser_mapping_version: { data_type: string, nullable: false }
+  rerun_of_workflow_run_id: { data_type: string, nullable: true }
+selection_and_rerun_semantics:
+  actual_execution_date_may_infer_business_period: false
+  previous_output_period_must_equal: previous_reporting_period_id
+  same_reporting_period_attempt_may_be_previous_output: false
+  same_week_rerun_retains_previous_reporting_period_id: true
+  same_week_rerun_retains_selected_previous_output: true
+  changed_mapping_requires_new_run_context_and_current_week_rerun_only: true
+  source_roles_locked_separately:
+    C: prior_year_full_quarter_history
+    K_L: prior_year_comparable_qtd_snapshot
+constraints:
+  local_paths_allowed: false
+  customer_rows_allowed: false
+  credentials_allowed: false
+  external_side_effects_allowed: false

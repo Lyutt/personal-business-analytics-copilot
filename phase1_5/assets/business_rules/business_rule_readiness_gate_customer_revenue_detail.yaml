@@ -7,15 +7,25 @@ gate_result: passed
 scope:
   reused_rules:
     - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
-    - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+  customer_specific_rules:
+    - BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
+    - BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
   pipeline_policy_id: POLICY_CUSTOMER_REVENUE_DETAIL_V1
 gate_checks:
   customer_universe_and_row_grain: pass
   industry_fallback_order: pass
   quarter_baseline_fallback: pass
-  first_week_semantics: pass
+  quarter_first_week_technical_applicability: pass
+  first_week_template_and_previous_output_semantics: pass
+  full_quarter_C_and_comparable_K_L_sources_are_distinct: pass
+  comparable_signed_zero_and_negative_values_allowed: pass
+  current_missing_customer_F_J_zero_fill: pass
+  forecast_D_blank_and_zero_availability_semantics: pass
+  previous_reporting_period_and_same_week_rerun_semantics: pass
   detail_sorting: pass
   independent_frozen_top20_memberships: pass
+  template_existing_top20_memberships_preserved: pass
+  generated_top20_rank_order_and_D_availability: pass
   reconciliation_and_warning_classification: pass
   filename_collision_without_overwrite: pass
 decision: pass

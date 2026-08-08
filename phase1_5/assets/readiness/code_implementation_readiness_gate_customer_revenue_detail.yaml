@@ -25,6 +25,10 @@ implementation_readiness_checks:
   independent_workflow_boundary: pass
   calculation_engine_and_excel_formula_authority: pass
   three_result_record_sets_bound: pass
+  all_32_excel_result_fields_explicitly_bound: pass
+  customer_run_context_locked_before_data_collection: pass
+  customer_synthetic_acceptance_in_ci: pass
+  workflow_dependency_counts_isolated: pass
   local_only_data_boundary: pass
   multi_workflow_integrity_validation: pass
 implementation_entry_decision:
