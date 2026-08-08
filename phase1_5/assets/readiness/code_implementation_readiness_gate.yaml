@@ -12,7 +12,7 @@ scope:
   included_asset_scope: Phase 1.5 P0 business assets
   excluded_workflows:
     - workflow_id: WF_CUSTOMER_REVENUE_DETAIL
-      status: deferred_by_owner
+      status: independently_initialized_design_only
       blocking_weekly_implementation: false
   code_implementation_started: false
   implementation_baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
@@ -166,7 +166,7 @@ governance:
   stage_gates_grant_code_authority_independently: false
   auto_merge_authorized: false
   outlook_auto_send: false
-  customer_revenue_detail_deferred_without_blocking_weekly: true
+  customer_revenue_detail_independently_gated_without_blocking_weekly: true
   safety_review_required_before_each_git_operation: true
   explicit_owner_approval_required_before_code_implementation: true
   frozen_baseline_does_not_grant_implementation_authority: true

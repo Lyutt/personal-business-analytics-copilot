@@ -119,6 +119,19 @@ asset_rules:
       - pipelines[].governance
       - constraints
 
+  - asset_type: pipeline_registry_readiness_gate
+    selector: { key: config_type, value: pipeline_registry_readiness_gate }
+    required_paths:
+      - config_type
+      - gate_id
+      - workflow_id
+      - assessment_date
+      - status
+      - gate_result
+      - scope
+      - checks
+      - decision
+
   - asset_type: field_mapping_profile
     selector: { key: config_type, value: field_mapping_profile }
     required_paths:

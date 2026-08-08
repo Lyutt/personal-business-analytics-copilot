@@ -1,0 +1,201 @@
+schema_version: "1.0"
+asset_type: Metric Library
+library_id: METRIC_LIBRARY_CUSTOMER_REVENUE_DETAIL_V1
+library_name: Customer Revenue Detail Metric Library
+scope_status: Completed design only
+approval_status: Approved design only
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+
+architecture_constraints:
+  calculation_engine_result_is_authoritative: true
+  output_assembly_may_calculate_business_values: false
+  excel_formula_cells_are_audit_mirrors_only: true
+  full_precision_calculation_required: true
+  customer_rows_and_amounts_must_remain_local_only: true
+
+metric_definitions:
+  - metric_id: METRIC_CUSTOMER_REVENUE_FORECAST_YOY
+    metric_name: Customer Forecast YoY
+    business_name: 分客户预估同比
+    business_domain: Revenue
+    definition: Current-quarter forecast divided by prior-year quarter revenue minus one; blank when the denominator is invalid.
+    base_unit: Decimal ratio
+    result_precision: Preserve full precision
+    version: 1.0.0
+  - metric_id: METRIC_CUSTOMER_REVENUE_FORECAST_COMPLETION_RATE
+    metric_name: Customer Forecast Completion Rate
+    business_name: 分客户业绩完成率
+    business_domain: Revenue
+    definition: Current QTD performance divided by current-quarter forecast; blank when the denominator is invalid.
+    base_unit: Decimal ratio
+    result_precision: Preserve full precision
+    version: 1.0.0
+  - metric_id: METRIC_CUSTOMER_REVENUE_PERFORMANCE_YOY
+    metric_name: Customer QTD Performance YoY
+    business_name: 分客户业绩同比
+    business_domain: Revenue
+    definition: Current QTD performance divided by prior-year comparable QTD performance minus one; blank when the denominator is invalid.
+    base_unit: Decimal ratio
+    result_precision: Preserve full precision
+    version: 1.0.0
+  - metric_id: METRIC_CUSTOMER_REVENUE_WEEKLY_INCREMENTAL_PERFORMANCE
+    metric_name: Customer Weekly Incremental Performance
+    business_name: 分客户本周新增业绩
+    business_domain: Revenue
+    definition: Current QTD performance minus prior-week QTD performance, or current QTD performance in the first week of a quarter.
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+
+metric_variants:
+  - metric_variant_id: MV_CUSTOMER_PRIOR_YEAR_QUARTER_REVENUE_V1
+    metric_id: METRIC_REVENUE_PERFORMANCE
+    metric_name: Customer Prior-Year Quarter Revenue
+    business_context: Customer Revenue Detail
+    calculation_method: Use populated quarter baseline C, otherwise aggregate the exact prior-year archive by mapped customer; default missing customer to zero.
+    period_type: Prior-year full fiscal quarter
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: prior_year_quarter_revenue }
+  - metric_variant_id: MV_CUSTOMER_CURRENT_QUARTER_FORECAST_V1
+    metric_id: METRIC_REVENUE_PERFORMANCE
+    metric_name: Customer Current-Quarter Forecast
+    business_context: Customer Revenue Detail
+    calculation_method: Use owner-supplied quarter baseline D; never infer; new customer defaults to zero.
+    period_type: Current full fiscal quarter forecast
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: current_quarter_forecast }
+  - metric_variant_id: MV_CUSTOMER_CURRENT_QTD_PERFORMANCE_V1
+    metric_id: METRIC_REVENUE_PERFORMANCE
+    metric_name: Customer Current QTD Performance
+    business_context: Customer Revenue Detail
+    calculation_method: Aggregate eligible Technical records by exact mapped customer/group.
+    period_type: Current fiscal-quarter-to-date
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: current_qtd_performance }
+  - metric_variant_id: MV_CUSTOMER_CURRENT_QTD_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: Customer Current QTD Executed
+    business_context: Customer Revenue Detail
+    calculation_method: Aggregate eligible Technical records by exact mapped customer/group.
+    period_type: Current fiscal-quarter-to-date
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: current_qtd_executed }
+  - metric_variant_id: MV_CUSTOMER_PRIOR_YEAR_QTD_PERFORMANCE_V1
+    metric_id: METRIC_REVENUE_PERFORMANCE
+    metric_name: Customer Prior-Year Comparable QTD Performance
+    business_context: Customer Revenue Detail
+    calculation_method: Aggregate the exact prior-year comparable archive with the same eligibility and mapping rules.
+    period_type: Prior-year comparable fiscal-quarter-to-date
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: prior_year_qtd_performance }
+  - metric_variant_id: MV_CUSTOMER_PRIOR_YEAR_QTD_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: Customer Prior-Year Comparable QTD Executed
+    business_context: Customer Revenue Detail
+    calculation_method: Aggregate the exact prior-year comparable archive with the same eligibility and mapping rules.
+    period_type: Prior-year comparable fiscal-quarter-to-date
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: prior_year_qtd_executed }
+  - metric_variant_id: MV_CUSTOMER_PRIOR_WEEK_QTD_PERFORMANCE_V1
+    metric_id: METRIC_REVENUE_PERFORMANCE
+    metric_name: Customer Prior-Week QTD Performance
+    business_context: Customer Revenue Detail
+    calculation_method: Read F from the immediately preceding approved output; blank in quarter week one.
+    period_type: Prior-week fiscal-quarter-to-date
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: prior_week_qtd_performance }
+  - metric_variant_id: MV_CUSTOMER_PRIOR_WEEK_QTD_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: Customer Prior-Week QTD Executed
+    business_context: Customer Revenue Detail
+    calculation_method: Read J from the immediately preceding approved output; blank in quarter week one.
+    period_type: Prior-week fiscal-quarter-to-date
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: prior_week_qtd_executed }
+  - metric_variant_id: MV_CUSTOMER_PRIOR_OUTPUT_COMPARABLE_PERFORMANCE_V1
+    metric_id: METRIC_REVENUE_PERFORMANCE
+    metric_name: Customer Prior-Output Comparable Performance
+    business_context: Customer Revenue Detail
+    calculation_method: Read K from the immediately preceding approved output; blank in quarter week one.
+    period_type: Prior output's prior-year comparable fiscal-quarter-to-date
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: prior_output_comparable_performance }
+  - metric_variant_id: MV_CUSTOMER_PRIOR_OUTPUT_COMPARABLE_EXECUTED_V1
+    metric_id: METRIC_REVENUE_EXECUTED
+    metric_name: Customer Prior-Output Comparable Executed
+    business_context: Customer Revenue Detail
+    calculation_method: Read L from the immediately preceding approved output; blank in quarter week one.
+    period_type: Prior output's prior-year comparable fiscal-quarter-to-date
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: prior_output_comparable_executed }
+  - metric_variant_id: MV_CUSTOMER_FORECAST_YOY_V1
+    metric_id: METRIC_CUSTOMER_REVENUE_FORECAST_YOY
+    metric_name: Customer Forecast YoY
+    business_context: Customer Revenue Detail
+    calculation_method: Direct ratio
+    formula: 'IFERROR(current_quarter_forecast / prior_year_quarter_revenue - 1, blank)'
+    period_type: Fiscal quarter comparison
+    base_unit: Decimal ratio
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: forecast_yoy }
+  - metric_variant_id: MV_CUSTOMER_FORECAST_COMPLETION_RATE_V1
+    metric_id: METRIC_CUSTOMER_REVENUE_FORECAST_COMPLETION_RATE
+    metric_name: Customer Forecast Completion Rate
+    business_context: Customer Revenue Detail
+    calculation_method: Direct ratio
+    formula: 'IFERROR(current_qtd_performance / current_quarter_forecast, blank)'
+    period_type: Current fiscal-quarter-to-date versus full-quarter forecast
+    base_unit: Decimal ratio
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: performance_completion_rate }
+  - metric_variant_id: MV_CUSTOMER_PERFORMANCE_YOY_V1
+    metric_id: METRIC_CUSTOMER_REVENUE_PERFORMANCE_YOY
+    metric_name: Customer QTD Performance YoY
+    business_context: Customer Revenue Detail
+    calculation_method: Direct ratio
+    formula: 'IFERROR(current_qtd_performance / prior_year_qtd_performance - 1, blank)'
+    period_type: Comparable fiscal-quarter-to-date
+    base_unit: Decimal ratio
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: performance_yoy }
+  - metric_variant_id: MV_CUSTOMER_WEEKLY_INCREMENTAL_PERFORMANCE_V1
+    metric_id: METRIC_CUSTOMER_REVENUE_WEEKLY_INCREMENTAL_PERFORMANCE
+    metric_name: Customer Weekly Incremental Performance
+    business_context: Customer Revenue Detail
+    calculation_method: Difference of validated QTD results
+    formula: current_qtd_performance - prior_week_qtd_performance; quarter week one equals current_qtd_performance
+    period_type: Weekly incremental within fiscal quarter
+    base_unit: CNY yuan
+    result_precision: Preserve full precision
+    version: 1.0.0
+    output_binding: { result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY, record_set_id: customer_detail, result_field_id: weekly_incremental_performance }
+
+approval:
+  business_definition_confirmed: true
+  formula_confirmed: true
+  code_implementation_authorized: false
+  evidence: Owner confirmations dated 2026-08-07

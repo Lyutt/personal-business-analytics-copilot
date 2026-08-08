@@ -5,7 +5,7 @@
 - 阶段状态：Weekly Workflow P0 Business Rule范围已完成并通过Gate。
 - 正式开始日期：2026-07-31。
 - 本轮恢复日期：2026-08-01。
-- 当前Workflow：`WF_WEEKLY_BUSINESS_REPORT`。
+- Weekly原范围保持冻结；`WF_CUSTOMER_REVENUE_DETAIL`独立复用两条Revenue规则，并由`POLICY_CUSTOMER_REVENUE_DETAIL_V1`承载其已确认的客户集合、排序、Top20、校验和输出边界。
 - Revenue规则状态：已完成Owner确认与Readiness Gate。
 - 已批准Revenue Rule数量：6。
 - 已确认但待Field Mapping的Revenue Rule数量：0。
@@ -72,6 +72,7 @@
 
 - `QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1`：已批准；仅显式绑定的Apollo和NovaBI
   Pipeline可在会话失效时刷新一次、恢复并验证查询配置后重试一次。
+- `POLICY_CUSTOMER_REVENUE_DETAIL_V1`：客户Workflow专用；邮件未到时每30分钟持续复查，且不改变Weekly的一次重试策略。
 
 ## 已确认无需额外Rule的Pipeline
 

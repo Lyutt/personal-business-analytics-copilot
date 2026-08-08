@@ -1,0 +1,43 @@
+config_type: business_asset_status_index
+index_version: 1.0.0
+status: synchronized
+assessment_date: 2026-08-08
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+current_stage: Implementation Baseline Frozen - Awaiting Explicit Owner Code Implementation Approval
+phase_status:
+  phase_1_5_business_asset_initialization: completed
+  code_implementation: awaiting_explicit_owner_approval
+  end_to_end_runtime_acceptance: not_started
+asset_stage_gates:
+  - { gate_id: GATE_DATASET_READINESS_WF_CUSTOMER_REVENUE_DETAIL_V1, asset_stage: Dataset reuse and local inputs, status: passed, source_artifact: phase1_5/assets/datasets/dataset_readiness_matrix_customer_revenue_detail.yaml }
+  - { gate_id: GATE_PIPELINE_REGISTRY_WF_CUSTOMER_REVENUE_DETAIL_V1, asset_stage: Pipeline Registry, status: passed, source_artifact: phase1_5/assets/pipelines/pipeline_registry_readiness_gate_customer_revenue_detail.yaml }
+  - { gate_id: GATE_FIELD_MAPPING_WF_CUSTOMER_REVENUE_DETAIL_V1, asset_stage: Field Mapping, status: passed, source_artifact: phase1_5/assets/field_mappings/field_mapping_readiness_gate_customer_revenue_detail.yaml }
+  - { gate_id: GATE_BUSINESS_RULE_WF_CUSTOMER_REVENUE_DETAIL_V1, asset_stage: Business Rule and Pipeline Policy, status: passed, source_artifact: phase1_5/assets/business_rules/business_rule_readiness_gate_customer_revenue_detail.yaml }
+  - { gate_id: GATE_METRIC_LIBRARY_WF_CUSTOMER_REVENUE_DETAIL_V1, asset_stage: Metric Library, status: passed, source_artifact: phase1_5/assets/metrics/metric_library_readiness_gate_customer_revenue_detail.yaml }
+  - { gate_id: GATE_RESULT_CONTRACT_WF_CUSTOMER_REVENUE_DETAIL_V1, asset_stage: Result Contract, status: passed, source_artifact: phase1_5/assets/result_contracts/result_contract_readiness_gate_customer_revenue_detail.yaml }
+  - { gate_id: GATE_OUTPUT_MAPPING_WF_CUSTOMER_REVENUE_DETAIL_V1, asset_stage: Output Mapping, status: passed, source_artifact: phase1_5/assets/output_mappings/output_mapping_readiness_gate_customer_revenue_detail.yaml }
+  - { gate_id: GATE_CODE_IMPLEMENTATION_WF_CUSTOMER_REVENUE_DETAIL_V1, asset_stage: Code Implementation Readiness, status: ready_awaiting_explicit_owner_approval, source_artifact: phase1_5/assets/readiness/code_implementation_readiness_gate_customer_revenue_detail.yaml }
+implementation_baseline:
+  baseline_id: IMPLEMENTATION_BASELINE_WF_CUSTOMER_REVENUE_DETAIL_V1
+  baseline_version: 1.0.0
+  status: frozen_awaiting_explicit_owner_code_implementation_approval
+  source_artifact: phase1_5/assets/readiness/implementation_baseline_customer_revenue_detail.yaml
+  explicit_owner_code_implementation_approval_received: false
+scope_boundaries:
+  output: local_only_xlsx
+  weekly_report_dependency: none
+  shared_metric_store: none
+  cross_workflow_result_contract_publish: false
+  outlook_or_external_message: false
+  raw_business_data_in_git: prohibited
+source_of_truth_order:
+  - phase1_5/assets/readiness/status_index_customer_revenue_detail.yaml
+  - phase1_5/assets/readiness/implementation_baseline_customer_revenue_detail.yaml
+  - phase1_5/assets/readiness/code_implementation_readiness_gate_customer_revenue_detail.yaml
+  - phase1_5/workflows/customer_revenue_detail/WORKFLOW_v1.md
+  - Versioned customer Workflow assets under phase1_5/assets
+constraints:
+  explicit_owner_approval_required_before_code_implementation: true
+  frozen_baseline_does_not_authorize_code_implementation: true
+  runtime_acceptance_is_separate: true
+  output_must_remain_local_only: true

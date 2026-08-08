@@ -1,0 +1,100 @@
+schema_version: "1.0"
+asset_type: Pipeline Policy
+pipeline_id: PL_CUSTOMER_REVENUE_DETAIL_WEEKLY
+policy_id: POLICY_CUSTOMER_REVENUE_DETAIL_V1
+approval_status: approved_design_only
+
+scope:
+  workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+  version: 1.0.0
+  authoritative_design: phase1_5/workflows/customer_revenue_detail/WORKFLOW_v1.md
+  output_scope: local_only_xlsx
+  shared_metric_store_write: false
+  cross_workflow_result_contract_publish: false
+
+trigger:
+  schedule: { day_of_week: Thursday, start_time: "17:40", timezone: Asia/Shanghai }
+  source_wait_policy:
+    initial_missing_action: notify_once
+    recheck_interval_minutes: 30
+    maximum_rechecks: unlimited
+    auto_resume_on_arrival: true
+  manual_required_parameters:
+    - WorkflowExecutionDate
+    - CurrentRevenueCutoffDate
+    - CurrentYear
+    - Quarter
+  prior_year_date_rule:
+    workflow_year_2026: current cutoff minus one year plus one day
+    workflow_year_2027_or_later: block_for_owner_reconfirmation
+
+processing:
+  technical_filter_and_single_count_rule_id: BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+  prior_year_source_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+  advertiser_mapping:
+    matching: exact_only
+    fuzzy_matching_allowed: false
+    unmatched_action: temporary_customer_equals_raw_advertiser_and_warn
+    unmatched_blocks: false
+    rerun_scope_after_mapping_change: current_week_only
+  source_record_handling:
+    preserve_negative_values: true
+    preserve_reversals: true
+    preserve_exact_duplicates: true
+    additional_deduplication_allowed: false
+  row_grain: one_row_per_customer_or_group
+  duplicate_result_row_action: block_workflow
+  customer_universe: union_of_quarter_baseline_prior_output_current_and_prior_year_results
+  retain_zero_customers_through_quarter: true
+  quarter_first_week_prior_output_fields: blank_M_N_Q_R
+  quarter_first_week_incremental_performance: I_equals_F
+  formulas:
+    E: 'IFERROR(D/C-1,"")'
+    G: 'IFERROR(F/D,"")'
+    H: 'IFERROR(F/K-1,"")'
+    I_regular_week: F-M
+    I_quarter_first_week: F
+    calculation_precision: full_precision
+  top20:
+    memberships_independent: true
+    freeze_period: quarter
+    member_count: 20
+    tie_expansion: false
+    other_includes_all_remaining_values: true
+    ratios_recomputed_after_aggregation: true
+    output_cells: static_validated_values_A_to_G
+
+failure_handling:
+  blocking_conditions:
+    - required_source_missing_unreadable_or_ambiguous
+    - prior_output_missing_except_quarter_first_week
+    - duplicate_customer_result_row
+    - reconciliation_outside_absolute_CNY_1
+    - required_template_structure_invalid
+    - formula_mirror_mismatch
+  warning_only_conditions:
+    - unmatched_advertiser
+    - negative_money_value
+    - negative_weekly_incremental_performance
+    - absolute_rate_at_least_100_percent
+  partial_file_allowed: false
+  weekly_business_report_impact: none
+
+output_boundary:
+  calculation_engine_result_is_authoritative: true
+  output_mapping_may_calculate_business_values: false
+  excel_formula_mirror_columns: [E, G, H, I]
+  formula_mirror_mismatch_action: block_output
+  collision_policy: create_next_v_suffix_without_overwrite_and_notify
+  inherited_red_manual_fill_action: clear
+  preserve_normal_template_style: true
+  outlook_draft: false
+  external_message: false
+
+governance:
+  customer_data_local_only: true
+  raw_order_rows_in_repository_or_logs: false
+  code_implementation_authorized: false
+  evidence_sources:
+    - Owner confirmations dated 2026-08-07
+    - phase1_5/workflows/customer_revenue_detail/WORKFLOW_v1.md

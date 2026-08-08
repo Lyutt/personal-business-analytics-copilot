@@ -1,0 +1,19 @@
+config_type: output_mapping_readiness_gate
+gate_id: GATE_OUTPUT_MAPPING_WF_CUSTOMER_REVENUE_DETAIL_V1
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+assessment_date: 2026-08-08
+status: completed_design_only
+gate_result: passed
+scope:
+  output_mapping_id: OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1
+  local_only: true
+  sheet_count: 3
+gate_checks:
+  result_record_set_bindings: pass
+  output_mapping_business_calculation_disabled: pass
+  formula_mirror_validation: pass
+  dynamic_row_formula_filter_style_extension: pass
+  inherited_red_manual_fill_clearance: pass
+  collision_suffix_without_overwrite: pass
+  no_weekly_attachment_or_outlook_message: pass
+decision: pass

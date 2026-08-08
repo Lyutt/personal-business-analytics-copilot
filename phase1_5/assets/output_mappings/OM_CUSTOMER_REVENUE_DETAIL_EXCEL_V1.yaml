@@ -1,7 +1,7 @@
 config_type: output_mapping
 output_mapping_id: OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1
 mapping_version: 1.0.0
-status: deferred_by_owner
+status: approved_design_only
 owner: WORKFLOW_OWNER
 workflow_id: WF_CUSTOMER_REVENUE_DETAIL
 
@@ -10,7 +10,11 @@ output_target:
   format: XLSX
   storage_scope: local_only
   storage_location: ${CUSTOMER_REVENUE_OUTPUT_DIR_LOCAL_ONLY}
-  filename_pattern: ${CUSTOMER_REVENUE_DETAIL_FILENAME_PATTERN_LOCAL_ONLY}
+  filename_pattern: '{YY}年Q{Quarter}硬广预算盘点-收入截止{YYYYMMDD}.xlsx'
+  collision_policy:
+    overwrite_allowed: false
+    next_available_suffix: v2_v3_and_so_on
+    owner_notification_required: true
   source_template_reference: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
   source_template_version_binding:
     asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
@@ -29,7 +33,11 @@ assembly_constraints:
   may_apply_business_rule: false
   may_select_metric_variant: false
   may_create_partial_file_on_failure: false
-  output_engine_role: Presentation assembly, template mapping and XLSX generation only
+  output_engine_role: Presentation assembly, formula-mirror validation, template mapping and XLSX generation only
+  authoritative_result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+  calculation_engine_result_is_authoritative: true
+  formula_cells_are_non_authoritative_audit_mirrors: true
+  formula_mirror_mismatch_action: block_output
 
 workbook_layout:
   preserve_template_style: true
@@ -40,6 +48,8 @@ workbook_layout:
     - sheet_id: CUSTOMER_DETAIL_LIST
       sheet_name_pattern: 分客户list
       role: Primary customer detail list
+      result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+      result_record_set_binding: customer_detail
       observed_used_range: A1:R138
       observed_column_count: 18
       observed_formula_cells: 10
@@ -99,13 +109,29 @@ workbook_layout:
           template_header_pattern: '{PriorYear}年Q{Quarter}截止{PriorComparableAsOfDate}执行'
           semantic_role: prior_year_comparable_executed_as_of_date
       formula_policy:
-        observed_formula_cells_are_template_structure_only: true
-        formula_logic: TBD
-        output_engine_must_not_invent_or_recalculate_business_logic: true
+        formula_cells_are_display_and_audit_mirrors_only: true
+        authoritative_values_source: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY.customer_detail
+        formulas:
+          E: 'IFERROR(D/C-1,"")'
+          G: 'IFERROR(F/D,"")'
+          H: 'IFERROR(F/K-1,"")'
+          I_regular_week: F-M
+          I_quarter_first_week: F
+        mismatch_tolerance: exact_at_full_precision
+        mismatch_action: block_output
+        output_engine_must_not_invent_or_change_business_values: true
+      style_policy:
+        clear_inherited_red_manual_cell_fills: true
+        preserve_normal_template_style: true
+        extend_formula_filter_and_style_to_dynamic_rows: true
+        money_display_format: integer_with_thousands_separator
+        percentage_display_format: integer_percentage
 
     - sheet_id: PRIOR_YEAR_TOP20
       sheet_name_pattern: '{PriorYear}年Q{Quarter}收入Top20'
       role: Prior-year quarter customer summary
+      result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+      result_record_set_binding: prior_year_top20
       observed_used_range: A1:G22
       observed_column_count: 7
       header_row: 1
@@ -123,6 +149,8 @@ workbook_layout:
     - sheet_id: CURRENT_QUARTER_TOP20
       sheet_name_pattern: '{CurrentYear}年Q{Quarter}预估Top20'
       role: Current-quarter estimate customer summary
+      result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+      result_record_set_binding: forecast_top20
       observed_used_range: A1:H22
       observed_column_count: 8
       populated_columns: A:G
@@ -141,51 +169,44 @@ workbook_layout:
 
 parameterization:
   required_runtime_parameters:
+    - WorkflowExecutionDate
+    - CurrentRevenueCutoffDate
     - CurrentYear
-    - PriorYear
     - Quarter
+  derived_runtime_parameters:
+    - PriorYear
     - AsOfDate
-  optional_runtime_parameters:
     - PriorWeekAsOfDate
     - PriorComparableAsOfDate
-  date_and_period_header_generation: Preserve the approved template pattern; exact input source rules are TBD
+  prior_year_date_rule:
+    workflow_year_2026: current cutoff minus one year plus one day
+    workflow_year_2027_or_later: block_for_owner_reconfirmation
+  missing_required_parameter_action: block_workflow
+  date_and_period_header_generation: Use the approved template pattern and validated Workflow parameters.
 
 input_sources:
-  status: confirmed_three_part_input_set
-  source_assets:
-    - source_role: current_quarter_cumulative_revenue
-      dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
-      required: true
-      acquisition_scope: Current fiscal quarter cumulative revenue input
-      pipeline_binding: TBD
-    - source_role: prior_year_comparable_revenue
-      source_type: Local historical business-line revenue archive
-      storage_location: ${REVENUE_HISTORY_ARCHIVE_DIR_LOCAL_ONLY}
-      required: true
-      selection_rule_reference: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
-      actual_files_must_remain_local_only: true
-    - source_role: prior_week_customer_revenue_output
-      source_type: Prior approved Customer Revenue Detail Excel output
-      workflow_id: WF_CUSTOMER_REVENUE_DETAIL
-      run_reference: Previous approved run for the immediately preceding report period
-      required: true
-      read_only: true
-      source_fields:
-        - prior_week_cumulative_values
-        - prior_year_comparable_cumulative_values
-      output_file_must_remain_local_only: true
-  dataset_pipeline_bindings:
-    - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
-      role: current_quarter_cumulative_revenue
-      pipeline_id: TBD
-    - dataset_id: TBD
-      role: prior_year_comparable_revenue
-      pipeline_id: TBD
-  prior_output_reference:
-    required_for: prior_week_cumulative_values and prior_year_comparable_cumulative_values
-    selection_rule: Latest approved output for the immediately preceding report period
-    missing_or_unapproved_action: Notify owner and block Customer Revenue Detail Workflow
-  note: All three sources are explicit; no source may be inferred from workbook field names or customer rows.
+  status: validated_result_contract_only
+  result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+  producer_pipeline_id: PL_CUSTOMER_REVENUE_DETAIL_WEEKLY
+  output_mapping_may_read_prior_workbook_directly: false
+  note: Current, prior-year, quarter-baseline and prior-output inputs are ingested and validated upstream by the producer Pipeline.
+
+result_record_set_bindings:
+  - sheet_id: CUSTOMER_DETAIL_LIST
+    result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+    record_set_id: customer_detail
+    target_columns: A:R
+  - sheet_id: PRIOR_YEAR_TOP20
+    result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+    record_set_id: prior_year_top20
+    target_columns: A:G
+    values_must_be_static: true
+  - sheet_id: CURRENT_QUARTER_TOP20
+    result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+    record_set_id: forecast_top20
+    target_columns: A:G
+    values_must_be_static: true
+    header_only_allowed_while_no_forecast_values_exist: true
 
 failure_and_warning_policy:
   input_missing_or_invalid:
@@ -197,12 +218,25 @@ failure_and_warning_policy:
     notify_owner: true
     block_workflow: true
     create_partial_file: false
-  warning_source: Runtime validation and Pipeline notification records
+  blocking_conditions:
+    - required_source_missing_unreadable_or_ambiguous
+    - prior_output_missing_except_quarter_first_week
+    - duplicate_customer_result_row
+    - reconciliation_outside_absolute_CNY_1
+    - required_template_structure_invalid
+    - formula_mirror_mismatch
+  warning_only_conditions:
+    - unmatched_advertiser
+    - negative_money_value
+    - negative_weekly_incremental_performance
+    - absolute_rate_at_least_100_percent
+  warning_source: Validated Pipeline notification records
+  notification_delivery: Codex task result and local-only exception/run record
+  outlook_or_external_message_allowed: false
 
 governance:
-  deferred_by_owner: true
-  defer_reason: Complete the overall Weekly Business Report Workflow first
-  resume_condition: Owner explicitly resumes Customer Revenue Detail Workflow initialization
+  design_assets_complete: true
+  code_implementation_authorized: false
   output_mapping_does_not_define_business_rules_or_metric_formulas: true
   workflow_file_dependency_on_weekly_report: false
   customer_data_and_generated_workbooks_must_remain_local_only: true

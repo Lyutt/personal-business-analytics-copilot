@@ -1684,7 +1684,17 @@ def validate_mvp_acceptance_semantics(
     mvp_execution = registry.get("constraints", {}).get(
         "mvp_pipeline_execution", {}
     )
-    if mvp_execution.get("pipeline_ids") != registered_pipeline_ids or mvp_execution.get(
+    weekly_pipeline_ids = [
+        item.get("pipeline_id")
+        for item in registry.get("pipelines", [])
+        if isinstance(item, dict)
+        and any(
+            isinstance(binding, dict)
+            and binding.get("workflow_id") == "WF_WEEKLY_BUSINESS_REPORT"
+            for binding in item.get("workflow_bindings", [])
+        )
+    ]
+    if mvp_execution.get("pipeline_ids") != weekly_pipeline_ids or mvp_execution.get(
         "first_phase_scheduling_mode"
     ) != "sequential" or mvp_execution.get("registered_pipeline_order_required") is not True or mvp_execution.get(
         "failed_run_recovery"
@@ -1693,7 +1703,7 @@ def validate_mvp_acceptance_semantics(
     ) is not False or mvp_execution.get("stage_checkpointing_required") is not False or mvp_execution.get(
         "resume_from_failed_stage_required"
     ) is not False:
-        errors.append(f"{registry_file}: all initial MVP Pipeline execution semantics are incomplete")
+        errors.append(f"{registry_file}: Weekly MVP Pipeline execution semantics are incomplete")
 
     for pipeline_id in registered_pipeline_ids:
         pipeline = pipelines.get(pipeline_id, {})
@@ -2558,7 +2568,7 @@ def validate_phase1_5_final_closure(
         for dependency in pipeline.get("dataset_dependencies", [])
         if isinstance(dependency, dict)
     ]
-    if len(dependencies) != 10 or any(
+    if len(dependencies) != 11 or any(
         dependency.get("dataset_version_constraint") != ">=0.1.0,<0.2.0"
         or dependency.get("join_or_relationship_rule_id") != "not_applicable"
         or dependency.get("run_input_manifest_required") is not True
@@ -3221,73 +3231,151 @@ def validate_external_asset_versions(
 def validate_implementation_baseline(
     documents: dict[str, Any], errors: list[str]
 ) -> int:
-    """Keep the frozen baseline, Status Index, and implementation Gate aligned."""
-    baseline_file = "phase1_5/assets/readiness/implementation_baseline.yaml"
-    status_file = "phase1_5/assets/readiness/status_index.yaml"
-    gate_file = "phase1_5/assets/readiness/code_implementation_readiness_gate.yaml"
-    baseline = documents.get(baseline_file)
-    status_index = documents.get(status_file)
-    code_gate = documents.get(gate_file)
-    if not all(isinstance(item, dict) for item in (baseline, status_index, code_gate)):
-        errors.append("Implementation Baseline validation inputs are missing or invalid")
-        return 0
-
-    checked = 0
-    indexed_gates = {
-        item.get("gate_id"): item.get("status")
-        for item in status_index.get("asset_stage_gates", [])
-        if isinstance(item, dict)
-    }
-    for index, item in enumerate(baseline.get("frozen_gate_results", [])):
-        if not isinstance(item, dict):
-            errors.append(f"{baseline_file}:frozen_gate_results[{index}]: expected mapping")
+    """Keep every Workflow baseline, Status Index, and implementation Gate aligned."""
+    baselines: dict[str, tuple[str, dict[str, Any]]] = {}
+    status_indexes: dict[str, tuple[str, dict[str, Any]]] = {}
+    code_gates: dict[str, tuple[str, dict[str, Any]]] = {}
+    contract_workflows: dict[str, str] = {}
+    for file, document in documents.items():
+        if not isinstance(document, dict):
             continue
-        gate_id = item.get("gate_id")
-        if indexed_gates.get(gate_id) != item.get("status"):
+        workflow_id = document.get("workflow_id")
+        config_type = document.get("config_type")
+        if config_type == "implementation_baseline" and isinstance(workflow_id, str):
+            baselines[workflow_id] = (file, document)
+        elif config_type == "business_asset_status_index" and isinstance(workflow_id, str):
+            status_indexes[workflow_id] = (file, document)
+        elif config_type == "code_implementation_readiness_gate" and isinstance(workflow_id, str):
+            code_gates[workflow_id] = (file, document)
+        elif (
+            config_type == "result_contract"
+            and isinstance(workflow_id, str)
+            and file.startswith("phase1_5/assets/result_contracts/RC_")
+        ):
+            contract_id = document.get("result_contract_id")
+            if isinstance(contract_id, str):
+                contract_workflows[contract_id] = workflow_id
+
+    workflow_ids = set(baselines) | set(status_indexes) | set(code_gates)
+    checked = 0
+    for workflow_id in sorted(workflow_ids):
+        baseline_entry = baselines.get(workflow_id)
+        status_entry = status_indexes.get(workflow_id)
+        gate_entry = code_gates.get(workflow_id)
+        if not all((baseline_entry, status_entry, gate_entry)):
             errors.append(
-                f"{baseline_file}:frozen_gate_results[{index}]: status does not "
-                f"match Status Index for {gate_id}"
+                f"{workflow_id}: Baseline, Status Index, and Code Gate must all exist"
             )
-        checked += 1
+            continue
+        baseline_file, baseline = baseline_entry
+        status_file, status_index = status_entry
+        _, code_gate = gate_entry
 
-    baseline_index = status_index.get("implementation_baseline", {})
-    for key in (
-        "baseline_id",
-        "baseline_version",
-        "status",
-        "freeze_date",
-        "freeze_revision_status",
-    ):
-        if baseline_index.get(key) != baseline.get(key):
-            errors.append(
-                f"{status_file}:implementation_baseline.{key}: does not match baseline asset"
+        indexed_gates = {
+            item.get("gate_id"): item.get("status")
+            for item in status_index.get("asset_stage_gates", [])
+            if isinstance(item, dict)
+        }
+        for index, item in enumerate(baseline.get("frozen_gate_results", [])):
+            if not isinstance(item, dict):
+                errors.append(
+                    f"{baseline_file}:frozen_gate_results[{index}]: expected mapping"
+                )
+                continue
+            gate_id = item.get("gate_id")
+            if indexed_gates.get(gate_id) != item.get("status"):
+                errors.append(
+                    f"{baseline_file}:frozen_gate_results[{index}]: status does not "
+                    f"match Status Index for {gate_id}"
+                )
+            checked += 1
+
+        baseline_index = status_index.get("implementation_baseline", {})
+        baseline_index_keys = ["baseline_id", "baseline_version", "status"]
+        baseline_index_keys.extend(
+            key
+            for key in ("freeze_date", "freeze_revision_status")
+            if key in baseline_index
+        )
+        for key in baseline_index_keys:
+            if baseline_index.get(key) != baseline.get(key):
+                errors.append(
+                    f"{status_file}:implementation_baseline.{key}: does not match "
+                    f"the {workflow_id} baseline asset"
+                )
+            checked += 1
+
+        authorization = baseline.get("implementation_authorization", {})
+        gate_decision = code_gate.get("implementation_entry_decision", {})
+        required_false = (
+            (authorization, "explicit_owner_code_implementation_approval_received"),
+            (authorization, "code_implementation_may_start"),
+            (gate_decision, "explicit_owner_code_implementation_approval_received"),
+            (gate_decision, "code_implementation_may_start"),
+        )
+        for container, key in required_false:
+            if container.get(key) is not False:
+                errors.append(
+                    f"{baseline_file}: implementation approval gate requires {key}=false"
+                )
+            checked += 1
+
+        workflow_contracts = {
+            contract_id
+            for contract_id, contract_workflow in contract_workflows.items()
+            if contract_workflow == workflow_id
+        }
+        workflow_variant_count = 0
+        for document in documents.values():
+            if not isinstance(document, dict):
+                continue
+            for variant in document.get("metric_variants", []):
+                if not isinstance(variant, dict):
+                    continue
+                target_contract = variant.get("output_binding", {}).get(
+                    "result_contract_id"
+                )
+                if target_contract in workflow_contracts:
+                    workflow_variant_count += 1
+        expected_counts = {
+            "external_asset_reference_count": len(
+                documents.get(
+                    "phase1_5/assets/external_asset_references.yaml", {}
+                ).get("external_assets", [])
+            ),
+            "metric_variant_count": workflow_variant_count,
+            "result_contract_count": len(workflow_contracts),
+        }
+        frozen_versions = baseline.get("frozen_asset_versions", {})
+        for key, expected in expected_counts.items():
+            if key not in frozen_versions:
+                continue
+            if frozen_versions.get(key) != expected:
+                errors.append(
+                    f"{baseline_file}:frozen_asset_versions.{key}: expected {expected} "
+                    f"for {workflow_id}"
+                )
+            checked += 1
+
+        if workflow_id == "WF_WEEKLY_BUSINESS_REPORT":
+            store_gate_file = (
+                "phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml"
             )
-        checked += 1
-
-    authorization = baseline.get("implementation_authorization", {})
-    gate_decision = code_gate.get("implementation_entry_decision", {})
-    required_false = (
-        (authorization, "explicit_owner_code_implementation_approval_received"),
-        (authorization, "code_implementation_may_start"),
-        (gate_decision, "explicit_owner_code_implementation_approval_received"),
-        (gate_decision, "code_implementation_may_start"),
-    )
-    for container, key in required_false:
-        if container.get(key) is not False:
-            errors.append(f"Implementation Baseline approval gate requires {key}=false")
-        checked += 1
-
-    store_gate_file = (
-        "phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml"
-    )
-    store_gate = documents.get(store_gate_file, {})
-    if store_gate.get("gate_conclusion", {}).get(
-        "code_implementation_start"
-    ) != "wait_for_explicit_owner_approval" or gate_decision.get(
-        "code_implementation_start"
-    ) != "wait_for_explicit_owner_approval":
-        errors.append("Metric Store and final Code Implementation Gates must both wait for explicit Owner approval")
-    checked += 1
+            store_gate = documents.get(store_gate_file, {})
+            if store_gate.get("gate_conclusion", {}).get(
+                "code_implementation_start"
+            ) != "wait_for_explicit_owner_approval" or gate_decision.get(
+                "code_implementation_start"
+            ) != "wait_for_explicit_owner_approval":
+                errors.append(
+                    "Metric Store and final Code Implementation Gates must both "
+                    "wait for explicit Owner approval"
+                )
+            if baseline.get("change_control", {}).get(
+                "repository_commit_binding_status"
+            ) != "tracked_on_draft_pr_5_head":
+                errors.append(f"{baseline_file}: repository publication state is stale")
+            checked += 2
 
     stale_publication_paths: list[str] = []
 
@@ -3296,7 +3384,9 @@ def validate_implementation_baseline(
             if value.get("committed_or_pushed") is False:
                 stale_publication_paths.append(path or "<root>")
             for key, child in value.items():
-                find_stale_publication_state(child, f"{path}.{key}" if path else str(key))
+                find_stale_publication_state(
+                    child, f"{path}.{key}" if path else str(key)
+                )
         elif isinstance(value, list):
             for index, child in enumerate(value):
                 find_stale_publication_state(child, f"{path}[{index}]")
@@ -3309,38 +3399,7 @@ def validate_implementation_baseline(
             "stale committed_or_pushed=false states remain: "
             + ", ".join(stale_publication_paths)
         )
-    if baseline.get("change_control", {}).get(
-        "repository_commit_binding_status"
-    ) != "tracked_on_draft_pr_5_head":
-        errors.append(f"{baseline_file}: repository publication state is stale")
     checked += 1
-
-    expected_counts = {
-        "external_asset_reference_count": len(
-            documents.get("phase1_5/assets/external_asset_references.yaml", {}).get(
-                "external_assets", []
-            )
-        ),
-        "metric_variant_count": sum(
-            len(document.get("metric_variants", []))
-            for document in documents.values()
-            if isinstance(document, dict)
-        ),
-        "result_contract_count": sum(
-            1
-            for file, document in documents.items()
-            if file.startswith("phase1_5/assets/result_contracts/RC_")
-            and isinstance(document, dict)
-            and document.get("config_type") == "result_contract"
-        ),
-    }
-    frozen_versions = baseline.get("frozen_asset_versions", {})
-    for key, expected in expected_counts.items():
-        if frozen_versions.get(key) != expected:
-            errors.append(
-                f"{baseline_file}:frozen_asset_versions.{key}: expected {expected}"
-            )
-        checked += 1
 
     base_sha = os.environ.get("ASSET_VALIDATION_BASE_SHA", "").strip()
     base_sha_source = "ASSET_VALIDATION_BASE_SHA"
@@ -3360,75 +3419,104 @@ def validate_implementation_baseline(
                 base_sha = resolved
                 base_sha_source = candidate
                 break
-    if not base_sha:
-        errors.append(
-            f"{baseline_file}: cannot resolve validation Base SHA from the "
-            "Actions context or local Git refs"
+    changed_asset_paths: set[str] = set()
+    if base_sha:
+        changed_result = subprocess.run(
+            ["git", "diff", "--name-only", base_sha, "--"],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
         )
-    elif baseline.get("source_main_commit_sha") != base_sha:
-        errors.append(
-            f"{baseline_file}: source_main_commit_sha does not match Base SHA "
-            f"resolved from {base_sha_source}"
-        )
-    checked += 1
+        if changed_result.returncode == 0:
+            changed_asset_paths = {
+                path.strip().replace("\\", "/")
+                for path in changed_result.stdout.splitlines()
+                if path.strip()
+            }
+        else:
+            errors.append(
+                f"cannot enumerate assets changed from Base SHA {base_sha}"
+            )
+    for workflow_id, (baseline_file, baseline) in baselines.items():
+        if not base_sha:
+            errors.append(
+                f"{baseline_file}: cannot resolve validation Base SHA from the "
+                "Actions context or local Git refs"
+            )
+        elif (
+            baseline_file in changed_asset_paths
+            and baseline.get("source_main_commit_sha") != base_sha
+        ):
+            errors.append(
+                f"{baseline_file}: changed baseline source_main_commit_sha does not "
+                f"match Base SHA resolved from {base_sha_source}"
+            )
+        checked += 1
     return checked
 
 
 def validate_status_consistency(
     documents: dict[str, Any], errors: list[str]
 ) -> int:
-    """Ensure Status Index, source Gates, and the final Gate report one result."""
-    index_path = "phase1_5/assets/readiness/status_index.yaml"
-    index_document = documents.get(index_path)
-    if not isinstance(index_document, dict):
-        errors.append(f"{index_path}: missing or invalid status index")
-        return 0
-
-    indexed_results: dict[str, str] = {}
+    """Ensure each Workflow Status Index and its source/final Gates agree."""
+    status_indexes = [
+        (file, document)
+        for file, document in documents.items()
+        if isinstance(document, dict)
+        and document.get("config_type") == "business_asset_status_index"
+    ]
+    code_gates = {
+        document.get("workflow_id"): (file, document)
+        for file, document in documents.items()
+        if isinstance(document, dict)
+        and document.get("config_type") == "code_implementation_readiness_gate"
+    }
     checked = 0
-    for item_index, item in enumerate(index_document.get("asset_stage_gates", [])):
-        if not isinstance(item, dict):
-            errors.append(
-                f"{index_path}:asset_stage_gates[{item_index}]: expected mapping"
-            )
+    for index_path, index_document in status_indexes:
+        workflow_id = index_document.get("workflow_id")
+        indexed_results: dict[str, str] = {}
+        for item_index, item in enumerate(index_document.get("asset_stage_gates", [])):
+            if not isinstance(item, dict):
+                errors.append(
+                    f"{index_path}:asset_stage_gates[{item_index}]: expected mapping"
+                )
+                continue
+            gate_id = item.get("gate_id")
+            indexed_status = item.get("status")
+            source_artifact = item.get("source_artifact")
+            if not all(
+                isinstance(value, str) and value
+                for value in (gate_id, indexed_status, source_artifact)
+            ):
+                errors.append(
+                    f"{index_path}:asset_stage_gates[{item_index}]: incomplete entry"
+                )
+                continue
+            source_document = documents.get(source_artifact)
+            if not isinstance(source_document, dict):
+                errors.append(
+                    f"{index_path}:asset_stage_gates[{item_index}]: source artifact "
+                    f"not found: {source_artifact}"
+                )
+                continue
+            if source_document.get("gate_id") != gate_id:
+                errors.append(
+                    f"{source_artifact}: gate_id does not match Status Index entry {gate_id}"
+                )
+            if source_document.get("gate_result") != indexed_status:
+                errors.append(
+                    f"{source_artifact}: gate_result does not match Status Index "
+                    f"status {indexed_status!r}"
+                )
+            indexed_results[gate_id] = indexed_status
+            checked += 1
+        gate_entry = code_gates.get(workflow_id)
+        if not gate_entry:
+            errors.append(f"{index_path}: no Code Gate for {workflow_id}")
             continue
-        gate_id = item.get("gate_id")
-        indexed_status = item.get("status")
-        source_artifact = item.get("source_artifact")
-        if not all(isinstance(value, str) and value for value in (
-            gate_id,
-            indexed_status,
-            source_artifact,
-        )):
-            errors.append(
-                f"{index_path}:asset_stage_gates[{item_index}]: incomplete gate status entry"
-            )
-            continue
-        source_document = documents.get(source_artifact)
-        if not isinstance(source_document, dict):
-            errors.append(
-                f"{index_path}:asset_stage_gates[{item_index}]: "
-                f"source artifact not found: {source_artifact}"
-            )
-            continue
-        if source_document.get("gate_id") != gate_id:
-            errors.append(
-                f"{source_artifact}: gate_id does not match Status Index entry {gate_id}"
-            )
-        source_result = source_document.get("gate_result")
-        if source_result != indexed_status:
-            errors.append(
-                f"{source_artifact}: gate_result {source_result!r} does not match "
-                f"Status Index status {indexed_status!r}"
-            )
-        indexed_results[gate_id] = indexed_status
-        checked += 1
-
-    final_gate_path = (
-        "phase1_5/assets/readiness/code_implementation_readiness_gate.yaml"
-    )
-    final_gate = documents.get(final_gate_path)
-    if isinstance(final_gate, dict):
+        final_gate_path, final_gate = gate_entry
         for item_index, item in enumerate(final_gate.get("prerequisite_gate_results", [])):
             if not isinstance(item, dict):
                 continue

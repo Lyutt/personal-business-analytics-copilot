@@ -1,0 +1,16 @@
+config_type: metric_library_readiness_gate
+gate_id: GATE_METRIC_LIBRARY_WF_CUSTOMER_REVENUE_DETAIL_V1
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+assessment_date: 2026-08-08
+status: completed_design_only
+gate_result: passed
+scope:
+  library_id: METRIC_LIBRARY_CUSTOMER_REVENUE_DETAIL_V1
+  metric_variant_count: 14
+gate_checks:
+  monetary_field_authority: pass
+  formula_semantics_E_G_H_I: pass
+  full_precision_calculation: pass
+  invalid_denominator_blank_semantics: pass
+  negative_value_warning_only_semantics: pass
+decision: pass

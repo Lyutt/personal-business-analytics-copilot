@@ -19,7 +19,9 @@ stage_completion:
 readiness_gate:
   status: Pass
   assessment_date: 2026-07-29
-  initialized_pipeline_count: 12
+  initialized_pipeline_count: 13
+  weekly_frozen_pipeline_count: 12
+  independently_added_customer_pipeline_count: 1
   duplicate_pipeline_id_count: 0
   unresolved_candidate_dependency_count: 0
   weekly_in_scope_dataset_coverage: Complete
@@ -36,7 +38,7 @@ output_mapping_stage:
   gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
   output_mapping_id: OM_WEEKLY_BUSINESS_REPORT_V1
   outlook_draft_mapping_id: OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
-  customer_revenue_detail_status: deferred_by_owner
+  customer_revenue_detail_status: independently_initialized_design_only
 input_contract_dependency_authority:
   canonical_source_asset: phase1_5/assets/metrics/metric_library_inventory_baseline_v1.yaml
   canonical_source_path: metric_variants[].input_contract_fields
@@ -46,17 +48,17 @@ input_contract_dependency_authority:
 initialization_scope:
   included_workflows:
     - WF_WEEKLY_BUSINESS_REPORT
-  deferred_workflows:
-    - workflow_id: WF_CUSTOMER_REVENUE_DETAIL
-      initialization_timing: After Weekly Workflow Pipeline Registry completion
-      known_deferred_output:
-        - 预算盘点 Excel
-      output_initialization_stage: WF_CUSTOMER_REVENUE_DETAIL Output Mapping
-      weekly_report_file_dependency: false
+    - WF_CUSTOMER_REVENUE_DETAIL
+  deferred_workflows: []
   cross_workflow_file_dependency_allowed: false
   cross_workflow_validated_result_sharing:
     - Metrics Store
     - Metric Result Contract
+  workflow_specific_result_sharing_exceptions:
+    - workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+      version: V1
+      shared_metric_store_write: false
+      cross_workflow_result_contract_publish: false
   deferred_to_output_mapping:
     - Weekly Report Revenue Section Assembly
     - Weekly Report Inventory Section Assembly
@@ -2148,6 +2150,123 @@ pipelines:
         - Confirmed advertising product inventory source routing
       change_reason: Initial parameterized derived Pipeline definition
 
+  - pipeline_id: PL_CUSTOMER_REVENUE_DETAIL_WEEKLY
+    pipeline_name: 分客户技术线收入周度 Pipeline
+    business_domain: Revenue
+    business_line: Technical Line by Customer
+    business_context_id: CTX_CUSTOMER_REVENUE_DETAIL_WEEKLY
+    trigger_type: Scheduled and Manual
+    owner: WORKFLOW_OWNER
+    business_approver: WORKFLOW_OWNER
+    source_and_data_owners: Inherit from source, dataset and local-only input contracts
+    version: 1.0.0-design
+    approval_status: design_approved_code_not_authorized
+
+    pipeline_boundary:
+      start: Acquire the current QTD revenue input and resolve the required local-only quarter baseline, prior-year archive and prior output.
+      includes:
+        - Standardize and filter Technical revenue records
+        - Apply exact advertiser-to-customer ownership mapping
+        - Build the quarter customer universe and one-row-per-customer result
+        - Calculate authoritative detail values and formula results
+        - Freeze and aggregate the two independent Top20 result sets
+        - Reconcile sources and validate formula mirrors before XLSX assembly
+      end: Produce one validated RC_CUSTOMER_REVENUE_DETAIL_WEEKLY instance and one local-only XLSX output.
+      excludes:
+        - Weekly Business Report assembly or attachment
+        - Shared Metric Store writes
+        - Cross-Workflow Result Contract publication
+        - Outlook Draft or external message creation
+      minimum_execution_unit: one customer revenue detail cutoff
+      independently_runnable: true
+      independently_validatable: true
+      independently_retryable: true
+
+    workflow_bindings:
+      - workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+        required_or_optional: required
+        failure_scope: WF_CUSTOMER_REVENUE_DETAIL only
+        execution_order_or_dependency: Thursday 17:40 after current revenue input becomes available, or explicit manual trigger.
+        failure_handling:
+          block_weekly_business_report: false
+          create_partial_file: false
+          notify_owner_in_codex_task_and_local_record: true
+
+    dataset_dependencies:
+      - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
+        dependency_role: Current QTD and exact prior-year comparable Technical revenue input
+        required: true
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
+
+    local_input_dependencies:
+      - input_role: quarter_baseline_and_template
+        external_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
+        required: false_when_absent_at_quarter_start
+        fallback: Use prior output for layout/customer list/industry only; rebuild C and leave D/O/P blank.
+      - input_role: immediately_preceding_approved_output
+        producer_workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+        required: true_except_quarter_first_week
+        read_only: true
+        output_mapping_id: OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1
+
+    execution:
+      execution_mode: sequential
+      schedule: { day_of_week: Thursday, start_time: "17:40", timezone: Asia/Shanghai }
+      source_wait_policy_id: POLICY_CUSTOMER_REVENUE_DETAIL_V1
+      manual_trigger_allowed: true
+      manual_trigger_required_parameters: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter]
+      stages: [DATA_COLLECTION, DATA_STANDARDIZATION, BUSINESS_RULE_PROCESSING, METRIC_CALCULATION, VALIDATION]
+      mapping_profile_ids:
+        - MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+        - MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+      ordered_rule_set_ids:
+        - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+        - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+      metric_variant_ids:
+        - MV_CUSTOMER_PRIOR_YEAR_QUARTER_REVENUE_V1
+        - MV_CUSTOMER_CURRENT_QUARTER_FORECAST_V1
+        - MV_CUSTOMER_CURRENT_QTD_PERFORMANCE_V1
+        - MV_CUSTOMER_CURRENT_QTD_EXECUTED_V1
+        - MV_CUSTOMER_PRIOR_YEAR_QTD_PERFORMANCE_V1
+        - MV_CUSTOMER_PRIOR_YEAR_QTD_EXECUTED_V1
+        - MV_CUSTOMER_PRIOR_WEEK_QTD_PERFORMANCE_V1
+        - MV_CUSTOMER_PRIOR_WEEK_QTD_EXECUTED_V1
+        - MV_CUSTOMER_PRIOR_OUTPUT_COMPARABLE_PERFORMANCE_V1
+        - MV_CUSTOMER_PRIOR_OUTPUT_COMPARABLE_EXECUTED_V1
+        - MV_CUSTOMER_FORECAST_YOY_V1
+        - MV_CUSTOMER_FORECAST_COMPLETION_RATE_V1
+        - MV_CUSTOMER_PERFORMANCE_YOY_V1
+        - MV_CUSTOMER_WEEKLY_INCREMENTAL_PERFORMANCE_V1
+      validation_rule_ids: []
+
+    outputs:
+      result_contract_ids: [RC_CUSTOMER_REVENUE_DETAIL_WEEKLY]
+      output_mapping_ids: [OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1]
+      write_to_metrics_store: false
+      publish_cross_workflow_result_contract: false
+      local_only: true
+
+    recovery:
+      recovery_mode: rerun_pipeline_from_start
+      retry_scope: workflow_only
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
+      source_missing_recheck_interval_minutes: 30
+      source_missing_maximum_rechecks: unlimited
+      downstream_impact_rule: no impact outside WF_CUSTOMER_REVENUE_DETAIL
+
+    governance:
+      effective_from: 2026-08-07
+      evidence_sources:
+        - phase1_5/workflows/customer_revenue_detail/WORKFLOW_v1.md
+        - Owner confirmations dated 2026-08-07
+      change_reason: Initialize the independent Customer Revenue Detail Workflow design assets.
+
 constraints:
   dataset_dependencies_must_trace_to_active_data_sources: true
   future_backlog_sources_cannot_create_pipelines: true
@@ -2176,6 +2295,10 @@ constraints:
     missing_input_action: >
       暂停手动触发并向Owner确认，
       禁止根据当前日期自动推断业务周期。
+  workflow_specific_manual_trigger_requirements:
+    WF_CUSTOMER_REVENUE_DETAIL:
+      required_inputs: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter]
+      missing_input_action: block_customer_workflow_only
   regular_inventory_pipeline_history_strategy:
     applies_to: All regular inventory Pipelines
     excludes: Anomaly-triggered customer analysis Pipelines

@@ -1,0 +1,20 @@
+config_type: dataset_readiness_matrix
+gate_id: GATE_DATASET_READINESS_WF_CUSTOMER_REVENUE_DETAIL_V1
+matrix_version: 1.0.0
+status: completed_design_only
+gate_result: passed
+assessment_workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+assessment_summary: Reuse the approved Rolling Deck dataset; quarter baseline and prior output remain explicit read-only local pipeline inputs.
+dataset_readiness:
+  - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+    source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+    query_asset_id: null
+    registration_status: registered
+    workflow_usage: Current and exact prior-year comparable Technical customer revenue
+    readiness: confirmed_reuse
+    standardization: Reuse approved Rolling Deck mappings and exact advertiser ownership mapping.
+    gate: pass
+constraints:
+  local_quarter_baseline_and_prior_output_are_not_shared_datasets: true
+  local_inputs_must_be_ingested_upstream_of_output_mapping: true
+  raw_business_files_must_not_enter_git: true

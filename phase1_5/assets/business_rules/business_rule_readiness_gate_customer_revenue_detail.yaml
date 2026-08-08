@@ -1,0 +1,21 @@
+config_type: business_rule_readiness_gate
+gate_id: GATE_BUSINESS_RULE_WF_CUSTOMER_REVENUE_DETAIL_V1
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+assessment_date: 2026-08-08
+status: completed_design_only
+gate_result: passed
+scope:
+  reused_rules:
+    - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+    - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+  pipeline_policy_id: POLICY_CUSTOMER_REVENUE_DETAIL_V1
+gate_checks:
+  customer_universe_and_row_grain: pass
+  industry_fallback_order: pass
+  quarter_baseline_fallback: pass
+  first_week_semantics: pass
+  detail_sorting: pass
+  independent_frozen_top20_memberships: pass
+  reconciliation_and_warning_classification: pass
+  filename_collision_without_overwrite: pass
+decision: pass

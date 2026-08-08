@@ -70,7 +70,8 @@ implementation_baseline:
 
 scope_boundaries:
   weekly_business_report_p0_assets: complete
-  customer_revenue_detail_workflow: deferred_by_owner_non_blocking
+  customer_revenue_detail_workflow: independently_initialized_non_blocking
+  customer_revenue_detail_status_source: phase1_5/assets/readiness/status_index_customer_revenue_detail.yaml
   outlook_delivery_mode: draft_only
   outlook_auto_send: false
   unresolved_business_rule_decision_count: 0

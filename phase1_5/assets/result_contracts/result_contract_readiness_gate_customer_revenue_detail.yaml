@@ -1,0 +1,21 @@
+config_type: result_contract_readiness_gate
+gate_id: GATE_RESULT_CONTRACT_WF_CUSTOMER_REVENUE_DETAIL_V1
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+assessment_date: 2026-08-08
+status: completed_design_only
+gate_result: passed
+owner: WORKFLOW_OWNER
+scope:
+  result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+  record_sets: [customer_detail, prior_year_top20, forecast_top20]
+gate_checks:
+  exactly_one_producer: pass
+  one_detail_row_per_customer_group: pass
+  top20_static_result_sets: pass
+  metric_variant_output_bindings: pass
+  local_only_lineage_boundary: pass
+owner_confirmations_applied:
+  calculation_engine_authoritative: true
+  excel_formula_cells_are_audit_mirrors: true
+  formula_mismatch_blocks_output: true
+decision: pass

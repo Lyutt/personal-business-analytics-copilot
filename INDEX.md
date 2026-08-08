@@ -4,14 +4,14 @@
 
 - 架构方向：已确认。
 - Phase 1：已确认。
-- 当前阶段：Implementation Baseline 1.0.0已冻结，等待Owner明确批准代码实现。
+- 当前阶段：Weekly Business Report Baseline 1.0.0与Customer Revenue Detail Baseline 1.0.0分别冻结，均等待Owner对对应Baseline明确批准代码实现。
 - Workflow Architecture Optimization v2：已确认并迁移为独立 v2 文件。
 - Weekly Workflow的Data Source、Dataset、Pipeline、Field Mapping、Business Rule、Metric Library、Result Contract、Metric Store逻辑契约与Output Mapping：已完成P0资产收口。
 - Result Contract入口：[Result Contract资产索引](phase1_5/assets/result_contracts/INDEX.md)；[Result Contract Readiness Gate](phase1_5/assets/result_contracts/result_contract_readiness_gate.yaml)已通过。
 - 本地External Asset仅登记版本合同与`LOCAL_ONLY`运行时占位符，真实版本和内容指纹不得进入Git。
-- 统一状态入口：[Phase 1.5 Status Index](phase1_5/assets/readiness/status_index.yaml)。
+- Weekly状态入口：[Phase 1.5 Weekly Status Index](phase1_5/assets/readiness/status_index.yaml)；Customer Revenue Detail状态入口：[Customer Status Index](phase1_5/assets/readiness/status_index_customer_revenue_detail.yaml)。
 - 最终Gate：[Code Implementation Readiness Gate](phase1_5/assets/readiness/code_implementation_readiness_gate.yaml)。
-- 当前 MVP：Weekly Business Report Workflow。
+- 当前已完成设计资产的Workflow：Weekly Business Report与独立的Customer Revenue Detail；两者均未因此获得代码实现授权。
 - 实现状态：尚未开始且当前不得启动；必须先获得Owner对冻结Baseline ID和版本的明确批准。端到端运行验收仍需完成3个本地Metric Store Runtime Bootstrap。
 
 ## 默认读取顺序
@@ -30,6 +30,6 @@
 - 邮件仅创建 Outlook Draft，不自动发送。
 - 周期、数据源、业务维度、指标、模板和确认规则必须配置化。
 - 未知字段、规则冲突、口径冲突不得由 Agent 自行猜测。
-- 当前不实现多业务 Workflow、高级洞察或复杂知识图谱。
+- 当前允许多个独立Workflow的设计资产；不因设计完成而实现多Workflow运行、高级洞察或复杂知识图谱。
 - Git 仅保存脱敏配置和模板；本地业务数据与生成结果不得上传。
 - 禁止 Auto-merge；自动检查通过后仍需用户业务审查并明确确认。
