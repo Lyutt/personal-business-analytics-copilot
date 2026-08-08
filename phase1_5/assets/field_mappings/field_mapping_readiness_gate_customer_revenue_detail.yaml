@@ -1,0 +1,29 @@
+config_type: field_mapping_readiness_gate
+gate_id: GATE_FIELD_MAPPING_WF_CUSTOMER_REVENUE_DETAIL_V1
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+assessment_date: 2026-08-08
+status: completed_design_only
+gate_result: passed
+scope:
+  reused_mapping_profiles:
+    - MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+  reused_local_external_mapping: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX
+coverage:
+  advertiser_industry_performance_executed_business_line: complete
+  customer_group_exact_mapping: complete_by_existing_local_asset_contract
+  unmatched_advertiser_fallback: confirmed_warning_only
+consistency_checks:
+  exact_match_only: pass
+  fuzzy_match_prohibited: pass
+  unmatched_does_not_block: pass
+  unmatched_notification_payload_is_grouped_and_local_only: pass
+  raw_order_rows_not_logged: pass
+  advertiser_mapping_version_bound_before_data_collection: pass
+  canonical_advertiser_field_chain: pass
+  industry_level_1_explicit_binding: pass
+  business_line_delta_mapping_not_customer_dependency: pass
+  shared_profile_customer_name_alias_not_customer_identity_authority: pass
+gate_decision: pass
+constraints:
+  mapping_contents_local_only: true
+  mapping_change_rerun_scope: current_week_only

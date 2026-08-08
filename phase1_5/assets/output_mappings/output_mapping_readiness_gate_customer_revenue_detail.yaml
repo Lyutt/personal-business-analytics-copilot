@@ -1,0 +1,35 @@
+config_type: output_mapping_readiness_gate
+gate_id: GATE_OUTPUT_MAPPING_WF_CUSTOMER_REVENUE_DETAIL_V1
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+assessment_date: 2026-08-08
+status: completed_design_only
+gate_result: passed
+scope:
+  output_mapping_id: OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1
+  local_only: true
+  sheet_count: 3
+gate_checks:
+  result_record_set_bindings: pass
+  detail_A_through_R_explicit_result_field_bindings: pass
+  both_top20_A_through_G_explicit_result_field_bindings: pass
+  explicit_result_field_binding_count_32: pass
+  output_mapping_business_calculation_disabled: pass
+  formula_mirror_validation: pass
+  formula_mirror_numeric_tolerance_without_authority_change: pass
+  strict_E_IFERROR_blank_D_as_zero: pass
+  result_contract_missing_to_blank_rendering_only: pass
+  template_eligibility_current_year_quarter_version: pass
+  effective_layout_source_current_template_or_layout_only_previous_output: pass
+  absent_template_fallback_but_invalid_present_template_blocks: pass
+  no_template_previous_output_business_value_and_top20_inheritance_prohibited: pass
+  previous_output_metadata_selection_not_filename_parsing: pass
+  dynamic_row_formula_filter_style_extension: pass
+  inherited_red_manual_fill_clearance: pass
+  collision_suffix_without_overwrite: pass
+  local_output_metadata_write_with_integer_version_mapping: pass
+  local_output_metadata_failure_and_collision_consistency: pass
+  explicit_date_header_and_filename_lineage: pass
+  completion_rate_above_100_percent_not_warning: pass
+  forecast_D_unavailable_header_only_semantics: pass
+  no_weekly_attachment_or_outlook_message: pass
+decision: pass

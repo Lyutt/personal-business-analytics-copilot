@@ -4,15 +4,30 @@ status: active
 owner: ${OUTLOOK_MAILBOX_ADDRESS_LOCAL_ONLY}
 
 runtime_input_contract:
-  contract_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
-  applies_to_all_registered_datasets_and_query_assets: true
+  applies_by_workflow_scope: true
+  workflow_scopes:
+    WF_WEEKLY_BUSINESS_REPORT:
+      contract_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+      run_input_manifest_id: RUN_INPUT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1
+      existing_multiple_email_selection_semantics_unchanged: true
+    WF_CUSTOMER_REVENUE_DETAIL:
+      contract_source: phase1_5/assets/execution/customer_revenue_detail_local_input_contracts_v1.yaml
+      contract_section: customer_run_input_manifest_contract
+      run_input_manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
+      context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+      rolling_deck_roles: [current_qtd, prior_year_full_quarter, prior_year_comparable]
+      supported_run_types: [scheduled, manual, backfill, rerun]
+      exact_locked_context_binding_required: true
+      weekly_runtime_contract_reuse_allowed: false
+      filename_period_inference_allowed: false
+      unconditional_latest_file_selection_allowed: false
+  unscoped_runtime_contract_fallback_allowed: false
   approved_dataset_version_source: datasets[].governance.version
   approved_query_asset_version_source: query_assets[].version
   workflow_run_context_required: true
   run_input_manifest_required: true
   actual_execution_date_business_date_inference_allowed: false
   current_date_fallback_allowed: false
-  filename_period_or_product_inference_allowed: false
 
 datasets:
   - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD

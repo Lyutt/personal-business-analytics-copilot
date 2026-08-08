@@ -1,0 +1,32 @@
+config_type: dataset_readiness_matrix
+gate_id: GATE_DATASET_READINESS_WF_CUSTOMER_REVENUE_DETAIL_V1
+matrix_version: 1.0.0
+status: completed_design_only
+gate_result: passed
+assessment_workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+assessment_summary: Reuse the approved Rolling Deck dataset; distinct full-quarter C and comparable K/L sources are Context-bound, while template and prior output remain explicit read-only local inputs governed by metadata contracts.
+dataset_readiness:
+  - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
+    source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
+    query_asset_id: null
+    registration_status: registered
+    workflow_usage: Current QTD, prior-year full-quarter C, and exact prior-year comparable K/L Technical customer revenue
+    readiness: confirmed_reuse
+    standardization: Reuse approved Rolling Deck mappings and exact advertiser ownership mapping.
+    gate: pass
+constraints:
+  dataset_runtime_input_contract_is_workflow_scoped: true
+  customer_run_input_manifest_required_for_all_rolling_deck_roles_and_run_types: true
+  canonical_input_roles: [current_qtd, prior_year_full_quarter, prior_year_comparable]
+  current_and_prior_year_fiscal_quarter_bindings_are_distinct: true
+  scheduled_current_qtd_wait_policy_is_role_and_run_type_scoped: true
+  historical_and_manual_or_backfill_missing_inputs_block_immediately: true
+  weekly_manifest_and_multiple_email_selection_semantics_unchanged: true
+  weekly_runtime_contract_reuse_allowed: false
+  filename_or_latest_file_selection_allowed: false
+  local_quarter_baseline_and_prior_output_are_not_shared_datasets: true
+  local_inputs_must_be_ingested_upstream_of_output_mapping: true
+  quarter_template_must_match_locked_current_year_quarter_and_version: true
+  previous_output_selection_requires_explicit_local_metadata: true
+  local_input_filename_parsing_for_selection_allowed: false
+  raw_business_files_must_not_enter_git: true

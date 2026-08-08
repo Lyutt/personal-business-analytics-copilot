@@ -16,6 +16,7 @@
 | `METRIC_LIBRARY_REVENUE_WEEKLY_V1` | 技术线、CTV、智能音箱、极速版收入 | Approved |
 | `METRIC_LIBRARY_INVENTORY_WEEKLY_V1` | 全站、贴片、非贴片产品、品牌时刻库存及售卖率，广告曝光支持指标 | Approved |
 | `METRIC_LIBRARY_USER_ANALYTICS_DAU_V1` | 全平台分日DAU、周均DAU及环比 | Approved |
+| `METRIC_LIBRARY_CUSTOMER_REVENUE_DETAIL_V1` | 分客户技术线收入、预估完成与同比、周新增 | Approved design only |
 
 ## 结构统计
 
@@ -27,9 +28,13 @@
 - 重复Metric Variant ID：0。
 - 缺失或孤立Variant：0。
 
+Customer Revenue Detail独立增量：4个稳定Metric概念、14个Metric Variant、14个显式Result Contract绑定；不改变Weekly冻结的48个Variant基线。
+
 ## 正式Gate
 
 [Metric Library Readiness Gate](metric_library_readiness_gate.yaml)
+
+[Customer Revenue Detail Metric Gate](metric_library_readiness_gate_customer_revenue_detail.yaml)
 
 本Gate只证明Metric资产可进入后续阶段，不单独授予代码实现权限。
 

@@ -5,7 +5,7 @@
 - 阶段状态：Weekly Workflow P0 Business Rule范围已完成并通过Gate。
 - 正式开始日期：2026-07-31。
 - 本轮恢复日期：2026-08-01。
-- 当前Workflow：`WF_WEEKLY_BUSINESS_REPORT`。
+- Weekly原范围保持冻结；`WF_CUSTOMER_REVENUE_DETAIL`独立复用两条Revenue规则，并由`POLICY_CUSTOMER_REVENUE_DETAIL_V1`承载其已确认的客户集合、排序、Top20、校验和输出边界。
 - Revenue规则状态：已完成Owner确认与Readiness Gate。
 - 已批准Revenue Rule数量：6。
 - 已确认但待Field Mapping的Revenue Rule数量：0。
@@ -63,6 +63,9 @@
 |---|---|---|
 | `BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1` | Weekly收入模块常规周与季度切换首周判定 | Approved v1.0.0 |
 | `BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1` | 技术线单计硬广收入记录纳入规则 | Approved v1.0.0 |
+| `BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1` | Customer Revenue Detail 技术线资格适配器 | Approved design-only v1.0.0 |
+| `BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1` | Customer C列去年完整季度历史源选择 | Approved design-only v1.0.0 |
+| `BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1` | Customer K/L去年同期可比源选择 | Approved design-only v1.0.0 |
 | `BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1` | 细分业务线QTD历史累计承接资格规则 | Approved v1.0.0 |
 | `BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1` | Rolling Deck周度与季度结算邮件分类 | Approved v1.0.0 |
 | `BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1` | 季度切换首周上季度完整收入结果来源选择 | Approved v1.0.0 |
@@ -72,6 +75,7 @@
 
 - `QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1`：已批准；仅显式绑定的Apollo和NovaBI
   Pipeline可在会话失效时刷新一次、恢复并验证查询配置后重试一次。
+- `POLICY_CUSTOMER_REVENUE_DETAIL_V1`：客户Workflow专用；邮件未到时每30分钟持续复查，且不改变Weekly的一次重试策略。
 
 ## 已确认无需额外Rule的Pipeline
 

@@ -154,6 +154,12 @@ data_assets/
 
 ## 3. Customer Revenue Detail Workflow 设计
 
+> 本节原始占位描述已由
+> `workflows/customer_revenue_detail/WORKFLOW_v1.md` 与对应Phase 1.5资产取代。
+> 当前权威边界为：四类显式输入（当前QTD、精确去年同期、季度基线、上周批准输出），
+> 独立本地Excel输出，不写共享Metric Store、不发布跨Workflow Result Contract、
+> 不作为Weekly附件，也不创建Outlook Draft或外部消息。下图按此边界更新。
+
 ### 3.1 架构定位
 
 建议建立独立 Workflow：
@@ -194,25 +200,25 @@ data_assets/
 
 ```mermaid
 flowchart TD
-    T["Trigger / Manual Request"] --> C["Collect Two Configured Inputs"]
-    C --> B["Bind Dataset A and Dataset B<br/>by explicit configured role"]
+    T["Trigger / Manual Request"] --> C["Collect Current, Prior-Year,<br/>Quarter Baseline and Prior Output"]
+    C --> B["Bind four explicit input roles<br/>before Output Mapping"]
     B --> S["Standardize Each Dataset<br/>separate Mapping profiles"]
     S --> R["Apply Approved Rule Sets"]
     R --> M["Calculate Explicit Metric Variants"]
     M --> V["Validate Dataset, Join, Metric and Period"]
     V --> E["Generate Customer Revenue Excel"]
-    E --> H["Human Confirmation"]
-    H --> P["Publish Approved Metrics Result<br/>optional dependency for Weekly Report"]
+    E --> H["Validate Formula Mirrors and Local File"]
+    H --> P["Store local-only output and run record<br/>no Weekly dependency or shared publish"]
 ```
 
 ### 3.4 关键控制
 
-- 两封邮件不能只按“日期更近”自动判断角色。
-- 每个附件需绑定明确 Dataset Role；未确认时为 `TBD`。
-- 如果两个附件字段结构未来发生分化，可以拥有两个 Mapping Profile。
-- 两个 Dataset 的 Join Key、时间关系和优先级未确认前不得设计。
-- Excel 模板只消费已验证结果。
-- Outlook 数据获取规则与 Field Mapping 分开配置。
+- 当前QTD、精确去年同期、季度基线与上周批准输出必须分别绑定显式输入角色。
+- 缺失、不可读或多匹配的必需输入阻断本Workflow；不得选择相近日期替代。
+- 上周输出与季度基线由Pipeline只读摄取，Output Mapping不得直接读取历史工作簿。
+- Excel模板只消费已验证Result Contract；E/G/H/I仅为公式镜像，结果不一致即阻断输出。
+- 未匹配广告主使用原广告主名作为临时客户并告警，不再作为阻断条件。
+- Customer V1仅生成本地Excel与本地运行记录，不创建Weekly依赖、共享结果或Outlook消息。
 
 ---
 

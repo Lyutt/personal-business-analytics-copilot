@@ -1,0 +1,81 @@
+config_type: implementation_baseline
+baseline_id: IMPLEMENTATION_BASELINE_WF_CUSTOMER_REVENUE_DETAIL_V1
+baseline_version: 1.0.0
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+freeze_date: 2026-08-08
+status: frozen_awaiting_explicit_owner_code_implementation_approval
+owner: WORKFLOW_OWNER
+source_main_commit_sha: 6ce72e1662383dcb771dc3959533725bbdf5fe5e
+source_branch: main
+working_branch: codex/customer-revenue-detail-initialization
+baseline_scope:
+  phase: Phase 1.5
+  workflow_scope: Customer Revenue Detail V1 design assets
+  asset_layers: [Dataset reuse, Pipeline Registry, Customer Run Context, Local Input Metadata Contracts, Field Mapping reuse, Business Rule and Pipeline Policy, Metric Library, Result Contract, Output Mapping, Synthetic Acceptance, Readiness]
+  excluded_runtime_material: [Raw business data, customer rows, emails and attachments, local mapping contents, real templates, generated workbooks, local paths, credentials and sessions]
+frozen_asset_versions:
+  count_scope: workflow_specific
+  metric_library_id: METRIC_LIBRARY_CUSTOMER_REVENUE_DETAIL_V1
+  metric_variant_count: 14
+  result_contract_count: 1
+  result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+  output_mapping_version: 1.0.0
+  pipeline_policy_version: 1.0.0
+  run_context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+  run_context_version: 1.0.0
+  local_input_contract_bundle_id: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+  local_input_contract_bundle_version: 1.0.0
+  explicit_output_field_binding_count: 32
+  synthetic_acceptance_suite_id: CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1
+  synthetic_acceptance_suite_version: 1.0.0
+  synthetic_acceptance_scenario_count: 42
+workflow_dependency_counts:
+  pipeline_count: 1
+  dataset_dependency_count: 1
+  mapping_profile_dependency_count: 1
+  business_rule_dependency_count: 3
+  metric_variant_dependency_count: 14
+  result_contract_dependency_count: 1
+  output_mapping_dependency_count: 1
+  policy_dependency_count: 1
+  external_asset_dependency_count: 2
+frozen_gate_results:
+  - { gate_id: GATE_DATASET_READINESS_WF_CUSTOMER_REVENUE_DETAIL_V1, status: passed }
+  - { gate_id: GATE_PIPELINE_REGISTRY_WF_CUSTOMER_REVENUE_DETAIL_V1, status: passed }
+  - { gate_id: GATE_FIELD_MAPPING_WF_CUSTOMER_REVENUE_DETAIL_V1, status: passed }
+  - { gate_id: GATE_BUSINESS_RULE_WF_CUSTOMER_REVENUE_DETAIL_V1, status: passed }
+  - { gate_id: GATE_METRIC_LIBRARY_WF_CUSTOMER_REVENUE_DETAIL_V1, status: passed }
+  - { gate_id: GATE_RESULT_CONTRACT_WF_CUSTOMER_REVENUE_DETAIL_V1, status: passed }
+  - { gate_id: GATE_OUTPUT_MAPPING_WF_CUSTOMER_REVENUE_DETAIL_V1, status: passed }
+validation_contract:
+  repository_safety_validation_required: true
+  asset_integrity_validation_required: true
+  multi_workflow_scope_validation_required: true
+  customer_synthetic_acceptance_required: true
+  exact_diff_sensitive_data_review_required_before_git_operation: true
+implementation_authorization:
+  asset_baseline_ready: true
+  code_implementation_started: false
+  explicit_owner_code_implementation_approval_received: false
+  code_implementation_may_start: false
+  approval_must_name_this_baseline_id_and_version: true
+change_control:
+  baseline_is_logically_frozen: true
+  customer_asset_change_requires_baseline_version_review: true
+  weekly_business_report_baseline_must_not_change: true
+  customer_reporting_period_selection_contract:
+    report_mode_source: actual first Thursday reporting cutoff on or after target quarter start
+    expected_previous_cutoff_derivation: locked current cutoff minus 7 calendar days
+    expected_previous_reporting_period_id_derivation: fiscal quarter containing expected_previous_cutoff plus exact cutoff
+    regular_week_requires_exact_immediately_preceding_validated_consumable_output: true
+    older_reporting_period_fallback_allowed: false
+    same_week_rerun_reuses_original_locked_selection: true
+  weekly_frozen_asset_zero_diff_contract:
+    comparison_base_commit_sha: 6ce72e1662383dcb771dc3959533725bbdf5fe5e
+    exact_files:
+      - phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml
+      - phase1_5/assets/business_rules/BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1.yaml
+      - phase1_5/assets/readiness/implementation_baseline.yaml
+      - phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+  force_push_allowed: false
+  auto_merge_allowed: false

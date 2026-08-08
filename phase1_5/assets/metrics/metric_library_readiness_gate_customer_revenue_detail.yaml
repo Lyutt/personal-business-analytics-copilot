@@ -1,0 +1,24 @@
+config_type: metric_library_readiness_gate
+gate_id: GATE_METRIC_LIBRARY_WF_CUSTOMER_REVENUE_DETAIL_V1
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+assessment_date: 2026-08-08
+status: completed_design_only
+gate_result: passed
+scope:
+  library_id: METRIC_LIBRARY_CUSTOMER_REVENUE_DETAIL_V1
+  metric_variant_count: 14
+gate_checks:
+  monetary_field_authority: pass
+  full_quarter_C_source_is_distinct_from_comparable_K_L_source: pass
+  canonical_input_roles_and_current_vs_prior_year_fiscal_quarter_bindings: pass
+  signed_comparable_values_supported: pass
+  current_missing_customer_F_J_zero_fill: pass
+  forecast_D_blank_vs_explicit_zero_semantics: pass
+  forecast_E_strict_IFERROR_and_blank_D_as_zero: pass
+  previous_reporting_period_output_and_same_week_rerun_semantics: pass
+  explicit_KL_MN_QR_date_lineage: pass
+  formula_semantics_E_G_H_I: pass
+  full_precision_calculation: pass
+  invalid_denominator_blank_semantics: pass
+  negative_value_warning_only_semantics: pass
+decision: pass

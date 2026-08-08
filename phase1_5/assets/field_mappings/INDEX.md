@@ -10,6 +10,7 @@
 - 当前真实 Mapping Profile 数量：11（已批准11）。
 - 阻断问题：0。
 - 正式Gate：`field_mapping_readiness_gate.yaml`。
+- Customer Revenue Detail复用Rolling Deck两份已批准Mapping与现有本地广告主归属映射；独立Gate为`field_mapping_readiness_gate_customer_revenue_detail.yaml`，不新增或复制客户映射内容。
 - Gate后用途变更：`DS_REVENUE_SALES_ROLLING_DECK_QTD`新增“业务线”Sheet，
   作为季度切换首周读取上季度完整业绩收入结果的主来源；增量Field Mapping
   Gate已完成并通过。

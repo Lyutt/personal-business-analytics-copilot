@@ -16,7 +16,7 @@
 - Metric Library Initialization：已完成并通过Readiness Gate。
 - Result Contract Initialization：12个正式Contract已完成并通过Readiness Gate；
   48个Metric Variant已显式绑定Contract Field。
-- 当前收口点：Phase 1.5 Final Acceptance已通过，Implementation Baseline 1.0.0已按最终合同重新冻结并等待Owner明确批准代码实现；保留本地Metric Store Runtime Bootstrap条件；Customer Revenue Detail Workflow按Owner决策暂缓。
+- 当前收口点：Weekly的Phase 1.5 Final Acceptance已通过；Weekly与Customer Revenue Detail各自的Implementation Baseline 1.0.0均已冻结并分别等待Owner明确批准代码实现。Weekly保留本地Metric Store Runtime Bootstrap条件，Customer Workflow的运行验收尚未开始。
 - 统一状态入口：[Status Index](assets/readiness/status_index.yaml)。
 - 最终实现入口：[Code Implementation Readiness Gate](assets/readiness/code_implementation_readiness_gate.yaml)。
 - 冻结实现基线：[Implementation Baseline 1.0.0](assets/readiness/implementation_baseline.yaml)。
@@ -35,6 +35,10 @@
 ## v2 Workflow
 
 [Weekly Business Report Workflow v2](workflows/weekly_business_report/WORKFLOW_v2.md)
+
+[Customer Revenue Detail Workflow v1](workflows/customer_revenue_detail/WORKFLOW_v1.md)
+
+两个Workflow无文件级依赖。Customer V1不写共享Metric Store、不发布跨Workflow Result Contract，也不成为Weekly附件。
 
 Phase 1 旧版 `phase1/workflows/weekly_business_report/WORKFLOW.md` 保留，不覆盖。
 

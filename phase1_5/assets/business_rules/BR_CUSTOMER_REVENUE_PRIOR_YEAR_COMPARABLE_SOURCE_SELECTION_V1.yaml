@@ -1,0 +1,59 @@
+config_type: business_rule
+rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+rule_name: Customer Revenue Prior-Year Comparable Snapshot Source Selection
+rule_category: Revenue Comparable Source Selection
+business_domains: [Revenue]
+applicable_workflow_ids: [WF_CUSTOMER_REVENUE_DETAIL]
+applicable_pipeline_ids: [PL_CUSTOMER_REVENUE_DETAIL_WEEKLY]
+business_context_ids: [CTX_CUSTOMER_REVENUE_DETAIL_WEEKLY]
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved_design_only
+effective_from: 2026-08-08
+purpose: Select the exact prior-year comparable QTD snapshot used only for detail K/L and their carried Q/R values.
+inputs:
+  required_context_fields: [current_revenue_cutoff_date, current_year, prior_year, quarter, prior_comparable_as_of_date, prior_year_fiscal_quarter]
+  required_standard_fields: [business_line_level_1, fiscal_quarter, raw_advertiser_name, mapped_customer_or_group_name, industry_level_1, performance_revenue_amount, executed_revenue_amount]
+  required_result_contract_ids: []
+conditions:
+  input_role: prior_year_comparable
+  required_fiscal_quarter_context_field: prior_year_fiscal_quarter
+  workflow_year_2026_date_rule: CurrentRevenueCutoffDate minus one calendar year plus one calendar day
+  workflow_year_2027_or_later_action: block_for_owner_reconfirmation
+  exact_single_readable_source_required: true
+  same_quarter_required: true
+  technical_eligibility_rule_id: BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1
+  signed_numeric_values_allowed: true
+  zero_or_negative_value_allowed: true
+  full_quarter_history_allowed: false
+actions:
+  on_exact_source: aggregate_per_exact_mapped_customer_for_K_and_L
+  on_customer_missing_from_source: set_K_and_L_to_zero
+  on_missing_multiple_or_unreadable_source: block_customer_workflow_and_notify_owner
+validation:
+  deterministic: true
+  exact_comparable_cutoff_required: true
+  historical_record_fiscal_quarter_must_equal_prior_year_fiscal_quarter: true
+  historical_record_target_fiscal_quarter_filter_allowed: false
+  source_role_must_not_equal_full_quarter_history: true
+  reconciliation_absolute_tolerance_CNY: 1
+governance:
+  evidence_sources: [Owner corrections for PR 6]
+  change_reason: Provide Customer-specific signed comparable source semantics without the Weekly greater-than-zero restriction.
+constraints:
+  automatic_nearby_date_selection_allowed: false
+  weekly_prior_year_rule_reuse_allowed: false
+  metric_formula_allowed: false
+  customer_data_must_remain_local_only: true
+  runtime_context_field_guessing_allowed: false
+context_binding:
+  context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+  exact_field_bindings:
+    current_revenue_cutoff_date: current_revenue_cutoff_date
+    current_year: current_year
+    prior_year: prior_year
+    quarter: quarter
+    prior_comparable_as_of_date: prior_comparable_as_of_date
+    prior_year_fiscal_quarter: prior_year_fiscal_quarter
+  missing_or_conflicting_binding_action: block_customer_workflow

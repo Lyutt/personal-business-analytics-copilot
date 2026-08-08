@@ -1,0 +1,30 @@
+config_type: result_contract_readiness_gate
+gate_id: GATE_RESULT_CONTRACT_WF_CUSTOMER_REVENUE_DETAIL_V1
+workflow_id: WF_CUSTOMER_REVENUE_DETAIL
+assessment_date: 2026-08-08
+status: completed_design_only
+gate_result: passed
+owner: WORKFLOW_OWNER
+scope:
+  result_contract_id: RC_CUSTOMER_REVENUE_DETAIL_WEEKLY
+  record_sets: [customer_detail, prior_year_top20, forecast_top20]
+gate_checks:
+  exactly_one_producer: pass
+  one_detail_row_per_customer_group: pass
+  customer_name_valid_value_only: pass
+  top20_static_result_sets: pass
+  template_existing_top20_membership_preservation: pass
+  generated_top20_rank_and_tie_break_semantics: pass
+  forecast_D_availability_bound_to_run_context: pass
+  forecast_D_unavailable_remains_blank: pass
+  missing_field_status_renders_blank_in_output_mapping: pass
+  calculation_failed_and_pending_confirmation_output_prohibited: pass
+  current_missing_customer_F_J_zero_fill: pass
+  metric_variant_output_bindings: pass
+  local_only_lineage_boundary: pass
+  explicit_FJ_KL_MN_QR_and_filename_date_lineage: pass
+owner_confirmations_applied:
+  calculation_engine_authoritative: true
+  excel_formula_cells_are_audit_mirrors: true
+  formula_mismatch_blocks_output: true
+decision: pass

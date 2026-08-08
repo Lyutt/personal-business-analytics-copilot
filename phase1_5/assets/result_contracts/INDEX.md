@@ -10,6 +10,7 @@
 - Readiness Gate: `GATE_RESULT_CONTRACT_WF_WEEKLY_BUSINESS_REPORT_V1`
 - Outlook remains Draft-only with `auto_send=false`
 - This asset layer does not authorize code implementation or change Owner approval status.
+- Independent Customer Revenue Detail scope: 1 Contract, 3 record sets, 14 Metric Variant bindings; governed by its own Readiness Gate and Baseline.
 
 ## Contracts
 
@@ -27,6 +28,7 @@
 | `RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY` | `PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY` | parameterized single record |
 | `RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY` | `PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY` | composite with daily record set |
 | `RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS` | `PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS` | analysis-only record set |
+| `RC_CUSTOMER_REVENUE_DETAIL_WEEKLY` | `PL_CUSTOMER_REVENUE_DETAIL_WEEKLY` | three local-only record sets |
 
 ## Contract rules
 
