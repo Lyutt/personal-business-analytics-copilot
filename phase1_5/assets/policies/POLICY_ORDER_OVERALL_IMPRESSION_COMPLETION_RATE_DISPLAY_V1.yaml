@@ -58,6 +58,14 @@ persistence_policy:
   same_period_reselection_allowed: false
   previous_period_lookup_uses_same_state: true
   metric_result_store: false
+  physical_state_store:
+    provider: SQLite
+    sqlite_file_reference: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+    table_name: configured_display_values
+    shares_sqlite_file_with_metric_results: true
+    metric_results_table_write: false
+    schema_source: phase1_5/assets/metric_stores/metric_result_store_registry.yaml#mvp_physical_store_adapter_strategy.configured_display_value_state_schema
+    same_period_conflict_action: reject_write_notify_owner
 
 dependency_boundaries:
   metric_library_registration: false

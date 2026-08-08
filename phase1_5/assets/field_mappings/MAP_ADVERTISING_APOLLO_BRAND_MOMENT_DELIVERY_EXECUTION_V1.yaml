@@ -2,7 +2,7 @@ config_type: field_mapping_profile
 mapping_profile_id: MAP_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_V1
 mapping_profile_name: Apollo品牌时刻投放执行字段映射
 dataset_id: DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
-dataset_version_constraint: TBD
+dataset_version_constraint: ">=0.1.0,<0.2.0"
 source_id: SRC_INTERNAL_PLATFORM_APOLLO
 query_asset_id: QRY_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
 business_domains:

@@ -2,7 +2,7 @@ config_type: field_mapping_profile
 mapping_profile_id: MAP_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY_V1
 mapping_profile_name: Apollo非贴片分产品库存字段映射
 dataset_id: DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
-dataset_version_constraint: TBD
+dataset_version_constraint: ">=0.1.0,<0.2.0"
 source_id: SRC_INTERNAL_PLATFORM_APOLLO
 query_asset_id: QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK
 business_domains:

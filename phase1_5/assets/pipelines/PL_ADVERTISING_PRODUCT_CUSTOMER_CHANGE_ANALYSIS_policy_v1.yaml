@@ -16,7 +16,8 @@ trigger:
   applies_to: All explicitly configured Weekly Business Report products
   required_input: Validated product sell-through week-over-week absolute rate change
   condition: Absolute rate change is greater than or equal to the product-configured threshold
-  default_threshold: 10 percentage points
+  default_threshold_value: 10.0
+  default_threshold_unit: percentage_point
   product_specific_override_supported: true
   no_trigger_action: Do not execute customer query
   trigger_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
@@ -51,11 +52,21 @@ comparison_inputs:
     notify_owner: true
     exclude_conflicting_customer_row: true
     automatic_name_selection_or_merge: false
+  row_integrity_before_cross_period_match:
+    duplicate_key: [target_ad_product_name, period_start_date, period_end_date, customer_id]
+    duplicate_key_action: Exclude every row for the anomalous key and notify owner; do not merge or select a row.
+    negative_impression_count_action: Exclude the row and notify owner.
+    excluded_rows_enter_change_materiality_or_ranking: false
+  final_customer_grain:
+    owner_confirmed_key: customer_id
+    mapped_customer_or_group_name_role: display_name_only
+    aggregate_multiple_customer_ids_by_mapped_name: false
 
 business_rule_processing:
   execution_stage: BUSINESS_RULE_PROCESSING
   metric_calculation_stage_required: false
   responsibilities:
+    - duplicate_and_negative_row_exclusion
     - exact_customer_id_cross_period_matching
     - impression_change_derivation
     - materiality_filtering

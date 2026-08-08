@@ -2,7 +2,7 @@ config_type: field_mapping_profile
 mapping_profile_id: MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1
 mapping_profile_name: NovaBI全平台分日DAU字段映射
 dataset_id: DS_NOVABI_PLATFORM_DAU
-dataset_version_constraint: TBD
+dataset_version_constraint: ">=0.1.0,<0.2.0"
 source_id: SRC_INTERNAL_PLATFORM_NOVABI
 query_asset_id: QRY_NOVABI_DAU_QUERY
 business_domains:

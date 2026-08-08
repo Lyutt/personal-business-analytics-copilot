@@ -24,3 +24,5 @@ jobs:
         env:
           ASSET_VALIDATION_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: python scripts/validate_asset_integrity.py
+      - name: Run Phase 1.5 synthetic final acceptance
+        run: python scripts/validate_final_acceptance.py

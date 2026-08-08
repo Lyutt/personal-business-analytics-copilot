@@ -89,6 +89,29 @@ implementation_readiness_checks:
   local_template_commentary_anchor_bindings_confirmed: pass
   baseline_freeze_and_version_impact_consistent: pass
   stale_publication_status_absent: pass
+  workflow_run_context_single_date_authority: pass
+  run_input_manifest_explicit_binding: pass
+  percentage_point_storage_and_12pp_trigger: pass
+  active_pipeline_dataset_version_and_join_tbd_closed: pass
+  parameterized_result_contract_instance_selection: pass
+  result_field_value_status_consumption: pass
+  customer_duplicate_and_negative_row_exclusion: pass
+  workflow_complete_partial_blocked_statuses: pass
+  external_asset_interface_schemas: pass
+  configured_display_values_sqlite_state: pass
+  revenue_excel_recalculate_data_only_reread: pass
+  analysis_request_contract_and_dcp_registry: pass
+  ad_hoc_standard_operations_boundary: pass
+  synthetic_final_acceptance_in_ci: pass
+
+final_acceptance_transition:
+  corrections_pending_status_used_during_edit_and_pre_gate_validation: final_acceptance_corrections_pending
+  repository_safety_validation: passed
+  asset_integrity_validation_before_final_status_restore: passed_except_expected_pending_gate_status_mismatch
+  synthetic_acceptance_scenario_count: 12
+  synthetic_acceptance_result: passed
+  final_status_after_all_contract_checks: ready_awaiting_explicit_owner_approval
+  explicit_owner_code_implementation_approval_received: false
 
 implementation_entry_decision:
   asset_baseline_ready: true

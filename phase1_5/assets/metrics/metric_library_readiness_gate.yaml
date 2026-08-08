@@ -43,6 +43,9 @@ referential_integrity:
   orphan_metric_variant_count: 0
 
 gate_checks:
+  percentage_point_change_formula_multiplies_decimal_rate_difference_by_100: pass
+  percentage_point_trigger_threshold_numeric_10_0: pass
+  decimal_ratio_metrics_remain_zero_to_one_semantics: pass
   metric_and_variant_two_level_model: pass
   stable_metric_concepts_have_owner_and_version: pass
   metric_variants_have_explicit_business_context: pass

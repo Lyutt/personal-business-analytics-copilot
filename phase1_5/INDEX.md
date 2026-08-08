@@ -16,7 +16,7 @@
 - Metric Library Initialization：已完成并通过Readiness Gate。
 - Result Contract Initialization：12个正式Contract已完成并通过Readiness Gate；
   48个Metric Variant已显式绑定Contract Field。
-- 当前收口点：Implementation Baseline 1.0.0已冻结并等待Owner明确批准代码实现；保留本地Metric Store Runtime Bootstrap条件；Customer Revenue Detail Workflow按Owner决策暂缓。
+- 当前收口点：Phase 1.5 Final Acceptance已通过，Implementation Baseline 1.0.0已按最终合同重新冻结并等待Owner明确批准代码实现；保留本地Metric Store Runtime Bootstrap条件；Customer Revenue Detail Workflow按Owner决策暂缓。
 - 统一状态入口：[Status Index](assets/readiness/status_index.yaml)。
 - 最终实现入口：[Code Implementation Readiness Gate](assets/readiness/code_implementation_readiness_gate.yaml)。
 - 冻结实现基线：[Implementation Baseline 1.0.0](assets/readiness/implementation_baseline.yaml)。
@@ -74,6 +74,10 @@ Phase 1 旧版 `phase1/workflows/weekly_business_report/WORKFLOW.md` 保留，�
 - [统一状态索引](assets/readiness/status_index.yaml)
 - [Code Implementation Readiness Gate](assets/readiness/code_implementation_readiness_gate.yaml)
 - [Implementation Baseline 1.0.0](assets/readiness/implementation_baseline.yaml)
+- [Workflow Run Context与Run Input Manifest合同](assets/execution/weekly_workflow_runtime_contracts_v1.yaml)
+- [Analysis Request Contract模板](templates/analysis_request_contract.template.yaml)
+- [DCP Registry](assets/analysis/dcp_registry_v1.yaml)
+- [Phase 1.5合成Final Acceptance场景](tests/final_acceptance_scenarios.yaml)
 - [产品客户变化条件分析策略](assets/pipelines/PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_policy_v1.yaml)
 - [通用查询会话恢复策略](assets/execution_policies/QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1.yaml)
 - `outputs/phase1_5/Business_Asset_Initialization_v2_1.xlsx`
@@ -95,7 +99,7 @@ Dataset、Pipeline或Metric资产。
 ## 当前规则
 
 - 不把示例 Pipeline、Dataset、Rule 或 Metric 当作真实业务资产。
-- 所有未确认业务标识、字段、规则和公式保持 `TBD`；已确认内容按对应资产版本管理。
+- 所有真正未确认且影响运行的业务标识、字段、规则和公式必须登记为Blocking项；Active Pipeline不得用 `TBD` 规避版本、Join或输入绑定。
 - Dataset–Pipeline 依赖必须显式配置。
 - Pipeline 是运行、验证、异常定位和补跑的最小执行单元。
 - Workflow 之间不产生文件级依赖。

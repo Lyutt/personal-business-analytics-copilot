@@ -1,0 +1,100 @@
+config_type: data_capability_profile_registry
+dcp_registry_id: DCP_REGISTRY_PHASE1_5_V1
+registry_version: 1.0.0
+status: confirmed_for_final_acceptance
+owner: WORKFLOW_OWNER
+
+matching_policy:
+  match_method: exact_metadata_match
+  required_request_metadata: [domain, intent, period, comparison, dimensions, metrics, filters, output]
+  name_similarity_inference_allowed: false
+  no_match_action: request_owner_confirmation
+  multiple_match_action: request_owner_confirmation
+  automatic_first_match_selection_allowed: false
+
+allowed_standard_analysis_operations:
+  - filter
+  - group_by
+  - sum
+  - avg
+  - count
+  - period_compare
+  - sort
+  - rank
+  - topN
+  - share
+  - dimension_decomposition
+
+operation_boundary:
+  standardized_or_validated_data_only: true
+  may_create_new_business_metric_formula: false
+  new_business_definition_requires_registered_metric_variant_or_business_rule: true
+  one_time_request_plan_type: Temporary Execution Plan
+  one_time_request_creates_formal_workflow: false
+
+capability_profiles:
+  - dcp_id: DCP_INVENTORY_PRODUCT_ANALYSIS_V1
+    metadata:
+      domain: Inventory
+      intents: [product_performance, sell_through_change]
+      dimensions: [target_ad_product_name, reporting_period]
+      metrics: [available_inventory_count, sell_through_rate, sell_through_wow_change_pp]
+    dataset_ids:
+      - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+    query_asset_ids:
+      - QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK
+    mapping_profile_ids:
+      - MAP_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY_V1
+    metric_variant_ids:
+      - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
+      - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1
+    result_contract_ids:
+      - RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      - RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+    formula_copy: prohibited
+
+  - dcp_id: DCP_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_V1
+    metadata:
+      domain: Advertising
+      intents: [customer_delivery_change, product_customer_analysis]
+      dimensions: [target_ad_product_name, customer_id, customer_name, reporting_period]
+      metrics: [impression_count, impression_change_count, customer_rank]
+    dataset_ids:
+      - DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+    query_asset_ids:
+      - QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+    mapping_profile_ids:
+      - MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1
+    result_contract_ids:
+      - RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+    policy_ids:
+      - POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+    formula_copy: prohibited
+
+  - dcp_id: DCP_USER_ANALYTICS_DAU_V1
+    metadata:
+      domain: User Analytics
+      intents: [daily_active_users, weekly_average_dau]
+      dimensions: [activity_date, platform_scope, reporting_period]
+      metrics: [dau_count, weekly_average_dau, weekly_average_dau_wow]
+    dataset_ids: [DS_NOVABI_PLATFORM_DAU]
+    query_asset_ids: [QRY_NOVABI_DAU_QUERY]
+    mapping_profile_ids: [MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1]
+    metric_variant_ids:
+      - MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1
+      - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1
+      - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1
+    result_contract_ids: [RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY]
+    formula_copy: prohibited
+
+temporary_execution_plan_contract:
+  required_fields:
+    request_id: string
+    matched_dcp_id: string
+    exact_metadata_evidence: object
+    selected_capability_ids: object
+    ordered_operations: array
+    output_contract: object
+    owner_confirmations: array
+  persisted_as_formal_workflow: false
+  reusable_business_formula_registration_allowed: false

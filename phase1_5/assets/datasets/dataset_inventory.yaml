@@ -1,7 +1,18 @@
 config_type: dataset_inventory
-inventory_version: 0.2.1
+inventory_version: 0.2.2
 status: active
 owner: ${OUTLOOK_MAILBOX_ADDRESS_LOCAL_ONLY}
+
+runtime_input_contract:
+  contract_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+  applies_to_all_registered_datasets_and_query_assets: true
+  approved_dataset_version_source: datasets[].governance.version
+  approved_query_asset_version_source: query_assets[].version
+  workflow_run_context_required: true
+  run_input_manifest_required: true
+  actual_execution_date_business_date_inference_allowed: false
+  current_date_fallback_allowed: false
+  filename_period_or_product_inference_allowed: false
 
 datasets:
   - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
@@ -298,10 +309,10 @@ datasets:
         attachment_pattern: 订单分季度收入.xlsx
         email_frequency: Daily
         desired_selection_scope: >-
-          获取邮件标题日期与Workflow执行日期一致的邮件。
+          获取邮件标题日期与Workflow Run Context cutoff_date一致的邮件。
         executable_selection_rule:
           status: confirmed
-          primary_condition: Subject date equals Workflow execution date
+          primary_condition: Subject date equals Workflow Run Context cutoff_date
           subject_date_format: YYYY-MM-DD
           no_match_policy:
             initial_action: pause_workflow
@@ -336,7 +347,7 @@ datasets:
       dataset_update_frequency: Daily
       version_scope: >-
         每封邮件代表当前季度的最新累计收入状态。有效邮件按已确认的标题日期
-        与Workflow执行日期一致规则识别；多封匹配时选择发送时间最新的一封并提醒。
+        与Workflow Run Context cutoff_date一致规则识别；多封匹配时选择发送时间最新的一封并提醒。
       period_semantics:
         year_definition: TBD
         quarter_definition: TBD
@@ -415,8 +426,8 @@ datasets:
         current_workflow_parameter_profile:
           workflow_usage: Weekly Business Report
           execution_weekday: Thursday
-          start_date_rule: Workflow execution date minus 7 days
-          end_date_rule: Workflow execution date minus 1 day
+          start_date_rule: Workflow Run Context current_period_start_date
+          end_date_rule: Workflow Run Context current_period_end_date
           post_template_adjustment:
             detail_dimension_date_selected_by_template: true
             required_action: Deselect date detail dimension before query execution
@@ -518,8 +529,8 @@ datasets:
         current_workflow_usage: 按Weekly Business Report统计周期执行查询
         current_workflow_parameter_profile:
           execution_weekday: Friday
-          start_date_rule: Workflow execution date minus 7 days
-          end_date_rule: Workflow execution date minus 1 day
+          start_date_rule: Workflow Run Context current_period_start_date
+          end_date_rule: Workflow Run Context current_period_end_date
           observed_example:
             execution_date: "2026-07-24"
             date_range: "2026-07-17 to 2026-07-23"
@@ -1119,8 +1130,8 @@ query_assets:
       capability: Custom date range
       weekly_business_report_profile:
         execution_weekday: Thursday
-        start_date_rule: Query date minus 7 days
-        end_date_rule: Query date minus 1 day
+        start_date_rule: Workflow Run Context current_period_start_date
+        end_date_rule: Workflow Run Context current_period_end_date
         post_template_adjustment:
           parameter_name: detail_dimension_date
           required_value: deselected
@@ -1143,8 +1154,8 @@ query_assets:
       - parameter_name: date_range
         capability: Custom date range
         weekly_business_report_value:
-          start_date_rule: Query date minus 7 days
-          end_date_rule: Query date minus 1 day
+          start_date_rule: Workflow Run Context current_period_start_date
+          end_date_rule: Workflow Run Context current_period_end_date
       - parameter_name: detail_dimension_date
         template_default_value: selected
         required_runtime_value: deselected
@@ -1172,8 +1183,8 @@ query_assets:
       capability: Custom date range
       weekly_business_report_profile:
         execution_weekday: Friday
-        start_date_rule: Query date minus 7 days
-        end_date_rule: Query date minus 1 day
+        start_date_rule: Workflow Run Context current_period_start_date
+        end_date_rule: Workflow Run Context current_period_end_date
     result_handling:
       empty_result_policy:
         action:
@@ -1191,8 +1202,8 @@ query_assets:
         capability: Custom date range
         current_workflow_usage: Weekly Business Report统计周期
         weekly_business_report_value:
-          start_date_rule: Query date minus 7 days
-          end_date_rule: Query date minus 1 day
+          start_date_rule: Workflow Run Context current_period_start_date
+          end_date_rule: Workflow Run Context current_period_end_date
     result_acquisition_method:
       - CSV Export
     expected_format:
@@ -1219,8 +1230,8 @@ query_assets:
       capability: Custom date range
       weekly_business_report_profile:
         execution_weekday: Friday
-        start_date_rule: Query date minus 7 days
-        end_date_rule: Query date minus 1 day
+        start_date_rule: Workflow Run Context current_period_start_date
+        end_date_rule: Workflow Run Context current_period_end_date
         observed_example:
           query_date: 2026-07-24
           start_date: 2026-07-17
@@ -1242,8 +1253,8 @@ query_assets:
         capability: Custom date range
         workflow_value:
           weekly_business_report:
-            start_date_rule: Query date minus 7 days
-            end_date_rule: Query date minus 1 day
+            start_date_rule: Workflow Run Context current_period_start_date
+            end_date_rule: Workflow Run Context current_period_end_date
       - parameter_name: platform
         selection_required: false
         template_behavior: 默认输出全部细分平台库存结果
@@ -1273,8 +1284,8 @@ query_assets:
       capability: Custom date range
       weekly_business_report_profile:
         execution_weekday: Friday
-        start_date_rule: Query date minus 7 days
-        end_date_rule: Query date minus 1 day
+        start_date_rule: Workflow Run Context current_period_start_date
+        end_date_rule: Workflow Run Context current_period_end_date
         observed_example:
           query_date: 2026-07-24
           start_date: 2026-07-17
@@ -1296,8 +1307,8 @@ query_assets:
         capability: Custom date range
         workflow_value:
           weekly_business_report:
-            start_date_rule: Query date minus 7 days
-            end_date_rule: Query date minus 1 day
+            start_date_rule: Workflow Run Context current_period_start_date
+            end_date_rule: Workflow Run Context current_period_end_date
       - parameter_name: product
         selection_required: false
       - parameter_name: platform
@@ -1331,8 +1342,8 @@ query_assets:
       capability: Custom date range
       weekly_business_report_profile:
         execution_weekday: Friday
-        start_date_rule: Query date minus 7 days
-        end_date_rule: Query date minus 1 day
+        start_date_rule: Workflow Run Context current_period_start_date
+        end_date_rule: Workflow Run Context current_period_end_date
         observed_example:
           query_date: 2026-07-24
           start_date: 2026-07-17
@@ -1361,8 +1372,8 @@ query_assets:
         capability: Custom date range
         workflow_value:
           weekly_business_report:
-            start_date_rule: Query date minus 7 days
-            end_date_rule: Query date minus 1 day
+            start_date_rule: Workflow Run Context current_period_start_date
+            end_date_rule: Workflow Run Context current_period_end_date
       - parameter_name: additional_filters
         selection_required: false
       - parameter_name: detail_dimension_date
@@ -1386,7 +1397,7 @@ query_assets:
     query_or_export_name: DAU查询
     query_description_or_manual_steps: >-
       登录NovaBI网页；确认当前账号具备NovaBI查询权限；输入固定格式自然语言
-      查询语句；根据查询日期调整开始和结束日期参数；提交查询；获取全平台
+      查询语句；根据Run Input Manifest的period_role读取Workflow Run Context并设置开始和结束日期参数；提交查询；获取全平台
       分日DAU查询结果。
     access_requirement:
       login_account: ${NOVABI_LOGIN_ACCOUNT_LOCAL_ONLY}
@@ -1408,8 +1419,8 @@ query_assets:
       date_format: YYMMDD
       weekly_business_report_profile:
         execution_weekday: Friday
-        start_date_rule: Query date minus 7 days
-        end_date_rule: Query date minus 1 day
+        start_date_rule: Workflow Run Context current_period_start_date
+        end_date_rule: Workflow Run Context current_period_end_date
       observed_example:
         query_date: "260724"
         query_period: "260717-260723"
@@ -1429,10 +1440,10 @@ query_assets:
     parameters_or_filters:
       - parameter_name: start_date
         runtime_value: Workflow-dependent
-        weekly_business_report_value: Query date minus 7 days
+        weekly_business_report_value: Workflow Run Context current_period_start_date
       - parameter_name: end_date
         runtime_value: Workflow-dependent
-        weekly_business_report_value: Query date minus 1 day
+        weekly_business_report_value: Workflow Run Context current_period_end_date
     result_acquisition_method:
       - On-screen Result Copy
     expected_format:

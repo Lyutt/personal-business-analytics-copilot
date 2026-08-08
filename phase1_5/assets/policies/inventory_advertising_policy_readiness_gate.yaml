@@ -62,6 +62,10 @@ external_asset_version_gate:
   owner_confirmation_required_after_version_change: true
 
 gate_checks:
+  product_mapping_interface_schema_complete: pass
+  unknown_or_duplicate_product_scope_blocked: pass
+  duplicate_customer_key_excluded_before_calculation: pass
+  negative_impression_excluded_before_calculation: pass
   inventory_policy_sources_explicit: pass
   advertising_policy_sources_explicit: pass
   formulas_and_thresholds_unchanged: pass

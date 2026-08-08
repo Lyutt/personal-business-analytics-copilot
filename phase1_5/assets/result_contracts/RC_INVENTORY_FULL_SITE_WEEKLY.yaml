@@ -101,7 +101,15 @@ contract_fields:
     validation_requirement: Invalid denominator leaves the growth result blank and notifies owner without pausing the Pipeline.
     lineage_required: true
 record_sets: []
-mode_semantics: { allowed_value_statuses: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation], missing_must_not_be_mapped_to_not_applicable: true }
+mode_semantics:
+  allowed_value_statuses: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation]
+  missing_must_not_be_mapped_to_not_applicable: true
+  downstream_consumption:
+    calculation_allowed_value_statuses: [valid_value]
+    output_allowed_value_statuses: [valid_value]
+    missing_and_not_applicable_require_explicit_field_contract: true
+    pending_confirmation_calculation_allowed: false
+    pending_confirmation_output_allowed: false
 validation:
   producer_pipeline_validation_required: true
   required_fields: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]

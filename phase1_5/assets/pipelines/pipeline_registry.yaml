@@ -153,10 +153,12 @@ pipelines:
 
     dataset_dependencies:
       - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Current-period technical-line revenue input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -264,7 +266,7 @@ pipelines:
         may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Historical Weekly Report Context Extraction
@@ -332,10 +334,12 @@ pipelines:
 
     dataset_dependencies:
       - dataset_id: DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Current-period CTV excluding placement revenue input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -439,7 +443,7 @@ pipelines:
         may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -506,10 +510,12 @@ pipelines:
       - dataset_id: DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
         query_asset_id: QRY_APOLLO_QISHENG_EXECUTION_REVENUE
         query_template_parameter: 智能音箱收入查询模板
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Smart Speaker date-range revenue result
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
 
     historical_input_dependencies:
       - dependency_type: Metric Result Store
@@ -553,8 +559,8 @@ pipelines:
           query_count_per_run: 1
           query_template: 智能音箱收入查询模板
           date_parameters:
-            start_date: Thursday execution date minus 7 days
-            end_date: Thursday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           expected_result_shape: Single-row business-line period result
       qtd_acquisition_method: >
         不执行第二次Apollo QTD查询。
@@ -627,7 +633,7 @@ pipelines:
         may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -693,10 +699,12 @@ pipelines:
       - dataset_id: DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
         query_asset_id: QRY_APOLLO_QISHENG_EXECUTION_REVENUE
         query_template_parameter: 极速版收入查询模板
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Fast Version date-range revenue result
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
 
     historical_input_dependencies:
       - dependency_type: Metric Result Store
@@ -740,8 +748,8 @@ pipelines:
           query_count_per_run: 1
           query_template: 极速版收入查询模板
           date_parameters:
-            start_date: Thursday execution date minus 7 days
-            end_date: Thursday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           expected_result_shape: Single-row business-line period result
       qtd_acquisition_method: >
         不执行第二次Apollo QTD查询。
@@ -814,7 +822,7 @@ pipelines:
         may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -876,10 +884,12 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
         query_asset_id: QRY_APOLLO_INVENTORY_WEEKLY_FULL_SITE_STOCK
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Full-site date-range inventory input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -910,8 +920,8 @@ pipelines:
           query_count_per_run: 1
           query_template: 周报全站库存
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           result_acquisition_method: CSV Export
           expected_result_shape: Non-empty exported CSV result file
       stages:
@@ -970,7 +980,7 @@ pipelines:
       downstream_impact_rule: explicit_dependency_graph_only
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -1034,10 +1044,12 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
         query_asset_id: QRY_APOLLO_INVENTORY_PATCH_STOCK
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Patch date-range inventory input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -1068,8 +1080,8 @@ pipelines:
           query_count_per_run: 1
           query_template: 贴片库存计算
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           result_acquisition_method: CSV Export
           expected_result_shape: Non-empty exported CSV result file
       stages:
@@ -1139,7 +1151,7 @@ pipelines:
           may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -1202,10 +1214,12 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
         query_asset_id: QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Non-patch product date-range inventory input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -1236,8 +1250,8 @@ pipelines:
           query_count_per_run: 1
           query_template: 非贴片分产品库存数据
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           result_acquisition_method: CSV Export
           expected_result_shape: Non-empty exported CSV result file
       stages:
@@ -1310,7 +1324,7 @@ pipelines:
           may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -1375,10 +1389,12 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
         query_asset_id: QRY_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Brand Moment date-range delivery input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -1397,8 +1413,8 @@ pipelines:
             - detail_dimension: 日期
               required_state: deselected
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           result_acquisition_method: On-screen Result Copy
           expected_result_shape: One aggregated row for selected date range
       stages:
@@ -1468,7 +1484,7 @@ pipelines:
           may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -1605,7 +1621,7 @@ pipelines:
       downstream_impact_rule: explicit_dependency_graph_only
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Pipeline Registry upstream contracts
         - Confirmed Brand Moment sell-through business input roles
@@ -1665,12 +1681,14 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_NOVABI_PLATFORM_DAU
         query_asset_id: QRY_NOVABI_DAU_QUERY
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Full-platform daily DAU input
         required: true
         required_scope: pipeline_execution
         workflow_pipeline_required_or_optional_remains: optional
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -1703,8 +1721,8 @@ pipelines:
           natural_language_template: >
             从BI报表的核心数据表中，给我跑一下{start_date}-{end_date}的全平台分日DAU
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           result_acquisition_method: On-screen Result Copy
           expected_result_shape: Daily rows within selected date range
       stages:
@@ -1753,7 +1771,7 @@ pipelines:
       downstream_impact_rule: explicit_dependency_graph_only
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -1834,7 +1852,8 @@ pipelines:
       producer_result_type: Validated product sell-through result
       trigger_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
       confirmed_rule_input: abs(sell_through_rate_wow_change_pp) >= configured threshold
-      current_default_threshold: 10pp
+      current_default_threshold_value: 10.0
+      current_default_threshold_unit: percentage_point
       product_override_supported: true
       one_run_per_triggered_product: true
       multiple_product_runs_may_execute_in_parallel: false
@@ -1860,9 +1879,12 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
         query_asset_id: QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Product-customer delivery change input
         required_when_triggered: true
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         business_rule_processing_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
 
     execution:
@@ -1880,8 +1902,8 @@ pipelines:
           query_role: Current-week customer delivery summary
           product_parameter: Explicit triggered product
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           grouping_dimension: 广告主
           detail_dimension_date: deselected
           expected_result_shape: Customer-level period summary rows
@@ -1889,8 +1911,8 @@ pipelines:
           query_role: Previous-week customer delivery summary
           product_parameter: Same explicit triggered product
           date_parameters:
-            start_date: Friday execution date minus 14 days
-            end_date: Friday execution date minus 8 days
+            start_date: Workflow Run Context comparison_period_start_date
+            end_date: Workflow Run Context comparison_period_end_date
           grouping_dimension: 广告主
           detail_dimension_date: deselected
           expected_result_shape: Customer-level period summary rows
@@ -1898,6 +1920,14 @@ pipelines:
       cross_period_customer_matching:
         match_key: customer_id
         fuzzy_customer_name_matching_allowed: false
+        duplicate_product_period_customer_id_action:
+          - Exclude every row for the duplicate key
+          - Notify owner
+          - Do not automatically merge or select a row
+        negative_impression_count_action:
+          - Exclude the row before cross-period matching
+          - Notify owner
+          - Do not include the row in change, materiality, sorting, or ranking
         current_only_customer_comparison_period_impression_count: 0
         comparison_only_customer_current_period_impression_count: 0
         same_customer_id_name_conflict_action:
@@ -1914,6 +1944,7 @@ pipelines:
       ordered_rule_set_ids: []
       business_rule_processing_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
       business_rule_processing_responsibilities:
+        - duplicate_and_negative_row_exclusion
         - exact_customer_id_cross_period_matching
         - impression_change_derivation
         - materiality_filtering
@@ -1932,6 +1963,10 @@ pipelines:
         - target_ad_product_name
         - current_reporting_period
         - customer_id
+      final_customer_grain_owner_confirmation:
+        key: customer_id
+        mapped_customer_or_group_name_role: display_name_only
+        aggregate_multiple_customer_ids_by_mapped_name: false
       no_placeholder_result_contract_when:
         - trigger_not_met
         - raw_query_zero_rows
@@ -1957,7 +1992,7 @@ pipelines:
       downstream_impact_rule: Triggered product explanation only
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -2107,7 +2142,7 @@ pipelines:
       downstream_impact_rule: Target product outputs only
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Pipeline Registry upstream contracts
         - Confirmed advertising product inventory source routing
@@ -2181,3 +2216,20 @@ constraints:
     failed_run_recovery: rerun_pipeline_from_start
     stage_checkpointing_required: false
     resume_from_failed_stage_required: false
+  workflow_runtime_contracts:
+    contract_bundle_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+    workflow_run_context_required_for_all_pipelines: true
+    run_input_manifest_required_for_all_dataset_inputs: true
+    supported_run_types: [scheduled, manual, backfill]
+    outlook_apollo_novabi_execution_date_inference_allowed: false
+    product_parameter_must_be_explicit: true
+  result_field_consumption:
+    calculation_allowed_value_statuses: [valid_value]
+    output_allowed_value_statuses: [valid_value]
+    missing_and_not_applicable_require_explicit_field_contract: true
+    pending_confirmation_consumption_allowed: false
+  workflow_completion_status:
+    allowed_statuses: [complete_draft, partial_draft, blocked]
+    required_pipeline_fallback_draft_status: partial_draft
+    partial_draft_warning_required: true
+    partial_draft_may_be_labeled_complete_success: false

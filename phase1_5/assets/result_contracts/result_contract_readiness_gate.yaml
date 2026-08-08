@@ -18,6 +18,10 @@ scope:
   runtime_code_implementation_started_at_assessment_time: false
 
 gate_checks:
+  parameterized_product_contract_instance_selection: pass
+  result_field_valid_value_only_consumption: pass
+  pending_confirmation_calculation_and_output_prohibited: pass
+  percentage_point_contract_units: pass
   weekly_workflow_result_contract_ids_registered: pass
   result_contract_id_uniqueness: pass
   producer_pipeline_complete_and_unique: pass

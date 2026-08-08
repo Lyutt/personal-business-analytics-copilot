@@ -20,6 +20,9 @@ scope:
   deferred_reason: Customer Revenue Detail Workflow is intentionally paused while Weekly Business Report is completed.
 
 gate_checks:
+  result_field_valid_value_only_output: pass
+  pending_confirmation_report_display_prohibited: pass
+  partial_draft_warning_contract: pass
   weekly_inventory_and_revenue_section_order_explicit: pass
   weekly_section_result_contract_references_explicit: pass
   weekly_result_contract_field_bindings_explicit: pass

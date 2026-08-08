@@ -514,6 +514,38 @@ asset_rules:
       - implementation_authorization
       - change_control
 
+  - asset_type: workflow_runtime_contracts
+    selector: { key: config_type, value: workflow_runtime_contracts }
+    required_paths:
+      - config_type
+      - contract_bundle_id
+      - contract_bundle_version
+      - status
+      - owner
+      - workflow_id
+      - workflow_run_context
+      - run_input_manifest
+      - parameterized_result_contract_instance_selection
+      - result_field_consumption
+      - workflow_completion_status
+      - governance
+
+  - asset_type: data_capability_profile_registry
+    selector: { key: config_type, value: data_capability_profile_registry }
+    required_paths:
+      - config_type
+      - dcp_registry_id
+      - registry_version
+      - status
+      - owner
+      - matching_policy
+      - allowed_standard_analysis_operations
+      - operation_boundary
+      - capability_profiles
+      - capability_profiles[].dcp_id
+      - capability_profiles[].metadata
+      - temporary_execution_plan_contract
+
 constraints:
   optional_template_fields_may_be_omitted: true
   required_paths_must_exist: true

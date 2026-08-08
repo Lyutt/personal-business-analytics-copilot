@@ -1,0 +1,123 @@
+config_type: workflow_runtime_contracts
+contract_bundle_id: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1
+contract_bundle_version: 1.0.0
+status: confirmed_for_final_acceptance
+owner: WORKFLOW_OWNER
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+
+workflow_run_context:
+  context_id: WORKFLOW_RUN_CONTEXT_WF_WEEKLY_BUSINESS_REPORT_V1
+  one_context_per_workflow_run: true
+  immutable_after_run_start: true
+  required_fields:
+    workflow_run_id: { data_type: string, nullable: false }
+    run_type: { data_type: string, nullable: false, allowed_values: [scheduled, manual, backfill] }
+    reporting_period_id: { data_type: string, nullable: false }
+    reporting_period_start_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
+    reporting_period_end_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
+    current_period_start_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
+    current_period_end_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
+    comparison_period_start_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
+    comparison_period_end_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
+    cutoff_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
+    timezone: { data_type: string, nullable: false, required_value: Asia/Shanghai }
+  period_rules:
+    scheduled: Explicit scheduler input resolves and locks every required period field before any Pipeline starts.
+    manual: Owner must provide the reporting period and cutoff date explicitly; execution timestamp is audit metadata only.
+    backfill: Owner must provide the historical reporting period and cutoff date explicitly; current clock date is never substituted.
+    quarter_transition: Quarter classification reads the locked current and comparison periods from this Context.
+  query_parameter_authority:
+    outlook: workflow_run_context_and_run_input_manifest_only
+    apollo: workflow_run_context_and_run_input_manifest_only
+    novabi: workflow_run_context_and_run_input_manifest_only
+    actual_execution_date_business_date_inference_allowed: false
+    filename_date_inference_allowed: false
+    current_clock_date_fallback_allowed: false
+  invalid_context_action: Block the Workflow Run before data acquisition and notify owner.
+
+run_input_manifest:
+  manifest_id: RUN_INPUT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1
+  one_manifest_per_workflow_run: true
+  workflow_run_context_required: true
+  manifest_created_before_data_acquisition: true
+  required_entry_fields:
+    workflow_run_id: { data_type: string, nullable: false }
+    dataset_id: { data_type: string, nullable: false }
+    dataset_version: { data_type: string, nullable: false }
+    query_asset_binding:
+      data_type: object
+      nullable: false
+      required_fields: [binding_status]
+      binding_status_allowed: [bound, not_applicable]
+      query_asset_id_required_when: binding_status == bound
+    period_role:
+      data_type: string
+      nullable: false
+      allowed_values: [current, comparison, prior_year_comparable, previous_quarter_complete, configured_history]
+    local_input_reference:
+      data_type: string
+      nullable: false
+      value_policy: local_only_opaque_reference_or_not_applicable
+    product_parameter:
+      data_type: string
+      nullable: false
+      value_policy: explicit_product_key_or_not_applicable
+  entry_business_key: [workflow_run_id, dataset_id, period_role, product_parameter]
+  duplicate_entry_action: Block the affected Pipeline input; do not select by filename, timestamp, or list order.
+  prohibited_inference:
+    infer_dataset_from_filename: false
+    infer_period_from_filename: false
+    infer_period_from_current_date: false
+    infer_product_from_filename_or_query_label: false
+  validation:
+    dataset_version_must_satisfy_pipeline_constraint: true
+    query_asset_must_match_registered_dataset_binding: true
+    period_role_must_resolve_from_workflow_run_context: true
+    local_input_reference_must_resolve_without_entering_git: true
+    product_parameter_required_for_product_scoped_pipeline: true
+
+parameterized_result_contract_instance_selection:
+  selection_policy_id: RC_INSTANCE_SELECTION_PRODUCT_SCOPED_V1
+  applies_to_result_contract_ids:
+    - RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    - RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+    - RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+  candidate_filters:
+    workflow_run_id: exact_current_workflow_run
+    reporting_period: exact_current_reporting_period
+    product_parameter: exact_explicit_product
+    validation_status: passed
+  attempt_selection: latest_valid_attempt
+  ambiguity_rule: More than one passed instance for the same business key at the latest valid attempt blocks the affected product scope.
+  random_or_first_list_selection_allowed: false
+  other_product_scope_blocked: false
+
+result_field_consumption:
+  consumption_contract_id: RESULT_FIELD_CONSUMPTION_V1
+  calculation_allowed_value_statuses: [valid_value]
+  output_allowed_value_statuses: [valid_value]
+  missing_handling: Consume only when the individual field contract explicitly defines missing behavior; otherwise omit or block the affected field scope.
+  not_applicable_handling: Consume only as an explicit applicability outcome; never coerce to zero, missing, or valid_value.
+  pending_confirmation_calculation_allowed: false
+  pending_confirmation_output_allowed: false
+  calculation_failed_consumption_allowed: false
+
+workflow_completion_status:
+  allowed_statuses: [complete_draft, partial_draft, blocked]
+  complete_draft:
+    condition: Every Required Pipeline and required output validation passed; Optional omissions follow approved policy.
+    warning_required: false
+  partial_draft:
+    condition: A Required Pipeline failed but its approved fallback permits Draft generation from remaining validated results.
+    warning_required: true
+    warning_minimum_fields: [pipeline_id, affected_report_scope, fallback_used, failure_summary]
+    may_be_reported_as_complete_success: false
+  blocked:
+    condition: A Required failure has no approved Draft fallback, Workflow Run Context or Manifest is invalid, or Output Assembly cannot produce a reviewable Draft.
+    draft_may_be_labeled_complete: false
+
+governance:
+  runtime_contract_only: true
+  code_implementation_authorized: false
+  new_workflow_engine_required: false
+  auto_send: false

@@ -1,13 +1,13 @@
 config_type: dataset_readiness_matrix
 gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1
-matrix_version: 0.3.3
+matrix_version: 0.3.4
 status: completed
 gate_result: passed
 implementation_authority:
   granted_by_this_gate: false
   final_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
 assessment_workflow_id: WF_WEEKLY_BUSINESS_REPORT
-last_synced_with_pipeline_registry: 2026-08-02
+last_synced_with_pipeline_registry: 2026-08-08
 last_synced_with_field_mapping_gate: 2026-08-02
 last_synced_with_final_code_gate: 2026-08-02
 assessment_summary:
@@ -49,6 +49,21 @@ standardization_baseline:
     - planned_acquisition_frequency
     - query_execution_frequency
   dataset_workflow_relationship_location: readiness_matrix_and_pipeline_registry
+  active_pipeline_dataset_version_constraint: ">=0.1.0,<0.2.0"
+  single_dataset_join_rule: not_applicable
+  workflow_run_context_and_manifest_required: true
+
+active_runtime_tbd_policy:
+  runtime_authoritative_paths:
+    - Pipeline Registry dataset_version_constraint
+    - Pipeline Registry join_or_relationship_rule_id
+    - Run Input Manifest explicit bindings
+    - Approved Field Mapping Profile
+    - Workflow Run Context period fields
+  tbd_allowed_in_runtime_authoritative_paths: false
+  descriptive_inventory_tbd_is_runtime_authority: false
+  newly_discovered_tbd_that_changes_runtime_result_action: Add a blocking_readiness_item and prevent the affected Pipeline from activation.
+  tbd_may_be_treated_as_non_blocking_without_explicit_classification: false
 
 dataset_readiness:
   - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
@@ -126,7 +141,7 @@ dataset_readiness:
       status: conditional
       blocking_tbd_items: []
       non_blocking_tbd_items:
-        - Workbook primary analysis object remains TBD for later data-structure review
+        - Runtime uses the approved Mapping Profile source object; no workbook-object inference is allowed
     standardization: { status: completed, exceptions: [] }
     gate: { pipeline_registry_eligible: allow, decision_reason: Required dataset; query period and failure-handling rules are confirmed, owner: Advertising Data Team }
 
@@ -139,7 +154,7 @@ dataset_readiness:
       status: conditional
       blocking_tbd_items: []
       non_blocking_tbd_items:
-        - Exact dimension combination and unique business key remain TBD for later data-structure review
+        - Runtime uniqueness follows the approved Mapping Profile and explicit Run Input Manifest binding
     standardization: { status: completed, exceptions: [] }
     gate: { pipeline_registry_eligible: allow, decision_reason: Required dataset; query period and failure-handling rules are confirmed, owner: Advertising Data Team }
 
@@ -152,7 +167,7 @@ dataset_readiness:
       status: conditional
       blocking_tbd_items: []
       non_blocking_tbd_items:
-        - Exact dimension combination and unique business key remain TBD for later data-structure review
+        - Runtime uniqueness follows the approved Mapping Profile and explicit Run Input Manifest binding
     standardization: { status: completed, exceptions: [] }
     gate: { pipeline_registry_eligible: allow, decision_reason: Required dataset; query period and failure-handling rules are confirmed, owner: Advertising Data Team }
 
@@ -166,7 +181,7 @@ dataset_readiness:
       blocking_tbd_items: []
       non_blocking_tbd_items:
         - Apollo UI automation must verify deselecting the date detail dimension after template selection
-        - Exact business unique key remains TBD for later data-structure review
+        - Runtime uniqueness follows the approved Mapping Profile and explicit Run Input Manifest binding
     standardization: { status: completed, exceptions: [] }
     gate: { pipeline_registry_eligible: allow, decision_reason: Required dataset; one-row acquisition override and failure-handling rules are confirmed, owner: Advertising Data Team }
 

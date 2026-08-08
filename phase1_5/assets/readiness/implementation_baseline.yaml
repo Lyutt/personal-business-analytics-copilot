@@ -4,7 +4,7 @@ baseline_version: 1.0.0
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 freeze_date: 2026-08-08
 status: frozen_awaiting_explicit_owner_code_implementation_approval
-freeze_revision_status: refrozen_after_acceptance_consistency_corrections
+freeze_revision_status: refrozen_after_final_acceptance_closure
 owner: WORKFLOW_OWNER
 source_main_commit_sha: 7a6c6d007fd0e84a3d65193c1c9e60b9c3d7ddd2
 source_branch: main
@@ -26,6 +26,9 @@ baseline_scope:
     - External Asset reference contract
     - Output Mapping
     - Configured Display Value Policy
+    - Workflow Runtime Contracts
+    - Ad-hoc Analysis ARC and DCP contracts
+    - Synthetic Final Acceptance Tests
     - Readiness and Implementation Entry
   excluded_runtime_material:
     - Raw business data and customer rows
@@ -51,6 +54,11 @@ frozen_asset_versions:
   order_overall_impression_completion_rate_display_policy_version: 1.0.0
   weekly_output_mapping_version: 1.0.0
   outlook_draft_mapping_version: 1.0.0
+  workflow_runtime_contract_bundle_version: 1.0.0
+  analysis_request_contract_template_version: 1.0.0
+  dcp_registry_version: 1.0.0
+  synthetic_final_acceptance_suite_version: 1.0.0
+  synthetic_final_acceptance_scenario_count: 12
 
 frozen_gate_results:
   - { gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
@@ -70,6 +78,8 @@ validation_contract:
   exact_diff_sensitive_data_review_required_before_git_operation: true
   baseline_consistency_validation_required: true
   changed_asset_requires_baseline_version_review: true
+  synthetic_final_acceptance_required: true
+  synthetic_final_acceptance_ci_required: true
 
 implementation_authorization:
   asset_baseline_ready: true
@@ -91,6 +101,7 @@ mvp_development_constraints:
     - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
     - STORE_WEEKLY_ADVERTISING_HISTORICAL
   shared_local_sqlite_table: metric_results
+  shared_local_sqlite_configured_display_value_table: configured_display_values
   shared_local_sqlite_discriminator_fields: [store_id, store_asset_id]
   revenue_physical_metric_store_strategy: existing_excel_history_store
   separate_physical_storage_engine_per_logical_store_required: false
@@ -127,7 +138,7 @@ change_control:
     - Owner review before Code Implementation approval
   latest_baseline_version_impact_review:
     review_date: 2026-08-08
-    change_class: cross_asset_acceptance_consistency_correction
+    change_class: final_acceptance_closure_after_pre_freeze_behavior_review
     behavior_or_output_change: false
     customer_analysis_output_strategy: fixed_narrative_template_rendering
     customer_analysis_initial_mvp_status: included
@@ -137,8 +148,26 @@ change_control:
     development_complexity_reduction: true
     code_implementation_owner_approved: false
     baseline_version_increment_required: false
-    baseline_freeze_action: refreeze_same_version_after_non_behavioral_consistency_corrections
-    rationale: The correction removes contradictory execution, empty-result consumption, readiness, template-binding, and publication-state representations without changing approved formulas, thresholds, mappings, output order, or fixed narrative text.
+    baseline_freeze_action: refreeze_same_version_after_final_acceptance_validation
+    final_acceptance_synthetic_scenario_count: 12
+    final_acceptance_result: passed
+    rationale: The current review records the validated final asset state after the behavior changes below were incorporated before code implementation; it does not authorize implementation or alter the fixed narrative, 10.0pp threshold, materiality threshold, product Mapping values, or output order.
+  final_acceptance_behavior_change_review:
+    review_date: 2026-08-08
+    change_class: pre_implementation_runtime_contract_closure
+    behavior_or_output_change: true
+    changes_reviewed:
+      - Workflow Run Context and Run Input Manifest become the only business-date and input authorities
+      - Percentage-point outputs store true pp values using rate difference multiplied by 100
+      - Invalid duplicate and negative customer rows are excluded before calculation
+      - Partial Draft status and warning semantics are explicit
+      - Configured display state uses a second table in the existing shared SQLite
+      - ARC, DCP and synthetic acceptance contracts are added without a Workflow Engine
+    incorporated_before_current_freeze: true
+    current_frozen_baseline_includes_change: true
+    code_implementation_started: false
+    baseline_version_increment_required: false
+    owner_code_implementation_approval_granted: false
   pre_freeze_customer_narrative_acceptance_review:
     review_date: 2026-08-06
     change_class: customer_analysis_fixed_narrative_output_acceptance

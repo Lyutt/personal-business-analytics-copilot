@@ -26,11 +26,16 @@ mvp_physical_store_adapter_strategy:
   physical_store_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
   physical_store_file_created_by_this_configuration_change: false
   shared_table_name: metric_results
+  configured_display_value_state_table: configured_display_values
+  configured_display_value_state_shares_same_sqlite: true
+  configured_display_value_state_schema_status: confirmed
+  configured_display_value_state_is_metric_result: false
   logical_store_discriminator_fields: [store_id, store_asset_id]
   physical_schema_contract_source: phase1_5/assets/metric_stores/metric_result_store_registry.yaml#mvp_physical_store_adapter_strategy.physical_schema
   physical_schema_contract_status: confirmed
   dimension_representation_status: confirmed_canonical_json
   idempotent_unique_key_status: confirmed
+  configured_display_value_idempotent_unique_key_status: confirmed
   applies_to_logical_store_ids:
     - STORE_WEEKLY_INVENTORY_HISTORICAL
     - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL

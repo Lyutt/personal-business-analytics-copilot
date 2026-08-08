@@ -1,0 +1,133 @@
+config_type: synthetic_final_acceptance_scenarios
+suite_id: PHASE1_5_FINAL_ACCEPTANCE_V1
+suite_version: 1.0.0
+contains_real_business_data: false
+external_side_effects_allowed: false
+
+scenarios:
+  - scenario_id: normal_week
+    synthetic_input:
+      run_type: scheduled
+      reporting_period_id: SYNTH-W01
+      required_pipeline_failures: []
+    expected_result:
+      workflow_completion_status: complete_draft
+      warning_required: false
+
+  - scenario_id: manual_run_context
+    synthetic_input:
+      run_type: manual
+      explicit_period_supplied: true
+      execution_date_differs_from_reporting_period: true
+    expected_result:
+      period_source: workflow_run_context
+      execution_date_inference_used: false
+
+  - scenario_id: backfill_run_context
+    synthetic_input:
+      run_type: backfill
+      explicit_period_supplied: true
+      reporting_period_id: SYNTH-HIST-W01
+      execution_date_differs_from_reporting_period: true
+    expected_result:
+      period_source: workflow_run_context
+      execution_date_inference_used: false
+
+  - scenario_id: quarter_transition
+    synthetic_input:
+      current_period_start_date: 2026-10-01
+      comparison_period_end_date: 2026-09-30
+    expected_result:
+      report_mode: quarter_transition
+      date_source: workflow_run_context
+
+  - scenario_id: twelve_pp_anomaly_trigger
+    synthetic_input:
+      current_rate: 0.62
+      prior_rate: 0.50
+      threshold_pp: 10.0
+    expected_result:
+      wow_change_pp: 12.0
+      unit: percentage_point
+      trigger: true
+
+  - scenario_id: qualified_customer_zero_rows
+    synthetic_input:
+      product_context_valid: true
+      qualified_customer_rows: []
+    expected_result:
+      result_contract_generated: true
+      customer_record_count: 0
+      narrative_mode: product_change_only
+      fabricated_customer: false
+
+  - scenario_id: multiple_products_with_repeated_attempt
+    synthetic_input:
+      instances:
+        - { product: SYNTH_PRODUCT_A, attempt: 1, validation_status: passed, result_id: A1 }
+        - { product: SYNTH_PRODUCT_A, attempt: 2, validation_status: passed, result_id: A2 }
+        - { product: SYNTH_PRODUCT_B, attempt: 1, validation_status: passed, result_id: B1 }
+    expected_result:
+      selected_result_ids: [A2, B1]
+      blocked_products: []
+      fixed_product_order_preserved: true
+
+  - scenario_id: duplicate_latest_attempt_blocks_product
+    synthetic_input:
+      instances:
+        - { product: SYNTH_PRODUCT_A, attempt: 2, validation_status: passed, result_id: A2X }
+        - { product: SYNTH_PRODUCT_A, attempt: 2, validation_status: passed, result_id: A2Y }
+    expected_result:
+      selected_result_ids: []
+      blocked_products: [SYNTH_PRODUCT_A]
+      random_selection_used: false
+
+  - scenario_id: duplicate_and_negative_customer_rows
+    synthetic_input:
+      rows:
+        - { product: SYNTH_PRODUCT_A, period: current, customer_id: SYNTH_C1, impression_count: 1200000 }
+        - { product: SYNTH_PRODUCT_A, period: current, customer_id: SYNTH_C1, impression_count: 1300000 }
+        - { product: SYNTH_PRODUCT_A, period: current, customer_id: SYNTH_C2, impression_count: -1 }
+        - { product: SYNTH_PRODUCT_A, period: current, customer_id: SYNTH_C3, impression_count: 1500000 }
+    expected_result:
+      retained_customer_ids: [SYNTH_C3]
+      excluded_duplicate_customer_ids: [SYNTH_C1]
+      excluded_negative_customer_ids: [SYNTH_C2]
+      owner_notification_required: true
+
+  - scenario_id: sqlite_idempotency_and_conflict
+    synthetic_input:
+      first_value: 12.0
+      repeated_value: 12.0
+      conflicting_value: 11.0
+      configured_display_first_value: 93%
+      configured_display_repeated_value: 93%
+      configured_display_conflicting_value: 94%
+    expected_result:
+      metric_same_value_action: no_op_success
+      metric_conflict_action: reject_write_notify_owner
+      configured_display_same_value_action: read_and_reuse_success
+      configured_display_conflict_action: reject_write_notify_owner
+
+  - scenario_id: partial_draft
+    synthetic_input:
+      required_pipeline_failed: true
+      approved_fallback_allows_draft: true
+    expected_result:
+      workflow_completion_status: partial_draft
+      warning_required: true
+      complete_success_label_allowed: false
+
+  - scenario_id: adhoc_brief_exact_dcp_match
+    synthetic_input:
+      request:
+        domain: Advertising
+        intent: customer_delivery_change
+        dimensions: [target_ad_product_name, customer_id, customer_name, reporting_period]
+        metrics: [impression_count, impression_change_count, customer_rank]
+      operations: [filter, group_by, sum, period_compare, sort, rank, topN]
+    expected_result:
+      matched_dcp_id: DCP_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_V1
+      plan_type: Temporary Execution Plan
+      creates_formal_workflow: false
+      creates_new_business_metric_formula: false

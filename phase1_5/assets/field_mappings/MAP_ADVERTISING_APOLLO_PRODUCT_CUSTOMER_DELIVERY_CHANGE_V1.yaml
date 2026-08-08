@@ -2,7 +2,7 @@ config_type: field_mapping_profile
 mapping_profile_id: MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1
 mapping_profile_name: Apollo分广告产品客户投放变化字段映射
 dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
-dataset_version_constraint: TBD
+dataset_version_constraint: ">=0.1.0,<0.2.0"
 source_id: SRC_INTERNAL_PLATFORM_APOLLO
 query_asset_id: QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
 business_domains:
@@ -61,7 +61,8 @@ record_identity:
     period_end_date: explicit_query_context
     customer_id: mapped_source_field
   duplicate_key_policy:
-    retain_all_rows: true
+    retain_all_rows: false
+    exclude_duplicate_business_key: true
     automatic_merge_allowed: false
     notify_owner: true
   automatic_key_inference_allowed: false
@@ -157,7 +158,7 @@ field_mappings:
       integer_conversion: round_half_up_to_nearest_integer
     blank_value_handling: skip_row_and_notify_owner
     zero_value_handling: retain_row
-    negative_value_handling: retain_row_and_notify_owner
+    negative_value_handling: exclude_row_and_notify_owner
     nonnumeric_value_handling: skip_row_and_notify_owner
     mapping_status: owner_confirmed
 
@@ -228,7 +229,8 @@ validation:
   duplicate_contextual_key_validation:
     required: true
     duplicate_behavior:
-      retain_all_rows: true
+      retain_all_rows: false
+      exclude_duplicate_business_key: true
       automatic_merge_allowed: false
       notify_owner: true
   customer_id_blank_behavior:
@@ -244,8 +246,10 @@ validation:
       skip_row: true
       notify_owner: true
     negative_behavior:
-      retain_row: true
+      retain_row: false
+      exclude_row: true
       notify_owner: true
+      excluded_before_change_materiality_and_ranking: true
   zero_result_row_behavior:
     notify_owner: true
     analyze_zero_row_reason: true
@@ -265,6 +269,18 @@ standardization_exclusions:
   customer_ranking_calculated_in_mapping: false
   anomaly_threshold_evaluated_in_mapping: false
   report_text_generated_in_mapping: false
+
+customer_grain_execution:
+  owner_confirmed_final_grain: customer_id
+  cross_period_match_order:
+    - Exclude duplicate product-period-customer_id keys and notify owner.
+    - Exclude negative impression_count rows and notify owner.
+    - Match current and comparison periods exactly by customer_id.
+    - Apply the approved missing-side zero rule.
+    - Calculate change, materiality, ranking measure, and rank in Business Rule Processing.
+  mapped_customer_group_name_usage: display_name_only
+  aggregate_multiple_customer_ids_by_mapped_name: false
+  reason: The approved Result Contract grain remains customer_id; no separate Owner-approved customer-group identifier is registered.
 
 governance:
   evidence_required_for_approval: true

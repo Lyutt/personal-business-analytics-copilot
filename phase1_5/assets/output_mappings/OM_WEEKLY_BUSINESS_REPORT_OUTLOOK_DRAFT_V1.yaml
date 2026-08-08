@@ -29,6 +29,15 @@ assembly_constraints:
   may_select_metric_variant: false
   body_must_be_generated_by_approved_mapping: true
   customer_revenue_excel_dependency: false
+  workflow_completion_status_source: Workflow Runtime Contracts
+  allowed_draft_statuses: [complete_draft, partial_draft]
+  blocked_status_draft_creation_allowed: false
+  partial_draft_warning_required: true
+  partial_draft_warning_location: Draft body preface before the first report section
+  partial_draft_warning_minimum_fields: [pipeline_id, affected_report_scope, fallback_used, failure_summary]
+  partial_draft_may_be_labeled_complete_success: false
+  result_field_allowed_value_statuses: [valid_value]
+  pending_confirmation_field_display_allowed: false
 
 failure_and_warning_policy:
   draft_creation_failure:

@@ -59,6 +59,30 @@ mvp_physical_store_adapter_strategy:
       validation_status TEXT NOT NULL CHECK (validation_status = 'passed'), generated_at TEXT NOT NULL,
       UNIQUE (store_id, store_asset_id, metric_variant_id, metric_variant_version,
       reporting_period_start, reporting_period_end, dimensions_json));
+  configured_display_value_state_schema:
+    shares_same_sqlite_file_as_metric_results: true
+    table_name: configured_display_values
+    metric_result_table: false
+    columns:
+      - { column_name: policy_id, sqlite_type: TEXT, nullable: false }
+      - { column_name: workflow_id, sqlite_type: TEXT, nullable: false }
+      - { column_name: reporting_period_id, sqlite_type: TEXT, nullable: false }
+      - { column_name: configured_value, sqlite_type: TEXT, nullable: false, allowed_values: [92%, 93%, 94%, 95%] }
+      - { column_name: selected_at, sqlite_type: TEXT, nullable: false, format: ISO-8601 }
+      - { column_name: workflow_run_id, sqlite_type: TEXT, nullable: false }
+    idempotent_unique_key:
+      columns: [policy_id, workflow_id, reporting_period_id]
+      same_key_same_value_action: read_and_reuse_success
+      same_key_different_value_action: reject_write_notify_owner
+      automatic_reselection_or_overwrite_allowed: false
+    previous_period_lookup_key: [policy_id, workflow_id, reporting_period_id]
+    sqlite_ddl_contract: >-
+      CREATE TABLE IF NOT EXISTS configured_display_values (
+      policy_id TEXT NOT NULL, workflow_id TEXT NOT NULL,
+      reporting_period_id TEXT NOT NULL, configured_value TEXT NOT NULL
+      CHECK (configured_value IN ('92%','93%','94%','95%')),
+      selected_at TEXT NOT NULL, workflow_run_id TEXT NOT NULL,
+      UNIQUE (policy_id, workflow_id, reporting_period_id));
   applies_to_logical_store_ids:
     - STORE_WEEKLY_INVENTORY_HISTORICAL
     - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
@@ -115,6 +139,17 @@ metric_result_stores:
         新增业务记录时，复制当前季度上一条业务记录的单元格样式和数字格式。
         公式必须来自已确认配置，
         不得直接照搬未经验证的上一行公式。
+      formula_write_and_verification:
+        required_sequence:
+          - Write only formulas defined by an approved Metric or Business Rule.
+          - Recalculate the workbook with an available spreadsheet calculation engine.
+          - Save the recalculated workbook.
+          - Reopen through a data-only reader and read the cached calculated values.
+          - Compare every intended formula result with the validated current-week result and expected status.
+        calculation_engine_unavailable_action: Record a Metric Result Store write Warning, notify owner, and do not treat the workbook write as verified.
+        data_only_reread_mismatch_action: Record a Metric Result Store write Warning, notify owner, and do not overwrite the validated current-week result.
+        weekly_report_continuation: Continue Weekly Report generation from the already validated current-week Result Contract.
+        formula_text_only_check_is_sufficient: false
       quarter_transition_first_week:
         weekly_executed_revenue_wow: >
           未来所有季度切换首周均保持空白，
@@ -155,6 +190,7 @@ metric_result_stores:
         不阻断后续收入处理或Weekly Business Report生成。
         允许继续使用已经通过业务校验的当周计算结果，
         但必须向用户明确提示历史存档写入失败。
+      store_failure_completion_semantics: Store write Warning; validated current-week business results remain eligible for Draft generation.
     success_notification:
       required: true
       timing: Included in the current revenue-processing completion notice

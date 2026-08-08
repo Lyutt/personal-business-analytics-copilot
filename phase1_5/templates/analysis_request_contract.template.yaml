@@ -1,0 +1,30 @@
+config_type: analysis_request_contract_template
+template_id: ARC_TEMPLATE_AD_HOC_ANALYSIS_V1
+template_version: 1.0.0
+status: confirmed_for_final_acceptance
+owner: WORKFLOW_OWNER
+
+analysis_request_contract:
+  required_fields:
+    request_id: { data_type: string, nullable: false }
+    domain: { data_type: string, nullable: false }
+    intent: { data_type: string, nullable: false }
+    period: { data_type: object, nullable: false, required_fields: [start_date, end_date] }
+    comparison: { data_type: object, nullable: false, required_fields: [mode] }
+    dimensions: { data_type: array, item_type: string, nullable: false }
+    metrics: { data_type: array, item_type: string, nullable: false }
+    filters: { data_type: array, item_type: object, nullable: false }
+    output: { data_type: object, nullable: false, required_fields: [format, audience] }
+  brief_conversion:
+    explicit_metadata_only: true
+    name_similarity_inference_allowed: false
+    unresolved_or_ambiguous_metadata_action: request_owner_confirmation
+  lifecycle:
+    one_time_brief_output: temporary_execution_plan
+    creates_formal_workflow: false
+    repeated_demand_action: Owner review decides whether a formal Workflow is warranted.
+  boundaries:
+    creates_metric_variant: false
+    creates_business_rule: false
+    creates_result_contract: false
+    code_implementation_authorized: false

@@ -102,7 +102,7 @@ def is_reference_value(value: Any) -> bool:
     if not isinstance(value, str):
         return False
     normalized = value.strip()
-    return bool(normalized) and normalized.upper() != "TBD" and not bool(
+    return bool(normalized) and normalized.upper() not in {"TBD", "NOT_APPLICABLE"} and not bool(
         PLACEHOLDER_PATTERN.fullmatch(normalized)
     )
 
@@ -1546,6 +1546,7 @@ def validate_mvp_acceptance_semantics(
             f"{registry_file}:{customer_id}: business-rule processing must use {policy_id}"
         )
     expected_responsibilities = {
+        "duplicate_and_negative_row_exclusion",
         "exact_customer_id_cross_period_matching",
         "impression_change_derivation",
         "materiality_filtering",
@@ -2354,13 +2355,24 @@ def validate_customer_analysis_narrative_mapping(
     pre_freeze_review = change_control.get(
         "pre_freeze_customer_narrative_acceptance_review", {}
     )
+    final_acceptance_review = change_control.get(
+        "final_acceptance_behavior_change_review", {}
+    )
     if str(baseline_document.get("freeze_date")) != "2026-08-08" or baseline_document.get(
         "freeze_revision_status"
-    ) != "refrozen_after_acceptance_consistency_corrections" or change_control.get(
+    ) != "refrozen_after_final_acceptance_closure" or change_control.get(
         "baseline_is_logically_frozen"
     ) is not True or change_control.get("repository_commit_binding_status") != "tracked_on_draft_pr_5_head" or pre_freeze_review.get(
         "behavior_or_output_change"
-    ) is not True or pre_freeze_review.get("incorporated_before_current_freeze") is not True:
+    ) is not True or pre_freeze_review.get("incorporated_before_current_freeze") is not True or final_acceptance_review.get(
+        "behavior_or_output_change"
+    ) is not True or final_acceptance_review.get(
+        "incorporated_before_current_freeze"
+    ) is not True or final_acceptance_review.get(
+        "code_implementation_started"
+    ) is not False or final_acceptance_review.get(
+        "owner_code_implementation_approval_granted"
+    ) is not False:
         errors.append(f"{baseline_file}: frozen state and version-impact history are inconsistent")
 
     baseline_sequence = baseline_constraints.get("implementation_sequence", [])
@@ -2448,6 +2460,399 @@ def validate_customer_analysis_narrative_mapping(
         errors.append(f"{code_gate_file}: implementation authorization and frozen baseline state conflict")
 
     return 1
+
+
+def validate_phase1_5_final_closure(
+    documents: dict[str, Any], errors: list[str]
+) -> int:
+    """Validate the final Phase 1.5 runtime, persistence, and ad-hoc contracts."""
+    checked = 0
+    runtime_file = "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
+    registry_file = "phase1_5/assets/pipelines/pipeline_registry.yaml"
+    dataset_file = "phase1_5/assets/datasets/dataset_inventory.yaml"
+    readiness_file = "phase1_5/assets/datasets/dataset_readiness_matrix.yaml"
+    metric_file = "phase1_5/assets/metrics/metric_library_inventory_baseline_v1.yaml"
+    policy_file = "phase1_5/assets/pipelines/PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_policy_v1.yaml"
+    customer_mapping_file = "phase1_5/assets/field_mappings/MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1.yaml"
+    output_file = "phase1_5/assets/output_mappings/OM_WEEKLY_BUSINESS_REPORT_V1.yaml"
+    outlook_file = "phase1_5/assets/output_mappings/OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1.yaml"
+    external_file = "phase1_5/assets/external_asset_references.yaml"
+    store_file = "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
+    store_readiness_file = "phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml"
+    display_policy_file = "phase1_5/assets/policies/POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1.yaml"
+    dcp_file = "phase1_5/assets/analysis/dcp_registry_v1.yaml"
+    arc_file = "phase1_5/templates/analysis_request_contract.template.yaml"
+    scenarios_file = "phase1_5/tests/final_acceptance_scenarios.yaml"
+    gate_file = "phase1_5/assets/readiness/code_implementation_readiness_gate.yaml"
+
+    runtime = documents.get(runtime_file, {})
+    context = runtime.get("workflow_run_context", {})
+    required_context_fields = {
+        "workflow_run_id",
+        "run_type",
+        "reporting_period_id",
+        "reporting_period_start_date",
+        "reporting_period_end_date",
+        "current_period_start_date",
+        "current_period_end_date",
+        "comparison_period_start_date",
+        "comparison_period_end_date",
+        "cutoff_date",
+        "timezone",
+    }
+    if (
+        runtime.get("workflow_id") != "WF_WEEKLY_BUSINESS_REPORT"
+        or context.get("one_context_per_workflow_run") is not True
+        or context.get("immutable_after_run_start") is not True
+        or set(context.get("required_fields", {})) != required_context_fields
+        or context.get("required_fields", {}).get("run_type", {}).get("allowed_values")
+        != ["scheduled", "manual", "backfill"]
+        or context.get("query_parameter_authority", {}).get(
+            "actual_execution_date_business_date_inference_allowed"
+        )
+        is not False
+    ):
+        errors.append(f"{runtime_file}: Workflow Run Context is incomplete")
+    checked += 1
+
+    manifest = runtime.get("run_input_manifest", {})
+    required_manifest_fields = {
+        "workflow_run_id",
+        "dataset_id",
+        "dataset_version",
+        "query_asset_binding",
+        "period_role",
+        "local_input_reference",
+        "product_parameter",
+    }
+    if (
+        manifest.get("one_manifest_per_workflow_run") is not True
+        or set(manifest.get("required_entry_fields", {})) != required_manifest_fields
+        or manifest.get("entry_business_key")
+        != ["workflow_run_id", "dataset_id", "period_role", "product_parameter"]
+        or any(manifest.get("prohibited_inference", {}).values())
+    ):
+        errors.append(f"{runtime_file}: Run Input Manifest is incomplete")
+    checked += 1
+
+    registry = documents.get(registry_file, {})
+    pipelines = registry.get("pipelines", []) if isinstance(registry, dict) else []
+    dependencies = [
+        dependency
+        for pipeline in pipelines
+        for dependency in pipeline.get("dataset_dependencies", [])
+        if isinstance(dependency, dict)
+    ]
+    if len(dependencies) != 10 or any(
+        dependency.get("dataset_version_constraint") != ">=0.1.0,<0.2.0"
+        or dependency.get("join_or_relationship_rule_id") != "not_applicable"
+        or dependency.get("run_input_manifest_required") is not True
+        or dependency.get("period_context_source") != "workflow_run_context"
+        for dependency in dependencies
+    ):
+        errors.append(f"{registry_file}: active Dataset version, Join, Context, or Manifest binding is incomplete")
+    if "TBD" in yaml.safe_dump(registry, allow_unicode=True):
+        errors.append(f"{registry_file}: Active Pipeline Registry must not retain runtime TBD")
+    checked += 1
+
+    runtime_input_contract = documents.get(dataset_file, {}).get("runtime_input_contract", {})
+    if (
+        runtime_input_contract.get("applies_to_all_registered_datasets_and_query_assets") is not True
+        or runtime_input_contract.get("workflow_run_context_required") is not True
+        or runtime_input_contract.get("run_input_manifest_required") is not True
+        or runtime_input_contract.get("actual_execution_date_business_date_inference_allowed") is not False
+    ):
+        errors.append(f"{dataset_file}: Dataset and Query runtime authority is incomplete")
+    forbidden_date_phrases = (
+        "execution date minus",
+        "Query date minus",
+        "Workflow execution date",
+    )
+    for file in (dataset_file, registry_file):
+        text = (REPOSITORY_ROOT / file).read_text(encoding="utf-8")
+        if any(phrase in text for phrase in forbidden_date_phrases):
+            errors.append(f"{file}: business dates cannot be derived from execution or query date")
+    checked += 1
+
+    active_dataset_ids = {dependency.get("dataset_id") for dependency in dependencies}
+    for file, document in documents.items():
+        if (
+            isinstance(document, dict)
+            and document.get("config_type") == "field_mapping_profile"
+            and document.get("dataset_id") in active_dataset_ids
+            and document.get("dataset_version_constraint") != ">=0.1.0,<0.2.0"
+        ):
+            errors.append(f"{file}: active Mapping Profile Dataset version constraint is unresolved")
+    readiness = documents.get(readiness_file, {})
+    baseline = readiness.get("standardization_baseline", {})
+    runtime_tbd_policy = readiness.get("active_runtime_tbd_policy", {})
+    if (
+        baseline.get("active_pipeline_dataset_version_constraint") != ">=0.1.0,<0.2.0"
+        or baseline.get("single_dataset_join_rule") != "not_applicable"
+        or runtime_tbd_policy.get("tbd_allowed_in_runtime_authoritative_paths") is not False
+        or runtime_tbd_policy.get(
+            "tbd_may_be_treated_as_non_blocking_without_explicit_classification"
+        )
+        is not False
+    ):
+        errors.append(f"{readiness_file}: active Dataset version baseline is incomplete")
+    checked += 1
+
+    metrics = {
+        item.get("metric_variant_id"): item
+        for item in documents.get(metric_file, {}).get("metric_variants", [])
+        if isinstance(item, dict)
+    }
+    pp_formulas = {
+        "MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1": "(Current-week Brand Sell-through Rate - prior-week Brand Sell-through Rate) * 100.",
+        "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1": "(Current-week Product Brand Sell-through Rate - prior-week Product Brand Sell-through Rate) * 100.",
+        "MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1": "(Current-week Brand Moment Sell-through Rate - prior-week Brand Moment Sell-through Rate) * 100.",
+    }
+    for variant_id, formula in pp_formulas.items():
+        variant = metrics.get(variant_id, {})
+        if (
+            variant.get("formula") != formula
+            or variant.get("base_unit") != "percentage_point"
+            or variant.get("numeric_semantics") != "percentage_point_change"
+        ):
+            errors.append(f"{metric_file}:{variant_id}: percentage-point formula or unit is invalid")
+    trigger_baseline = documents.get(metric_file, {}).get("conditional_analysis_handoff", {})
+    if trigger_baseline.get("default_threshold_value") != 10.0 or trigger_baseline.get(
+        "default_threshold_unit"
+    ) != "percentage_point":
+        errors.append(f"{metric_file}: customer trigger threshold must be numeric 10.0 percentage_point")
+    checked += 1
+
+    contract_files = [
+        file
+        for file, document in documents.items()
+        if file.startswith("phase1_5/assets/result_contracts/")
+        and isinstance(document, dict)
+        and document.get("config_type") == "result_contract"
+    ]
+    for file in contract_files:
+        document = documents[file]
+        downstream = document.get("mode_semantics", {}).get("downstream_consumption", {})
+        if (
+            downstream.get("calculation_allowed_value_statuses") != ["valid_value"]
+            or downstream.get("output_allowed_value_statuses") != ["valid_value"]
+            or downstream.get("pending_confirmation_calculation_allowed") is not False
+            or downstream.get("pending_confirmation_output_allowed") is not False
+        ):
+            errors.append(f"{file}: Result field consumption statuses are incomplete")
+        for field in document.get("contract_fields", []):
+            field_id = str(field.get("field_id", ""))
+            constraints = field.get("numeric_constraints", {})
+            if field_id.endswith("_wow_change_pp") and (
+                field.get("base_unit") != "percentage_point"
+                or constraints.get("unit") != "percentage_point"
+            ):
+                errors.append(f"{file}:{field_id}: percentage-point Contract unit is invalid")
+            if field_id.endswith("sell_through_rate") and constraints.get("unit") != "decimal_ratio":
+                errors.append(f"{file}:{field_id}: ratio Contract must remain decimal_ratio")
+    checked += 1
+
+    product_contract_ids = {
+        "RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY",
+        "RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY",
+        "RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS",
+    }
+    for file in contract_files:
+        document = documents[file]
+        if document.get("result_contract_id") not in product_contract_ids:
+            continue
+        selection = document.get("instance_selection_policy", {})
+        if (
+            selection.get("required_match")
+            != ["current_workflow_run", "current_reporting_period", "explicit_product", "validation_status_passed"]
+            or selection.get("attempt_selection") != "latest_valid_attempt"
+            or selection.get("random_selection_allowed") is not False
+        ):
+            errors.append(f"{file}: parameterized Result Contract instance selection is incomplete")
+    checked += 1
+
+    customer_mapping = documents.get(customer_mapping_file, {})
+    duplicate_policy = customer_mapping.get("record_identity", {}).get("duplicate_key_policy", {})
+    impression_validation = customer_mapping.get("validation", {}).get("impression_value_validation", {})
+    grain = customer_mapping.get("customer_grain_execution", {})
+    if (
+        duplicate_policy.get("exclude_duplicate_business_key") is not True
+        or duplicate_policy.get("automatic_merge_allowed") is not False
+        or impression_validation.get("negative_behavior", {}).get("exclude_row") is not True
+        or impression_validation.get("negative_behavior", {}).get(
+            "excluded_before_change_materiality_and_ranking"
+        )
+        is not True
+        or grain.get("owner_confirmed_final_grain") != "customer_id"
+        or grain.get("aggregate_multiple_customer_ids_by_mapped_name") is not False
+    ):
+        errors.append(f"{customer_mapping_file}: customer duplicate, negative, or final-grain policy is invalid")
+    customer_policy = documents.get(policy_file, {})
+    if customer_policy.get("trigger", {}).get("default_threshold_value") != 10.0 or customer_policy.get(
+        "comparison_inputs", {}
+    ).get("row_integrity_before_cross_period_match", {}).get(
+        "excluded_rows_enter_change_materiality_or_ranking"
+    ) is not False:
+        errors.append(f"{policy_file}: trigger or customer integrity policy is invalid")
+    checked += 1
+
+    output = documents.get(output_file, {})
+    outlook = documents.get(outlook_file, {})
+    if (
+        output.get("result_field_consumption_contract", {}).get("output_allowed_value_statuses")
+        != ["valid_value"]
+        or output.get("result_field_consumption_contract", {}).get(
+            "pending_confirmation_output_allowed"
+        )
+        is not False
+        or outlook.get("assembly_constraints", {}).get("partial_draft_warning_required") is not True
+        or outlook.get("assembly_constraints", {}).get("partial_draft_may_be_labeled_complete_success")
+        is not False
+        or outlook.get("output_target", {}).get("auto_send") is not False
+    ):
+        errors.append(f"{output_file}/{outlook_file}: output status or partial Draft policy is invalid")
+    checked += 1
+
+    external = documents.get(external_file, {})
+    assets = external.get("external_assets", [])
+    if len(assets) != 10 or any(not item.get("interface_schema") for item in assets):
+        errors.append(f"{external_file}: every runtime local asset requires an interface schema")
+    product_asset = next(
+        (item for item in assets if item.get("asset_id") == "BR_APOLLO_PRODUCT_FILTER_MAPPING"),
+        {},
+    )
+    product_fields = {
+        item.get("field_id") for item in product_asset.get("interface_schema", {}).get("required_fields", [])
+    }
+    expected_product_fields = {
+        "product_key",
+        "target_ad_product_name",
+        "apollo_filter_definition",
+        "inventory_route_type",
+        "commentary_resource_module",
+        "fixed_display_order",
+        "sell_through_trigger_threshold_pp",
+        "customer_output_limit",
+    }
+    if product_fields != expected_product_fields or product_asset.get("interface_schema", {}).get(
+        "name_similarity_inference_allowed"
+    ) is not False:
+        errors.append(f"{external_file}: product Mapping interface schema is incomplete")
+    checked += 1
+
+    store = documents.get(store_file, {}).get("mvp_physical_store_adapter_strategy", {})
+    display_schema = store.get("configured_display_value_state_schema", {})
+    if (
+        store.get("physical_schema", {}).get("table_name") != "metric_results"
+        or display_schema.get("table_name") != "configured_display_values"
+        or display_schema.get("shares_same_sqlite_file_as_metric_results") is not True
+        or display_schema.get("metric_result_table") is not False
+        or display_schema.get("idempotent_unique_key", {}).get("columns")
+        != ["policy_id", "workflow_id", "reporting_period_id"]
+    ):
+        errors.append(f"{store_file}: configured display value SQLite state contract is invalid")
+    revenue_store = next(
+        (
+            item
+            for item in documents.get(store_file, {}).get("metric_result_stores", [])
+            if item.get("store_id") == "STORE_WEEKLY_REVENUE_HISTORICAL"
+        ),
+        {},
+    )
+    formula_write = revenue_store.get("write_policy", {}).get("formula_write_and_verification", {})
+    if (
+        len(formula_write.get("required_sequence", [])) != 5
+        or formula_write.get("formula_text_only_check_is_sufficient") is not False
+        or "Warning" not in formula_write.get("calculation_engine_unavailable_action", "")
+        or "Continue Weekly Report" not in formula_write.get("weekly_report_continuation", "")
+    ):
+        errors.append(f"{store_file}: Revenue Excel recalculate and data-only re-read contract is incomplete")
+    display_policy = documents.get(display_policy_file, {}).get("persistence_policy", {}).get(
+        "physical_state_store", {}
+    )
+    if (
+        display_policy.get("table_name") != "configured_display_values"
+        or display_policy.get("shares_sqlite_file_with_metric_results") is not True
+        or display_policy.get("metric_results_table_write") is not False
+    ):
+        errors.append(f"{display_policy_file}: configured display value persistence binding is invalid")
+    checked += 1
+
+    arc = documents.get(arc_file, {}).get("analysis_request_contract", {})
+    if set(arc.get("required_fields", {})) != {
+        "request_id",
+        "domain",
+        "intent",
+        "period",
+        "comparison",
+        "dimensions",
+        "metrics",
+        "filters",
+        "output",
+    } or arc.get("brief_conversion", {}).get("name_similarity_inference_allowed") is not False:
+        errors.append(f"{arc_file}: Analysis Request Contract template is incomplete")
+    dcp = documents.get(dcp_file, {})
+    required_operations = {
+        "filter",
+        "group_by",
+        "sum",
+        "avg",
+        "count",
+        "period_compare",
+        "sort",
+        "rank",
+        "topN",
+        "share",
+        "dimension_decomposition",
+    }
+    if (
+        set(dcp.get("allowed_standard_analysis_operations", [])) != required_operations
+        or dcp.get("matching_policy", {}).get("match_method") != "exact_metadata_match"
+        or dcp.get("matching_policy", {}).get("name_similarity_inference_allowed") is not False
+        or dcp.get("operation_boundary", {}).get("may_create_new_business_metric_formula") is not False
+        or dcp.get("operation_boundary", {}).get("one_time_request_creates_formal_workflow") is not False
+    ):
+        errors.append(f"{dcp_file}: DCP matching or operation boundary is incomplete")
+    checked += 1
+
+    scenarios = documents.get(scenarios_file, {})
+    scenario_ids = {item.get("scenario_id") for item in scenarios.get("scenarios", [])}
+    required_scenarios = {
+        "normal_week",
+        "manual_run_context",
+        "backfill_run_context",
+        "quarter_transition",
+        "twelve_pp_anomaly_trigger",
+        "qualified_customer_zero_rows",
+        "multiple_products_with_repeated_attempt",
+        "duplicate_latest_attempt_blocks_product",
+        "duplicate_and_negative_customer_rows",
+        "sqlite_idempotency_and_conflict",
+        "partial_draft",
+        "adhoc_brief_exact_dcp_match",
+    }
+    if (
+        scenario_ids != required_scenarios
+        or any(not item.get("expected_result") for item in scenarios.get("scenarios", []))
+        or scenarios.get("contains_real_business_data") is not False
+    ):
+        errors.append(f"{scenarios_file}: synthetic final acceptance coverage is incomplete")
+    ci_text = (REPOSITORY_ROOT / ".github/workflows/validate-assets.yml").read_text(encoding="utf-8")
+    if "python scripts/validate_final_acceptance.py" not in ci_text:
+        errors.append(".github/workflows/validate-assets.yml: final acceptance suite is not in CI")
+    checked += 1
+
+    gate = documents.get(gate_file, {})
+    if (
+        gate.get("status") != "ready_awaiting_explicit_owner_approval"
+        or gate.get("gate_result") != "ready_awaiting_explicit_owner_approval"
+        or gate.get("scope", {}).get("code_implementation_started") is not False
+        or gate.get("implementation_entry_decision", {}).get("code_implementation_may_start") is not False
+        or gate.get("governance", {}).get("outlook_auto_send") is not False
+    ):
+        errors.append(f"{gate_file}: Final Gate must return to ready while still waiting for Owner approval")
+    checked += 1
+    return checked
 
 
 def validate_external_asset_versions(
@@ -2842,6 +3247,7 @@ def main() -> int:
     customer_narrative_mapping_count = validate_customer_analysis_narrative_mapping(
         documents, errors
     )
+    final_closure_check_count = validate_phase1_5_final_closure(documents, errors)
     external_asset_count, external_asset_binding_count = (
         validate_external_asset_versions(documents, errors)
     )
@@ -2877,6 +3283,7 @@ def main() -> int:
         f"{configured_display_policy_count} configured display value policy validated; "
         f"{mvp_acceptance_check_count} MVP runtime acceptance boundaries checked; "
         f"{customer_narrative_mapping_count} fixed customer-analysis narrative mapping validated; "
+        f"{final_closure_check_count} Phase 1.5 final-closure contracts checked; "
         f"{contract_counts['output_bindings']} Metric Variant output bindings and "
         f"{contract_counts['output_fields']} explicit Output Mapping fields checked; "
         f"{external_asset_count} versioned External Assets with "
