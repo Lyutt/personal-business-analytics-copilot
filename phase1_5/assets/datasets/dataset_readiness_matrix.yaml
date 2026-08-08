@@ -7,7 +7,7 @@ implementation_authority:
   granted_by_this_gate: false
   final_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
 assessment_workflow_id: WF_WEEKLY_BUSINESS_REPORT
-last_synced_with_pipeline_registry: 2026-08-08
+last_synced_with_pipeline_registry: 2026-08-09
 last_synced_with_field_mapping_gate: 2026-08-02
 last_synced_with_final_code_gate: 2026-08-02
 assessment_summary:
@@ -64,6 +64,13 @@ active_runtime_tbd_policy:
   descriptive_inventory_tbd_is_runtime_authority: false
   newly_discovered_tbd_that_changes_runtime_result_action: Add a blocking_readiness_item and prevent the affected Pipeline from activation.
   tbd_may_be_treated_as_non_blocking_without_explicit_classification: false
+  remaining_placeholder_classification:
+    blocking: []
+    runtime-only: Resolve the affected local source or query field before activation; otherwise block that scope.
+    not-required-for-MVP: Descriptive inventory fields not consumed by approved mappings or runtime bindings.
+    superseded: Inventory fields replaced by Pipeline Registry, Run Context, Run Input Manifest, or approved Mapping authority.
+    unclassified_occurrence_count: 0
+    business_value_inference_allowed: false
 
 dataset_readiness:
   - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD

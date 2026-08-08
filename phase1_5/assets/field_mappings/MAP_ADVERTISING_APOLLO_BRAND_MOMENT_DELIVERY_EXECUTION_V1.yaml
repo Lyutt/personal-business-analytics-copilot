@@ -38,7 +38,7 @@ evidence:
     - '${LOCAL_WORKFLOW_DATA_ROOT}\数据查询-奇胜执行收入 - 2026-07-30T211432.887.csv'
   inspected_sample_count: 1
   sample_periods:
-    - TBD
+    - not_required_for_mvp_schema_validation
   schema_observation_status: completed
 
 source_schema:

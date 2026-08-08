@@ -1,7 +1,7 @@
 config_type: pipeline_registry_readiness_gate
 gate_id: GATE_PIPELINE_REGISTRY_WF_CUSTOMER_REVENUE_DETAIL_V1
 workflow_id: WF_CUSTOMER_REVENUE_DETAIL
-assessment_date: 2026-08-08
+assessment_date: 2026-08-09
 status: completed_design_only
 gate_result: passed
 scope:
@@ -39,5 +39,7 @@ checks:
   no_cross_workflow_result_contract_publish: pass
   no_weekly_report_attachment: pass
   workflow_dependency_count_isolation: pass
+  no_cross_workflow_file_or_output_dependency: pass
+  active_placeholder_classification_and_no_business_value_inference: pass
   frozen_weekly_comparable_rule_zero_change: pass
 decision: Pipeline design is complete; code implementation remains separately gated.

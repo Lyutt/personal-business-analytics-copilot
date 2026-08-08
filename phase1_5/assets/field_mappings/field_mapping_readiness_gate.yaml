@@ -2,6 +2,7 @@ config_type: field_mapping_readiness_gate
 gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 assessment_date: 2026-07-31
+last_semantic_sync_date: 2026-08-09
 status: passed
 gate_result: passed
 owner: WORKFLOW_OWNER
@@ -13,7 +14,7 @@ scope:
   out_of_scope_dataset_count: 1
   out_of_scope_datasets:
     - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
-      reason: Quarterly and Annual Revenue Analysis only
+      reason: Outside the original nine-profile Gate scope; Weekly quarter-transition fallback use is governed by the passed Revenue business-line delta Gate
 
 coverage:
   approved_mapping_profile_count: 9
@@ -48,15 +49,23 @@ consistency_checks:
     result: passed
     evidence: Quarter-close Dataset remains not_in_scope and has no Weekly Pipeline or Mapping requirement
 
-non_blocking_deferred_items:
-  - item: Dataset version constraints remain TBD
-    rationale: Version constraints are governance metadata and do not alter confirmed v1 field contracts
-  - item: Rolling Deck field-level required and nullable flags remain TBD
-    rationale: Owner explicitly confirmed that this workbook does not require field-missing validation in v1
-  - item: Some observed sample periods and field-order contractual flags remain TBD
-    rationale: Confirmed header-based matching and explicit validation policies do not depend on these values
-  - item: Product filter Rule ID, Metric formulas and Output Mapping remain unregistered
-    rationale: These belong to later Business Rule, Metric Library and Output Mapping stages
+remaining_placeholder_classification:
+  blocking: []
+  runtime-only: []
+  not-required-for-MVP:
+    - item: Rolling Deck field-level required and nullable flags
+      rationale: Owner confirmed that v1 does not perform field-missing validation for this workbook
+    - item: Observed sample periods
+      rationale: Header-based matching and explicit validation policies do not consume sample-period labels
+  superseded:
+    - item: Dataset version constraints in descriptive inventory metadata
+      authority: Active Pipeline Registry dataset_version_constraint
+    - item: Field-order contractual placeholder
+      authority: Confirmed header-based matching; CTV field order is explicitly non-contractual
+    - item: Product filter Rule, Metric formula, and Output Mapping registration gap
+      authority: Later asset stages are complete and their Gates have passed
+  unclassified_active_placeholder_count: 0
+  business_value_inference_allowed: false
 
 gate_decision:
   field_mapping_initialization_complete: true

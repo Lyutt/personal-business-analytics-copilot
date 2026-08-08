@@ -35,7 +35,7 @@ evidence:
     - phase1_5/discovery/DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY_Field_Structure_Inspection.md
   inspected_sample_count: 1
   sample_periods:
-    - TBD
+    - not_required_for_mvp_schema_validation
   schema_observation_status: completed
 
 source_file_attribution:

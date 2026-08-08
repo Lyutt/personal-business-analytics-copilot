@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import re
 import math
-import subprocess
 from datetime import date, timedelta
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -32,6 +31,7 @@ CUSTOMER_LOCAL_INPUTS = ROOT / "phase1_5/assets/execution/customer_revenue_detai
 CUSTOMER_RESULT_CONTRACT = ROOT / "phase1_5/assets/result_contracts/RC_CUSTOMER_REVENUE_DETAIL_WEEKLY.yaml"
 PIPELINE_REGISTRY = ROOT / "phase1_5/assets/pipelines/pipeline_registry.yaml"
 CUSTOMER_BASELINE = ROOT / "phase1_5/assets/readiness/implementation_baseline_customer_revenue_detail.yaml"
+WEEKLY_BASELINE = ROOT / "phase1_5/assets/readiness/implementation_baseline.yaml"
 CUSTOMER_BUSINESS_RULE_GATE = ROOT / "phase1_5/assets/business_rules/business_rule_readiness_gate_customer_revenue_detail.yaml"
 CUSTOMER_PIPELINE_GATE = ROOT / "phase1_5/assets/pipelines/pipeline_registry_readiness_gate_customer_revenue_detail.yaml"
 CUSTOMER_FIELD_MAPPING_GATE = ROOT / "phase1_5/assets/field_mappings/field_mapping_readiness_gate_customer_revenue_detail.yaml"
@@ -39,6 +39,9 @@ CUSTOMER_RESULT_GATE = ROOT / "phase1_5/assets/result_contracts/result_contract_
 CUSTOMER_OUTPUT_GATE = ROOT / "phase1_5/assets/output_mappings/output_mapping_readiness_gate_customer_revenue_detail.yaml"
 CUSTOMER_CODE_GATE = ROOT / "phase1_5/assets/readiness/code_implementation_readiness_gate_customer_revenue_detail.yaml"
 DATASET_INVENTORY = ROOT / "phase1_5/assets/datasets/dataset_inventory.yaml"
+DATA_SOURCE_INVENTORY = ROOT / "phase1_5/assets/data_sources/data_source_inventory.yaml"
+ROLLING_DECK_MAPPING = ROOT / "phase1_5/assets/field_mappings/MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1.yaml"
+CTV_MAPPING = ROOT / "phase1_5/assets/field_mappings/MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1.yaml"
 
 
 def load(path: Path) -> dict[str, Any]:
@@ -342,6 +345,7 @@ def main() -> int:
     customer_result_contract = load(CUSTOMER_RESULT_CONTRACT)
     pipeline_registry = load(PIPELINE_REGISTRY)
     customer_baseline = load(CUSTOMER_BASELINE)
+    weekly_baseline = load(WEEKLY_BASELINE)
     customer_business_rule_gate = load(CUSTOMER_BUSINESS_RULE_GATE)
     customer_pipeline_gate = load(CUSTOMER_PIPELINE_GATE)
     customer_field_mapping_gate = load(CUSTOMER_FIELD_MAPPING_GATE)
@@ -349,6 +353,9 @@ def main() -> int:
     customer_output_gate = load(CUSTOMER_OUTPUT_GATE)
     customer_code_gate = load(CUSTOMER_CODE_GATE)
     dataset_inventory = load(DATASET_INVENTORY)
+    data_source_inventory = load(DATA_SOURCE_INVENTORY)
+    rolling_deck_mapping = load(ROLLING_DECK_MAPPING)
+    ctv_mapping = load(CTV_MAPPING)
     scenarios = scenario_map(suite)
     customer_scenarios = scenario_map(customer_suite)
     semantic_cases = semantic_case_map(suite)
@@ -359,6 +366,14 @@ def main() -> int:
     assert customer_suite.get("external_side_effects_allowed") is False
     assert customer_suite.get("suite_id") == "CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1"
     assert len(customer_scenarios) == 42
+    assert weekly_baseline["source_main_commit_sha"] == customer_baseline["source_main_commit_sha"]
+    assert weekly_baseline["publication_state"] == customer_baseline["publication_state"] == "merged_to_main"
+    assert "weekly_frozen_asset_zero_diff_contract" not in customer_baseline["change_control"]
+    for active_document in (data_source_inventory, dataset_inventory, rolling_deck_mapping, ctv_mapping):
+        classification = active_document["remaining_tbd_classification"]
+        assert set(("blocking", "runtime-only", "not-required-for-MVP", "superseded")).issubset(classification)
+        assert classification["unclassified_occurrence_count"] == 0
+        assert classification["business_value_inference_allowed"] is False
     customer_pipeline = next(
         pipeline
         for pipeline in pipeline_registry["pipelines"]
@@ -413,6 +428,8 @@ def main() -> int:
                 "expected_previous_period_and_cutoff_independently_derived",
                 "regular_week_requires_exact_immediately_preceding_output_without_older_fallback",
                 "quarter_first_week_previous_output_usage_limited_to_layout_customer_and_A",
+                "no_cross_workflow_file_or_output_dependency",
+                "active_placeholder_classification_and_no_business_value_inference",
             },
         ),
         "code_implementation": (
@@ -421,6 +438,9 @@ def main() -> int:
                 "actual_quarter_first_week_mode_and_independent_expected_previous_period_derivation",
                 "exact_immediately_preceding_output_required_without_history_gap_fallback",
                 "same_week_rerun_retains_locked_expected_previous_period_selection",
+                "active_placeholder_classification_complete",
+                "baseline_publication_lineage_synchronized_to_latest_main",
+                "no_cross_workflow_file_dependency",
             },
         ),
         "field_mapping": (
@@ -1051,17 +1071,9 @@ def main() -> int:
     assert existing_tie["quarter_first_week_without_previous_output_with_eligible_current_template"] == "preserve_current_quarter_template_row_order"
     assert existing_tie["any_other_runtime_tie_break_allowed"] is False
 
-    frozen_comparable = customer_scenarios["frozen_weekly_comparable_rule_zero_diff"]["expected_result"]
-    assert all(key not in weekly_comparable_rule["governance"] for key in frozen_comparable["customer_governance_keys_absent"])
+    workflow_independence = customer_scenarios["workflow_file_dependency_independence"]["expected_result"]
     assert comparable_rule["constraints"]["weekly_prior_year_rule_reuse_allowed"] is False
-    zero_diff_contract = customer_baseline["change_control"]["weekly_frozen_asset_zero_diff_contract"]
-    assert zero_diff_contract["exact_files"] == frozen_comparable["exact_zero_diff_assets"]
-    for frozen_path in zero_diff_contract["exact_files"]:
-        baseline_bytes = subprocess.check_output(
-            ["git", "show", f"{zero_diff_contract['comparison_base_commit_sha']}:{frozen_path}"],
-            cwd=ROOT,
-        )
-        assert baseline_bytes == (ROOT / frozen_path).read_bytes(), f"{frozen_path}: frozen Weekly asset changed"
+    assert customer_baseline["change_control"]["workflow_independence_contract"] == workflow_independence
 
     fiscal_case = customer_scenarios["fiscal_quarter_role_binding"]["expected_result"]
     role_quarters = customer_technical_adapter["conditions"]["role_specific_fiscal_quarter_binding"]

@@ -1,5 +1,12 @@
 # Weekly Business Report Workflow Architecture Optimization v2
 
+> Current authority notice (2026-08-09): this document retains structural
+> examples and historical placeholders. Any remaining `TBD` here is classified
+> as `superseded` for implementation and runtime decisions. Current authority is
+> the Workflow documents, Status Indexes, Implementation Baselines, Gates, and
+> versioned assets under `phase1_5/assets`; examples in this document must not
+> create a business value or cross-Workflow dependency.
+
 > 状态：Architecture Approved — Migrated to `WORKFLOW_v2.md`
 > 范围：只优化 Weekly Business Report Workflow 内部业务拆分
 > 不变：4 个通用 Skill、Knowledge Pack 原则、配置驱动、异常阻断、Outlook `auto_send=false`

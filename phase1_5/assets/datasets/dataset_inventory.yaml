@@ -1537,6 +1537,42 @@ query_assets:
     version: 0.1.0
     approval_status: confirmed
 
+remaining_tbd_classification:
+  literal_placeholder_coverage: all_remaining_occurrences
+  blocking: []
+  runtime-only:
+    covered_field_path_patterns:
+      - datasets[*].acquisition.source_object_or_attachment_rule.executable_selection_rule.conflict_policy
+      - datasets[*].data_contract.expected_update_time
+      - datasets[*].quality.validation_owner
+      - datasets[*].governance.effective_from
+      - query_assets[*].access_requirement
+      - query_assets[*].parameters_or_filters[*].runtime_value
+    activation_rule: resolve locally before the affected dataset or query scope activates; otherwise block that scope
+  not-required-for-MVP:
+    covered_field_path_patterns:
+      - datasets[*].acquisition.asset_scope
+      - datasets[*].acquisition.primary_analysis_object
+      - datasets[*].acquisition.other_object_usage
+      - datasets[*].data_contract.record_grain
+      - datasets[*].data_contract.period_semantics.subject_date_format
+      - datasets[*].data_contract.period_semantics.attachment_date_format
+      - datasets[*].data_contract.period_semantics.attachment_date_format_observed_example
+    authority: approved Mapping Profiles and explicit runtime input bindings do not consume these descriptive fields
+  superseded:
+    covered_field_path_patterns:
+      - datasets[*].data_contract.version_scope
+      - datasets[*].data_contract.period_semantics.year_definition
+      - datasets[*].data_contract.period_semantics.quarter_definition
+      - datasets[*].data_contract.period_semantics.data_cutoff_rule
+      - datasets[*].data_contract.business_date_field
+      - datasets[*].data_contract.schema_profile_id
+      - datasets[*].quality.freshness_rule_id
+      - datasets[*].quality.uniqueness_rule_id
+    authority: Pipeline Registry, Workflow Run Context, Run Input Manifest, and approved Mapping Profiles
+  unclassified_occurrence_count: 0
+  business_value_inference_allowed: false
+
 constraints:
   source_id_must_reference_active_data_source: true
   future_backlog_sources_cannot_create_datasets: true

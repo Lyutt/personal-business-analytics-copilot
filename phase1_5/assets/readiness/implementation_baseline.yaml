@@ -6,9 +6,9 @@ freeze_date: 2026-08-08
 status: frozen_awaiting_explicit_owner_code_implementation_approval
 freeze_revision_status: refrozen_after_final_adhoc_capability_patch
 owner: WORKFLOW_OWNER
-source_main_commit_sha: 7a6c6d007fd0e84a3d65193c1c9e60b9c3d7ddd2
+source_main_commit_sha: fb3a4b7fd8a1b4396e001f8c89bbdb72cb643ff7
 source_branch: main
-working_branch: codex/result-contract-initialization
+publication_state: merged_to_main
 
 baseline_scope:
   phase: Phase 1.5
@@ -127,7 +127,7 @@ mvp_development_constraints:
 
 change_control:
   baseline_is_logically_frozen: true
-  repository_commit_binding_status: tracked_on_draft_pr_5_head
+  repository_commit_binding_status: reviewed_from_latest_main_fb3a4b7
   frozen_content_includes_customer_fixed_narrative_strategy: true
   frozen_content_includes_shared_local_sqlite_contract: true
   post_freeze_behavior_or_output_change_requires_version_review: true
@@ -193,3 +193,16 @@ change_control:
   force_push_allowed: false
   auto_merge_allowed: false
   automatic_next_stage_allowed: false
+remaining_tbd_classification:
+  blocking: []
+  runtime-only:
+    - Local Metric Store bootstrap and runtime connectivity checks already listed in the Code Implementation Gate
+    - Local source availability, access, retention, and presentation-technology details that must resolve before the affected runtime scope activates
+  not-required-for-MVP:
+    - Descriptive sample-period, source-column required/nullable, and field-order metadata explicitly excluded from MVP validation authority
+  superseded:
+    - Draft PR publication-state wording
+    - Inventory metadata placeholders whose runtime authority is now the Workflow Run Context, Run Input Manifest, Pipeline Registry, or approved Mapping Profile
+    - Compound TBD_PENDING required_standard_fields markers in approved Weekly source-selection Rules; runtime field authority is the bound approved Mapping Profile
+  unclassified_active_placeholder_count: 0
+  business_value_inference_allowed: false

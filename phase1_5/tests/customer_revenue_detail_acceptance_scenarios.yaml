@@ -146,15 +146,13 @@ scenarios:
         - { customer: SYNTH_TEMPLATE_B, C: 100, existing: true, template_order: 2 }
         - { customer: SYNTH_TEMPLATE_A, C: 100, existing: true, template_order: 1 }
     expected_result: [SYNTH_TEMPLATE_A, SYNTH_TEMPLATE_B]
-  - scenario_id: frozen_weekly_comparable_rule_zero_diff
+  - scenario_id: workflow_file_dependency_independence
     expected_result:
-      customer_governance_keys_absent: [customer_workflow_reuse_prohibited, customer_workflow_replacement_rules]
-      customer_no_reuse_declared_only_in_customer_assets: true
-      exact_zero_diff_assets:
-        - phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml
-        - phase1_5/assets/business_rules/BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1.yaml
-        - phase1_5/assets/readiness/implementation_baseline.yaml
-        - phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+      weekly_workflow_file_dependency_allowed: false
+      weekly_result_or_output_consumption_allowed: false
+      shared_registered_source_dataset_or_mapping_reuse_creates_workflow_dependency: false
+      customer_specific_rule_and_context_authority_required: true
+      repository_level_multi_workflow_validation_is_not_a_runtime_dependency: true
   - scenario_id: fiscal_quarter_role_binding
     synthetic_input: { current_year: 2026, prior_year: 2025, quarter: 3, records: [{ role: current_qtd, fiscal_quarter: 2026Q3 }, { role: prior_year_full_quarter, fiscal_quarter: 2025Q3 }, { role: prior_year_comparable, fiscal_quarter: 2025Q3 }] }
     expected_result: { current_qtd_context_field: target_fiscal_quarter, historical_context_field: prior_year_fiscal_quarter, historical_current_quarter_filter_allowed: false }

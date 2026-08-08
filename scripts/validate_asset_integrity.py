@@ -2378,7 +2378,7 @@ def validate_customer_analysis_narrative_mapping(
         "freeze_revision_status"
     ) != "refrozen_after_final_adhoc_capability_patch" or change_control.get(
         "baseline_is_logically_frozen"
-    ) is not True or change_control.get("repository_commit_binding_status") != "tracked_on_draft_pr_5_head" or pre_freeze_review.get(
+    ) is not True or change_control.get("repository_commit_binding_status") != "reviewed_from_latest_main_fb3a4b7" or pre_freeze_review.get(
         "behavior_or_output_change"
     ) is not True or pre_freeze_review.get("incorporated_before_current_freeze") is not True or final_acceptance_review.get(
         "behavior_or_output_change"
@@ -3539,7 +3539,7 @@ def validate_implementation_baseline(
                 )
             if baseline.get("change_control", {}).get(
                 "repository_commit_binding_status"
-            ) != "tracked_on_draft_pr_5_head":
+            ) != "reviewed_from_latest_main_fb3a4b7":
                 errors.append(f"{baseline_file}: repository publication state is stale")
             checked += 2
 
@@ -3620,6 +3620,75 @@ def validate_implementation_baseline(
                 f"match Base SHA resolved from {base_sha_source}"
             )
         checked += 1
+    return checked
+
+
+def validate_active_tbd_classification(
+    documents: dict[str, Any], errors: list[str]
+) -> int:
+    """Require every literal active-asset TBD to have one explicit classification."""
+
+    classified_files = {
+        "phase1_5/assets/data_sources/data_source_inventory.yaml",
+        "phase1_5/assets/datasets/dataset_inventory.yaml",
+        "phase1_5/assets/field_mappings/MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1.yaml",
+        "phase1_5/assets/field_mappings/MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1.yaml",
+    }
+    categories = ("blocking", "runtime-only", "not-required-for-MVP", "superseded")
+    occurrences: dict[str, list[str]] = defaultdict(list)
+
+    def collect(value: Any, file: str, path: str = "") -> None:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                child_path = f"{path}.{key}" if path else str(key)
+                collect(child, file, child_path)
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                collect(child, file, f"{path}[{index}]")
+        elif isinstance(value, str) and re.search(r"\bTBD\b", value, re.IGNORECASE):
+            occurrences[file].append(path)
+
+    for file, document in documents.items():
+        if file.startswith("phase1_5/assets/"):
+            collect(document, file)
+
+    unexpected_files = set(occurrences) - classified_files
+    if unexpected_files:
+        errors.append(
+            "literal active-asset TBD remains outside the classification registry: "
+            + ", ".join(sorted(unexpected_files))
+        )
+
+    checked = 0
+    for file in sorted(classified_files):
+        classification = documents.get(file, {}).get("remaining_tbd_classification", {})
+        if classification.get("literal_placeholder_coverage") != "all_remaining_occurrences":
+            errors.append(f"{file}: literal placeholder coverage must include all remaining occurrences")
+        if classification.get("unclassified_occurrence_count") != 0:
+            errors.append(f"{file}: unclassified_occurrence_count must be zero")
+        if classification.get("business_value_inference_allowed") is not False:
+            errors.append(f"{file}: business value inference must remain prohibited")
+
+        covered_paths: set[str] = set()
+        for category in categories:
+            category_value = classification.get(category)
+            if isinstance(category_value, dict):
+                paths = category_value.get("covered_field_path_patterns", [])
+            elif category_value == []:
+                paths = []
+            else:
+                errors.append(f"{file}: missing or invalid TBD category {category}")
+                paths = []
+            covered_paths.update(str(item) for item in paths)
+
+        normalized_occurrences = {
+            re.sub(r"\[\d+\]", "[*]", path) for path in occurrences.get(file, [])
+        }
+        uncovered = normalized_occurrences - covered_paths
+        if uncovered:
+            errors.append(f"{file}: unclassified literal TBD paths {sorted(uncovered)}")
+        checked += len(occurrences.get(file, [])) + len(categories) + 3
+
     return checked
 
 
@@ -3764,6 +3833,9 @@ def main() -> int:
     implementation_baseline_checks = validate_implementation_baseline(
         documents, errors
     )
+    active_tbd_classification_checks = validate_active_tbd_classification(
+        documents, errors
+    )
     checked_status_entries = validate_status_consistency(documents, errors)
 
     if errors:
@@ -3799,6 +3871,7 @@ def main() -> int:
         f"{external_asset_count} versioned External Assets with "
         f"{external_asset_binding_count} consumer bindings checked; "
         f"{implementation_baseline_checks} Implementation Baseline checks passed; "
+        f"{active_tbd_classification_checks} active TBD classification checks passed; "
         f"{len(references)} asset references resolved; "
         f"{checked_paths} Required paths checked across {matched_assets} assets; "
         f"{checked_status_entries} Gate status links are consistent."

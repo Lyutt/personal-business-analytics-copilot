@@ -226,7 +226,11 @@ metric_result_stores:
           exception: >
             季度切换首周仅允许已明确确认的字段留空，
             当前包括“当周新增已执行金额环比”。
-        historical_anomaly_handling: TBD
+        historical_anomaly_handling:
+          classification: runtime-only
+          confirmed_scope: only anomalies explicitly documented in this Store Asset contract
+          unclassified_anomaly_action: block_affected_store_scope_and_request_owner_confirmation
+          business_value_inference_allowed: false
 
       - store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
         business_context: CTV Weekly Revenue

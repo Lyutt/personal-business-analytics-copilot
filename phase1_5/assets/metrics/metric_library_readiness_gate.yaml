@@ -61,13 +61,15 @@ gate_checks:
   outlook_auto_send_false_unchanged: pass
   prohibited_identity_or_absolute_path_literal_count_in_new_metric_assets: 0
 
-governance_tbd_review:
-  blocking_tbd_count: 0
-  non_blocking_tbd_count: 2
-  non_blocking_items:
-    - Revenue Library unconfirmed-content policy remains TBD by design
-    - Inventory Library unconfirmed-content policy remains TBD by design
-  policy: All unconfirmed future business content remains TBD and cannot be inferred
+remaining_placeholder_classification:
+  blocking: []
+  runtime-only: []
+  not-required-for-MVP: []
+  superseded:
+    - item: Revenue and Inventory unconfirmed-content policy placeholders
+      authority: Both libraries now block the affected metric scope and request Owner confirmation
+  unclassified_active_placeholder_count: 0
+  business_value_inference_allowed: false
 
 deferred_to_designated_phase:
   - Output units, rounding, prose, template placement, and section assembly

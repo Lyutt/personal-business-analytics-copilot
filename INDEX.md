@@ -2,6 +2,9 @@
 
 ## 当前阶段
 
+- 2026-08-09 设计资产收口以远端 `main` 的 `fb3a4b7` 为审查基线；此前 Draft PR 或功能分支发布描述均已失效。
+- Active 占位项只允许分类为 `blocking`、`runtime-only`、`not-required-for-MVP` 或 `superseded`；未分类项阻断受影响范围，禁止推断业务值。
+- Weekly 与 Customer 可复用已登记输入资产，但彼此不产生文件、输出、Result Contract、Metric Store、Baseline 或 Gate 依赖。
 - 架构方向：已确认。
 - Phase 1：已确认。
 - 当前阶段：Weekly Business Report Baseline 1.0.0与Customer Revenue Detail Baseline 1.0.0分别冻结，均等待Owner对对应Baseline明确批准代码实现。

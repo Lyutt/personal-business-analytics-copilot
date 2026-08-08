@@ -3,6 +3,7 @@ index_version: 1.0.0
 status: synchronized
 assessment_date: 2026-08-03
 last_semantic_sync_date: 2026-08-08
+design_asset_closure_review_date: 2026-08-09
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 current_stage: Phase 1.5 Final Acceptance Passed - Awaiting Explicit Owner Code Implementation Approval
 
@@ -110,6 +111,17 @@ scope_boundaries:
   inventory_dcp_capability_profiles: [full_site, patch, non_patch_product, product_sell_through]
   synthetic_final_acceptance_scenario_count: 14
   synthetic_final_acceptance_status: passed
+  remaining_tbd_classification:
+    blocking_count: 0
+    runtime-only: governed by the final Code Implementation Gate and asset-level classification contracts
+    not-required-for-MVP: excluded descriptive metadata only
+    superseded: historical, template, archive, discovery, and pre-merge publication wording
+    unclassified_active_placeholder_count: 0
+    business_value_inference_allowed: false
+  workflow_file_dependency_contract:
+    weekly_depends_on_customer_files: false
+    customer_depends_on_weekly_files: false
+    shared_registered_inputs_are_not_cross_workflow_dependencies: true
   mvp_implementation_sequence:
     - Local input -> standardization -> rules -> metrics -> Result Contract -> fixed narrative output -> Weekly Report preview -> Store
     - Outlook Draft with auto_send=false

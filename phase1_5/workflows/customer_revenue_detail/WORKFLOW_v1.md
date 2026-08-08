@@ -16,6 +16,17 @@ Customer-specific prior-year source-selection rules, and the registered
 attachments, customer rows, mapping contents, generated workbooks and resolved
 local paths remain outside Git.
 
+Shared Source, Dataset, and Mapping registrations are input-asset reuse only.
+They do not permit either Workflow to read the other Workflow's files, outputs,
+Run Context, Result Contract, Baseline, or Gate. Repository-level validation may
+inspect both scopes, but it is not a runtime or design dependency between them.
+
+Remaining unresolved placeholders use exactly four classifications:
+`blocking`, `runtime-only`, `not-required-for-MVP`, and `superseded`. Customer V1
+has no unresolved business-rule or formula placeholder. Runtime-only local
+template, mapping, source-instance, and output-metadata values must resolve
+before the affected run activates; no business value may be inferred.
+
 ## Trigger and parameters
 
 - Scheduled trigger: Thursday 17:40, `Asia/Shanghai`.

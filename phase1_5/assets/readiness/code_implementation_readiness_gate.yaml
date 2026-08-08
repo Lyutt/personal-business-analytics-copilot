@@ -107,6 +107,9 @@ implementation_readiness_checks:
   natural_language_brief_to_canonical_arc: pass
   brief_understanding_separated_from_exact_asset_selection: pass
   synthetic_final_acceptance_in_ci: pass
+  active_placeholder_classification_complete: pass
+  baseline_publication_lineage_synchronized_to_latest_main: pass
+  weekly_customer_file_dependency_independence: pass
 
 final_acceptance_transition:
   corrections_pending_status_used_during_edit_and_pre_gate_validation: final_acceptance_corrections_pending
@@ -170,6 +173,8 @@ governance:
   safety_review_required_before_each_git_operation: true
   explicit_owner_approval_required_before_code_implementation: true
   frozen_baseline_does_not_grant_implementation_authority: true
+  unclassified_active_placeholder_action: block_affected_scope
+  business_value_inference_allowed: false
 
 decision:
   final_gate_result: implementation_baseline_ready_awaiting_explicit_owner_approval

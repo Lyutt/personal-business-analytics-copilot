@@ -419,10 +419,16 @@ failure_and_warning_display:
     omit_customer_analysis: true
     workflow_continue: true
 
-unresolved_tbd:
-  - Exact Outlook body rendering technology
-  - Exact visual typography inherited from local template
-  - Final warning text assembly schema
+remaining_placeholder_classification:
+  blocking: []
+  runtime-only:
+    - Exact Outlook body rendering technology
+    - Exact visual typography inherited from local template
+    - Final warning text assembly mechanism under the already confirmed warning-content contract
+  not-required-for-MVP: []
+  superseded: []
+  unclassified_active_placeholder_count: 0
+  business_value_inference_allowed: false
 
 evidence_sources:
   - Confirmed Weekly Report 0724 template structure

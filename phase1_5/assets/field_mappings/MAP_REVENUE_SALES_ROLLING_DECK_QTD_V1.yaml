@@ -745,6 +745,22 @@ standardization_policies:
     agent_formula_recalculation_allowed: false
     pipeline_blocking_behavior: continue
 
+remaining_tbd_classification:
+  literal_placeholder_coverage: all_remaining_occurrences
+  blocking: []
+  runtime-only:
+    covered_field_path_patterns: []
+  not-required-for-MVP:
+    covered_field_path_patterns:
+      - source_schema.field_order_is_contractual
+      - field_mappings[*].required
+      - field_mappings[*].nullable
+    authority: header-based matching with field_missing_validation_required=false and entry_level_required_flags_evaluated=false
+  superseded:
+    covered_field_path_patterns: []
+  unclassified_occurrence_count: 0
+  business_value_inference_allowed: false
+
 validation:
   required_standard_fields: []
   field_missing_validation_required: false

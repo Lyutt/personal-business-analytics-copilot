@@ -23,6 +23,8 @@ constraints:
   historical_and_manual_or_backfill_missing_inputs_block_immediately: true
   weekly_manifest_and_multiple_email_selection_semantics_unchanged: true
   weekly_runtime_contract_reuse_allowed: false
+  weekly_workflow_file_or_output_dependency_allowed: false
+  shared_registered_source_dataset_or_mapping_reuse_creates_workflow_dependency: false
   filename_or_latest_file_selection_allowed: false
   local_quarter_baseline_and_prior_output_are_not_shared_datasets: true
   local_inputs_must_be_ingested_upstream_of_output_mapping: true
@@ -30,3 +32,10 @@ constraints:
   previous_output_selection_requires_explicit_local_metadata: true
   local_input_filename_parsing_for_selection_allowed: false
   raw_business_files_must_not_enter_git: true
+remaining_placeholder_classification:
+  blocking: []
+  runtime-only: Local source instances and metadata must resolve before the affected run activates.
+  not-required-for-MVP: []
+  superseded: Cross-Workflow frozen-file comparison used only during Draft review.
+  unclassified_occurrence_count: 0
+  business_value_inference_allowed: false

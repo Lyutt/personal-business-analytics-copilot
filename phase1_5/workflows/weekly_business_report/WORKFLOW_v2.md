@@ -240,10 +240,11 @@ Inventory Domain 按 Dataset / Query Asset 管理 Pipeline，不按平台拆分�
 
 `WF_CUSTOMER_REVENUE_DETAIL` 是独立 Workflow：
 
-- 独立 Source、Dataset、Pipeline、Rule、Metric Variant 和 Output Mapping。
+- 可复用已登记的 Outlook Source、Rolling Deck Dataset 与共享 Mapping Profile；复用输入资产不建立 Workflow 依赖。
+- Customer 自有 Pipeline、Run Context、Business Rule、Metric Variant、Result Contract 与 Output Mapping。
 - 生成 Customer Revenue Excel。
 - 与 Weekly Workflow 不产生文件级依赖。
-- 如需共享，通过 Metrics Store 或 Validated Result Contract。
+- 当前 V1 不发布供 Weekly 消费的 Metrics Store 或跨 Workflow Result Contract。
 - Weekly Workflow 不检查 Customer Revenue Excel 是否已生成。
 
 ## 11. Required 与 Optional Pipeline
@@ -297,6 +298,10 @@ Pipeline运行时不得以本文表格代替正式Registry；若二者不一致�
 - `WF_CUSTOMER_REVENUE_DETAIL` 的 Excel 输出不属于本 Workflow 输入或附件。
 
 ## 13. Workflow 间结果共享
+
+本节仅定义未来若经 Owner 明确批准时可采用的接口边界，不代表当前两个
+Workflow 已建立共享依赖。当前 Weekly 与 Customer V1 的文件、输出、Result
+Contract 和 Metric Store 消费关系均为 `none`。
 
 Workflow 之间只能通过：
 

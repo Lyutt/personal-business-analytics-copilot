@@ -62,10 +62,16 @@ binding_coverage:
   output_mapping_reference_id: OM_WEEKLY_BUSINESS_REPORT_V1
   outlook_draft_mapping_reference_id: OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
 
-non_blocking_tbd:
-  - Exact Outlook body rendering technology
-  - Final warning text assembly schema
-  - Exact visual typography inherited from local templates
+remaining_placeholder_classification:
+  blocking: []
+  runtime-only:
+    - Exact Outlook body rendering technology
+    - Final warning text assembly mechanism under the confirmed warning-content contract
+    - Exact visual typography inherited from local templates
+  not-required-for-MVP: []
+  superseded: []
+  unclassified_active_placeholder_count: 0
+  business_value_inference_allowed: false
 
 decision:
   weekly_report_output_mapping_initialization_complete: true

@@ -33,7 +33,7 @@ evidence:
     - phase1_5/discovery/DS_REVENUE_CTV_EXCL_PLACEMENT_QTD_Field_Structure_Inspection.md
   inspected_sample_count: 1
   sample_periods:
-    - TBD
+    - not_required_for_mvp_schema_validation
   schema_observation_status: completed
 
 source_schema:
@@ -193,6 +193,20 @@ explicit_ignored_fields:
     - RF024
     - RF026
     - RF029
+
+remaining_tbd_classification:
+  literal_placeholder_coverage: all_remaining_occurrences
+  blocking: []
+  runtime-only:
+    covered_field_path_patterns: []
+  not-required-for-MVP:
+    covered_field_path_patterns:
+      - source_schema.field_order_is_contractual
+    authority: header-based matching and explicit required_standard_fields validation do not consume source column order
+  superseded:
+    covered_field_path_patterns: []
+  unclassified_occurrence_count: 0
+  business_value_inference_allowed: false
 
 validation:
   required_standard_fields:

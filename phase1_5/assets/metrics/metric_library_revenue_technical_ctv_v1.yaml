@@ -15,7 +15,7 @@ architecture_constraints:
   dependencies_must_be_explicit: true
   automatic_formula_inference: false
   output_assembly_may_calculate: false
-  unconfirmed_content_policy: TBD
+  unconfirmed_content_policy: block_affected_metric_scope_and_request_owner_confirmation
 
 metric_definitions:
   - metric_id: METRIC_REVENUE_PERFORMANCE

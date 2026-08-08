@@ -212,6 +212,31 @@ data_sources:
       stages. DAU report placement does not change its User Analytics business
       domain.
 
+remaining_tbd_classification:
+  literal_placeholder_coverage: all_remaining_occurrences
+  blocking: []
+  runtime-only:
+    covered_field_path_patterns:
+      - data_sources[*].access.manual_steps_reference
+      - data_sources[*].schedule.expected_available_time
+      - data_sources[*].schedule.allowed_delay
+      - data_sources[*].governance.business_owner
+      - data_sources[*].governance.data_owner
+      - data_sources[*].governance.effective_from
+      - data_sources[*].security_and_retention.contains_sensitive_data
+      - data_sources[*].security_and_retention.raw_copy_allowed
+      - data_sources[*].security_and_retention.temporary_storage_allowed
+      - data_sources[*].security_and_retention.retention_period
+    activation_rule: resolve locally before the affected source scope activates; otherwise block that scope
+  not-required-for-MVP:
+    covered_field_path_patterns: []
+  superseded:
+    covered_field_path_patterns:
+      - data_sources[*].acquisition.source_selection_rule
+    authority: Dataset acquisition contracts, Workflow Run Context, and Run Input Manifest
+  unclassified_occurrence_count: 0
+  business_value_inference_allowed: false
+
 constraints:
   active_source_requires_current_workflow_use_or_confirmed_near_term_plan: true
   speculative_company_platforms_belong_in_future_backlog: true
