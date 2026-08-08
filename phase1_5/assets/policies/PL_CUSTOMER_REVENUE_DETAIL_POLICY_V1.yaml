@@ -101,7 +101,10 @@ processing:
   detail_sorting:
     output_record_set: customer_detail
     primary_order: { key: C, direction: descending, signed_numeric_order: true }
-    existing_customer_equal_C_tie: preserve_previous_reporting_period_row_order
+    existing_customer_equal_C_tie:
+      regular_or_previous_output_available: preserve_previous_reporting_period_row_order
+      quarter_first_week_without_previous_output_with_eligible_current_template: preserve_current_quarter_template_row_order
+      any_other_runtime_tie_break_allowed: false
     new_customer_equal_C_tie_order:
       - { key: D, direction: descending, blank_position: last }
       - { key: F, direction: descending }
@@ -129,7 +132,8 @@ processing:
   quarter_template_eligibility:
     local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
     exact_match_required: [template_asset_id, template_version, template_current_year, template_quarter, structure_validation_status]
-    context_match: { template_current_year: current_year, template_quarter: quarter, template_version: confirmed_template_version }
+    context_match: { template_current_year: current_year, template_quarter: quarter, template_version_when_candidate_exists: confirmed_template_version }
+    confirmed_template_version_when_no_candidate: null
     mismatch_result: unavailable
     previous_quarter_C_D_O_P_inheritance_allowed: false
     previous_quarter_top20_membership_inheritance_allowed: false
@@ -146,6 +150,15 @@ processing:
     same_week_rerun_reuses_locked_selection: true
     same_week_rerun_must_not_shift_M_N_Q_R: true
     filename_parsing_for_period_or_version_allowed: false
+  effective_layout_source:
+    local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+    contract_section: effective_layout_source_contract
+    locked_context_field: effective_layout_source
+    eligible_current_template_priority: first
+    no_template_fallback: validated_previous_period_output_layout_only
+    previous_output_allowed_reuse: [workbook_structure, workbook_style, customer_membership, detail_A_industry]
+    previous_output_prohibited_inheritance: [detail_C, detail_D, detail_O, detail_P, prior_year_top20, forecast_top20]
+    runtime_alternate_selection_allowed: false
   formulas:
     E: 'IFERROR(D/C-1,"")'
     E_blank_D_numeric_semantics: treat_as_zero

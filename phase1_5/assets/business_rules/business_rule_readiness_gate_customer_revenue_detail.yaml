@@ -16,6 +16,7 @@ gate_checks:
   quarter_baseline_fallback: pass
   quarter_first_week_technical_applicability: pass
   frozen_weekly_technical_rule_unchanged: pass
+  frozen_weekly_comparable_rule_unchanged: pass
   canonical_context_field_ids_and_explicit_bindings: pass
   target_fiscal_quarter_derived_before_context_lock: pass
   first_week_template_and_previous_output_semantics: pass
@@ -26,9 +27,11 @@ gate_checks:
   previous_reporting_period_and_same_week_rerun_semantics: pass
   industry_selection_structured_contract: pass
   detail_sorting_structured_contract: pass
+  quarter_first_week_template_order_tie_break: pass
   unmatched_advertiser_notification_payload_contract: pass
   quarter_template_eligibility_contract: pass
   previous_output_metadata_contract_without_filename_parsing: pass
+  effective_layout_source_no_business_value_inheritance: pass
   detail_sorting: pass
   independent_frozen_top20_memberships: pass
   template_existing_top20_memberships_preserved: pass

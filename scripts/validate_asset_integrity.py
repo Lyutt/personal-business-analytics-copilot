@@ -2601,8 +2601,16 @@ def validate_phase1_5_final_closure(
     checked += 1
 
     runtime_input_contract = documents.get(dataset_file, {}).get("runtime_input_contract", {})
+    workflow_scopes = runtime_input_contract.get("workflow_scopes", {})
+    weekly_scope = workflow_scopes.get("WF_WEEKLY_BUSINESS_REPORT", {})
+    customer_scope = workflow_scopes.get("WF_CUSTOMER_REVENUE_DETAIL", {})
     if (
-        runtime_input_contract.get("applies_to_all_registered_datasets_and_query_assets") is not True
+        runtime_input_contract.get("applies_by_workflow_scope") is not True
+        or runtime_input_contract.get("unscoped_runtime_contract_fallback_allowed") is not False
+        or weekly_scope.get("contract_source") != "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
+        or customer_scope.get("run_input_manifest_id") != "CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1"
+        or customer_scope.get("context_id") != "CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1"
+        or customer_scope.get("weekly_runtime_contract_reuse_allowed") is not False
         or runtime_input_contract.get("workflow_run_context_required") is not True
         or runtime_input_contract.get("run_input_manifest_required") is not True
         or runtime_input_contract.get("actual_execution_date_business_date_inference_allowed") is not False

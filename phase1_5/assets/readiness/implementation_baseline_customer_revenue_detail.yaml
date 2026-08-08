@@ -28,7 +28,7 @@ frozen_asset_versions:
   explicit_output_field_binding_count: 32
   synthetic_acceptance_suite_id: CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1
   synthetic_acceptance_suite_version: 1.0.0
-  synthetic_acceptance_scenario_count: 22
+  synthetic_acceptance_scenario_count: 28
 workflow_dependency_counts:
   pipeline_count: 1
   dataset_dependency_count: 1
@@ -63,5 +63,11 @@ change_control:
   baseline_is_logically_frozen: true
   customer_asset_change_requires_baseline_version_review: true
   weekly_business_report_baseline_must_not_change: true
+  weekly_frozen_asset_zero_diff_contract:
+    comparison_base_commit_sha: 6ce72e1662383dcb771dc3959533725bbdf5fe5e
+    exact_files:
+      - phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml
+      - phase1_5/assets/business_rules/BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1.yaml
+      - phase1_5/assets/readiness/implementation_baseline.yaml
   force_push_allowed: false
   auto_merge_allowed: false

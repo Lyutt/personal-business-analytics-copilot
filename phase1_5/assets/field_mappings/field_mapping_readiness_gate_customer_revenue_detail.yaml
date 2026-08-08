@@ -19,6 +19,7 @@ consistency_checks:
   unmatched_does_not_block: pass
   unmatched_notification_payload_is_grouped_and_local_only: pass
   raw_order_rows_not_logged: pass
+  advertiser_mapping_version_bound_before_data_collection: pass
 gate_decision: pass
 constraints:
   mapping_contents_local_only: true

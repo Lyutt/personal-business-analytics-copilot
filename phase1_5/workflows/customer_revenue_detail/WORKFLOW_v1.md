@@ -10,8 +10,8 @@ to the Weekly report nor publishes a shared Metric Store or cross-Workflow
 Result Contract. A failure blocks only this Workflow.
 
 The Workflow reuses the existing Outlook revenue source, Rolling Deck dataset,
-business-line field mapping, technical-line eligibility rule, prior-year exact
-source-selection rule, and advertiser ownership mapping. Raw emails, original
+business-line field mapping, Customer-specific technical eligibility adapter,
+Customer-specific prior-year source-selection rules, and advertiser ownership mapping. Raw emails, original
 attachments, customer rows, mapping contents, generated workbooks and resolved
 local paths remain outside Git.
 
@@ -20,8 +20,9 @@ local paths remain outside Git.
 - Scheduled trigger: Thursday 17:40, `Asia/Shanghai`.
 - If the current revenue email is absent, notify once, then recheck every 30
   minutes without a fixed retry limit. Resume automatically when it arrives.
-- Manual runs require `WorkflowExecutionDate`, `CurrentRevenueCutoffDate`,
-  `CurrentYear`, and `Quarter`; missing values block the run.
+- Manual and backfill runs require `WorkflowExecutionDate`,
+  `CurrentRevenueCutoffDate`, `CurrentYear`, `Quarter`, and
+  `ReportingPeriodId`; missing or calendar-conflicting values block the run.
 - For a 2026 run, the prior-year comparable cutoff is the current cutoff shifted
   back one year and then forward one day. Any 2027-or-later run blocks until the
   owner reconfirms this date relationship.
@@ -47,6 +48,17 @@ Business dates, source roles, template/D availability, mapping version and the
 selected previous-period output cannot change within that run. A same-week rerun
 must reuse the locked previous reporting period selection; an earlier attempt
 from the same reporting period can never become M/N/Q/R history.
+
+Before `DATA_COLLECTION`, the Context deterministically resolves and locks
+`prior_year`, `report_mode`, current and previous reporting period IDs, the
+prior comparable cutoff, prior-year full-quarter ID, D availability, advertiser
+mapping version and the effective layout source. `confirmed_template_version`
+is required only when a current-quarter template candidate exists and is
+eligible; it is null when no such template is available. Current, historical,
+manual and backfill Rolling Deck inputs must each be recorded in
+`CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1` and exactly match the locked
+Context. The Weekly manifest contract, filenames and "latest file" are never
+selection authorities for this Workflow.
 
 The Calculation Engine Result Contract is authoritative. Excel formula cells
 E/G/H/I are display-and-audit mirrors only. Compare unrounded numeric values with
@@ -91,7 +103,10 @@ do not grant Output Mapping authority to originate or change business values.
   H=`IFERROR(F/K-1,"")`; I=`F-M`, except quarter week one where I=F.
   Calculation uses full precision. Money displays as integer with thousands
   separators and rates as integer percentages.
-- Sort detail rows by C descending. Preserve prior order for ties; for new tied
+- Sort detail rows by C descending. Preserve prior order for ties. In quarter
+  week one, when there is no previous output but an eligible current-quarter
+  template exists, equal-C existing customers preserve that template's row
+  order; no other tie-break may be selected at runtime. For new tied
   rows use D descending, F descending, then customer name ascending. New rows
   with blank/zero C stay at the bottom.
 - Prior-year and forecast Top20 memberships are independent and frozen for the
@@ -107,7 +122,9 @@ do not grant Output Mapping authority to originate or change business values.
   then customer name ascending, while forecast Top20 remains header-only. After
   freeze, newly eligible customers remain in Other. The locked D-availability
   state distinguishes explicit zero from blank.
-- If no quarter baseline exists, use the previous output only for layout,
+- `effective_layout_source` is locked to the eligible current-quarter template
+  when available. If no quarter baseline exists, lock it to the validated
+  previous-period output as a layout-only reference and use that output only for layout,
   customer list and A. Do not inherit prior-quarter C/D/O/P. Rebuild C from the
   archive, leave D/O/P blank, generate/freeze prior-year Top20, and retain only
   the forecast Top20 header until D becomes available. If D remains absent all
@@ -121,6 +138,15 @@ do not grant Output Mapping authority to originate or change business values.
   `result_id`, `reporting_period_id`, `output_version`, `output_file_reference`,
   `validation_status` and `completed_at`. Period or version selection must never
   parse the filename.
+
+After a validated workbook is successfully written, store local-only output
+metadata containing `workflow_run_id`, `result_id`, `reporting_period_id`, the
+integer `output_version`, opaque `output_file_reference`, passed validation
+status, completion timestamp, current cutoff and prior comparable as-of date.
+Logical v1/v2/v3 map to integers 1/2/3; version 1 uses the base filename, while
+versions 2 and above use `v2`, `v3`, ... suffixes. A same-period collision uses
+one plus the highest unique passed metadata version. The next reporting period
+selects history from metadata, never by parsing filenames.
 
 ## Validation, warnings and output
 

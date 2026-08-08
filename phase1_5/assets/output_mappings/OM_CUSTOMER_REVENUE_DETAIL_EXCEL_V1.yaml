@@ -15,6 +15,13 @@ output_target:
     overwrite_allowed: false
     next_available_suffix: v2_v3_and_so_on
     owner_notification_required: true
+    output_version_contract:
+      metadata_contract_section: local_output_metadata_write_contract
+      authoritative_type: integer
+      logical_label_mapping: { 1: v1, 2: v2, 3: v3, n_greater_than_3: vN }
+      suffix_mapping: { 1: no_suffix, 2: v2, 3: v3, n_greater_than_3: vN }
+      next_version_source: highest unique passed local metadata output_version plus one
+      filename_parsing_allowed: false
   source_template_reference: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
   source_template_version_binding:
     asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
@@ -28,8 +35,20 @@ output_target:
     exact_current_year_quarter_and_version_match_required: true
     mismatch_result: unavailable
     filename_parsing_allowed: false
+  effective_layout_source_contract:
+    local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+    contract_section: effective_layout_source_contract
+    context_binding: effective_layout_source
+    current_template_when_available: true
+    previous_output_layout_only_when_template_unavailable: true
+    previous_output_reuse_allowed: [workbook_structure, workbook_style, customer_membership, detail_A_industry]
+    previous_output_inheritance_prohibited: [detail_C, detail_D, detail_O, detail_P, prior_year_top20, forecast_top20]
   source_template_files_must_not_enter_git: true
   generated_output_must_not_enter_git: true
+  local_output_metadata_write_contract:
+    local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+    contract_section: local_output_metadata_write_contract
+    write_after_successful_validation_only: true
   weekly_report_attachment: false
   weekly_report_file_dependency: false
 

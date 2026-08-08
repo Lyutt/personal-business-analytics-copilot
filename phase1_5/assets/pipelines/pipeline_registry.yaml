@@ -2200,8 +2200,13 @@ pipelines:
         required: true
         join_or_relationship_rule_id: not_applicable
         run_input_manifest_required: true
-        period_context_source: workflow_run_context
+        run_input_manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
+        run_input_manifest_contract_section: customer_run_input_manifest_contract
+        run_input_role: current_qtd_snapshot
+        period_context_source: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
         context_field_bindings:
+          reporting_period_id: reporting_period_id
+          current_revenue_cutoff_date: current_revenue_cutoff_date
           target_fiscal_quarter: target_fiscal_quarter
           report_mode: report_mode
         runtime_context_inference_allowed: false
@@ -2215,6 +2220,8 @@ pipelines:
         context_field_bindings:
           prior_year_full_quarter_period_id: prior_year_full_quarter_period_id
           target_fiscal_quarter: target_fiscal_quarter
+        run_input_manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
+        run_input_role: prior_year_full_quarter_history_for_C
         exact_single_readable_source_required: true
       - dependency_type: Local historical revenue archive
         dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
@@ -2224,6 +2231,8 @@ pipelines:
         context_field_bindings:
           prior_comparable_as_of_date: prior_comparable_as_of_date
           target_fiscal_quarter: target_fiscal_quarter
+        run_input_manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
+        run_input_role: prior_year_comparable_qtd_snapshot_for_K_L
         exact_single_readable_source_required: true
 
     local_input_dependencies:
@@ -2233,7 +2242,8 @@ pipelines:
         fallback: Require the previous reporting period validated output for layout/customer list/industry; rebuild C and leave D/O/P blank.
         local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
         eligibility_contract_section: quarter_template_eligibility_contract
-        eligibility_must_match_locked_context_fields: [current_year, quarter, confirmed_template_version]
+        eligibility_must_match_locked_context_fields: [current_year, quarter]
+        confirmed_template_version_required_only_when_candidate_exists: true
         filename_parsing_for_eligibility_allowed: false
       - input_role: immediately_preceding_approved_output
         producer_workflow_id: WF_CUSTOMER_REVENUE_DETAIL
@@ -2252,6 +2262,12 @@ pipelines:
         same_week_rerun:
           reuse_locked_previous_reporting_period_selection: true
           earlier_same_week_attempt_must_not_shift_M_N_Q_R: true
+      - input_role: effective_layout_source
+        required: true
+        local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+        contract_section: effective_layout_source_contract
+        bind_context_fields: [effective_layout_source, effective_layout_reference]
+        runtime_alternate_selection_allowed: false
 
     execution:
       execution_mode: sequential
@@ -2270,23 +2286,33 @@ pipelines:
         - previous_reporting_period_id
         - prior_comparable_as_of_date
         - prior_year_full_quarter_period_id
+        - quarter_template_availability
+        - forecast_D_availability
         - confirmed_template_version
+        - selected_template_file_reference
+        - advertiser_mapping_version
+        - effective_layout_source
+        - effective_layout_reference
       target_fiscal_quarter_derivation_binding:
         source_field_ids: [current_year, quarter]
         target_field_id: target_fiscal_quarter
         derive_before_context_lock: true
         runtime_code_guessing_allowed: false
       local_input_prelock_resolution_required: true
+      customer_run_input_manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
+      customer_run_input_manifest_validated_before_data_collection: true
+      weekly_runtime_contract_reuse_allowed: false
       postlock_template_or_previous_output_reselection_allowed: false
       schedule: { day_of_week: Thursday, start_time: "17:40", timezone: Asia/Shanghai }
       source_wait_policy_id: POLICY_CUSTOMER_REVENUE_DETAIL_V1
       manual_trigger_allowed: true
-      manual_trigger_required_parameters: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter]
+      manual_trigger_required_parameters: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter, ReportingPeriodId]
       manual_parameter_to_context_bindings:
         WorkflowExecutionDate: workflow_execution_date
         CurrentRevenueCutoffDate: current_revenue_cutoff_date
         CurrentYear: current_year
         Quarter: quarter
+        ReportingPeriodId: reporting_period_id
         automatic_alias_or_value_inference_allowed: false
       stages: [DATA_COLLECTION, DATA_STANDARDIZATION, BUSINESS_RULE_PROCESSING, METRIC_CALCULATION, VALIDATION]
       mapping_profile_ids:
@@ -2372,7 +2398,7 @@ constraints:
       禁止根据当前日期自动推断业务周期。
   workflow_specific_manual_trigger_requirements:
     WF_CUSTOMER_REVENUE_DETAIL:
-      required_inputs: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter]
+      required_inputs: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter, ReportingPeriodId]
       missing_input_action: block_customer_workflow_only
   regular_inventory_pipeline_history_strategy:
     applies_to: All regular inventory Pipelines
@@ -2415,10 +2441,20 @@ constraints:
     stage_checkpointing_required: false
     resume_from_failed_stage_required: false
   workflow_runtime_contracts:
-    contract_bundle_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+    applies_by_workflow_scope: true
+    workflow_scopes:
+      WF_WEEKLY_BUSINESS_REPORT:
+        contract_bundle_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+      WF_CUSTOMER_REVENUE_DETAIL:
+        context_source: phase1_5/assets/execution/customer_revenue_detail_run_context_v1.yaml
+        manifest_source: phase1_5/assets/execution/customer_revenue_detail_local_input_contracts_v1.yaml#customer_run_input_manifest_contract
+        weekly_contract_reuse_allowed: false
+    unscoped_contract_fallback_allowed: false
     workflow_run_context_required_for_all_pipelines: true
     run_input_manifest_required_for_all_dataset_inputs: true
-    supported_run_types: [scheduled, manual, backfill]
+    supported_run_types_by_workflow:
+      WF_WEEKLY_BUSINESS_REPORT: [scheduled, manual, backfill]
+      WF_CUSTOMER_REVENUE_DETAIL: [scheduled, manual, backfill, rerun]
     outlook_apollo_novabi_execution_date_inference_allowed: false
     product_parameter_must_be_explicit: true
   result_field_consumption:

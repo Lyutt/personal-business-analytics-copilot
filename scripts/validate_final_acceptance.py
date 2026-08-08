@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import re
 import math
+import subprocess
+from datetime import date, timedelta
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -35,6 +37,7 @@ CUSTOMER_PIPELINE_GATE = ROOT / "phase1_5/assets/pipelines/pipeline_registry_rea
 CUSTOMER_FIELD_MAPPING_GATE = ROOT / "phase1_5/assets/field_mappings/field_mapping_readiness_gate_customer_revenue_detail.yaml"
 CUSTOMER_RESULT_GATE = ROOT / "phase1_5/assets/result_contracts/result_contract_readiness_gate_customer_revenue_detail.yaml"
 CUSTOMER_OUTPUT_GATE = ROOT / "phase1_5/assets/output_mappings/output_mapping_readiness_gate_customer_revenue_detail.yaml"
+DATASET_INVENTORY = ROOT / "phase1_5/assets/datasets/dataset_inventory.yaml"
 
 
 def load(path: Path) -> dict[str, Any]:
@@ -152,6 +155,7 @@ def template_is_eligible(
         and metadata.get("template_version") == context.get("confirmed_template_version")
         and metadata.get("template_current_year") == context.get("current_year")
         and metadata.get("template_quarter") == context.get("quarter")
+        and bool(metadata.get("template_file_reference"))
         and metadata.get("structure_validation_status") == "passed"
     )
 
@@ -313,6 +317,7 @@ def main() -> int:
     customer_field_mapping_gate = load(CUSTOMER_FIELD_MAPPING_GATE)
     customer_result_gate = load(CUSTOMER_RESULT_GATE)
     customer_output_gate = load(CUSTOMER_OUTPUT_GATE)
+    dataset_inventory = load(DATASET_INVENTORY)
     scenarios = scenario_map(suite)
     customer_scenarios = scenario_map(customer_suite)
     semantic_cases = semantic_case_map(suite)
@@ -322,7 +327,7 @@ def main() -> int:
     assert customer_suite.get("contains_real_business_data") is False
     assert customer_suite.get("external_side_effects_allowed") is False
     assert customer_suite.get("suite_id") == "CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1"
-    assert len(customer_scenarios) == 22
+    assert len(customer_scenarios) == 28
     gate_check_contract = {
         "business_rule": (
             customer_business_rule_gate["gate_checks"],
@@ -333,6 +338,9 @@ def main() -> int:
                 "quarter_template_eligibility_contract",
                 "previous_output_metadata_contract_without_filename_parsing",
                 "formula_mirror_numeric_tolerance_contract",
+                "frozen_weekly_comparable_rule_unchanged",
+                "quarter_first_week_template_order_tie_break",
+                "effective_layout_source_no_business_value_inheritance",
             },
         ),
         "pipeline": (
@@ -343,11 +351,20 @@ def main() -> int:
                 "quarter_template_current_year_quarter_version_eligibility",
                 "prior_output_local_metadata_selection_without_filename_parsing",
                 "workflow_dependency_count_isolation",
+                "deterministic_context_initialization_for_all_run_types",
+                "conditional_confirmed_template_version_requirement",
+                "customer_run_input_manifest_and_workflow_scoped_dataset_contract",
+                "effective_layout_source_and_layout_only_fallback",
+                "local_output_metadata_write_and_integer_version_contract",
+                "frozen_weekly_comparable_rule_zero_change",
             },
         ),
         "field_mapping": (
             customer_field_mapping_gate["consistency_checks"],
-            {"unmatched_notification_payload_is_grouped_and_local_only"},
+            {
+                "unmatched_notification_payload_is_grouped_and_local_only",
+                "advertiser_mapping_version_bound_before_data_collection",
+            },
         ),
         "result_contract": (
             customer_result_gate["gate_checks"],
@@ -364,6 +381,9 @@ def main() -> int:
                 "result_contract_missing_to_blank_rendering_only",
                 "template_eligibility_current_year_quarter_version",
                 "previous_output_metadata_selection_not_filename_parsing",
+                "effective_layout_source_current_template_or_layout_only_previous_output",
+                "no_template_previous_output_business_value_and_top20_inheritance_prohibited",
+                "local_output_metadata_write_with_integer_version_mapping",
             },
         ),
     }
@@ -831,6 +851,78 @@ def main() -> int:
     assert customer_technical_adapter["governance"][
         "frozen_weekly_asset_is_runtime_dependency"
     ] is frozen_case["weekly_rule_is_customer_runtime_dependency"]
+
+    context_init = customer_scenarios["deterministic_context_initialization"]
+    init_input = context_init["synthetic_input"]
+    cutoff = date.fromisoformat(init_input["current_revenue_cutoff_date"])
+    prior_comparable = cutoff.replace(year=cutoff.year - 1) + timedelta(days=1)
+    assert {
+        "prior_year": init_input["current_year"] - 1,
+        "target_fiscal_quarter": f"{init_input['current_year']}Q{init_input['quarter']}",
+        "report_mode": "quarter_first_week" if init_input["reporting_period_position"] == "first" else "regular_week",
+        "prior_year_full_quarter_period_id": f"{init_input['current_year'] - 1}Q{init_input['quarter']}",
+        "prior_comparable_as_of_date": prior_comparable.isoformat(),
+        "confirmed_template_version": None,
+        "locked_before_data_collection": customer_context["lock_policy"]["lock_before_stage"] == "DATA_COLLECTION",
+    } == context_init["expected_result"]
+    assert customer_context["required_fields"]["confirmed_template_version"]["required_when"] == "quarter_template_availability equals available"
+    assert set(customer_context["required_fields"]["run_type"]["allowed_values"]) == {"scheduled", "manual", "backfill", "rerun"}
+    assert customer_context["deterministic_initialization_contract"]["all_required_and_conditionally_required_fields_resolved_before_lock"] is True
+
+    manifest_case = customer_scenarios["customer_run_input_manifest_scope"]["expected_result"]
+    manifest = customer_local_inputs["customer_run_input_manifest_contract"]
+    customer_scope = dataset_inventory["runtime_input_contract"]["workflow_scopes"]["WF_CUSTOMER_REVENUE_DETAIL"]
+    assert {
+        "workflow_scope": manifest["workflow_scope"],
+        "manifest_id": manifest["manifest_id"],
+        "weekly_contract_reused": customer_scope["weekly_runtime_contract_reuse_allowed"],
+        "filename_or_latest_guessing": manifest["filename_latest_file_or_execution_date_selection_allowed"],
+    } == manifest_case
+    assert dataset_inventory["runtime_input_contract"]["applies_by_workflow_scope"] is True
+    assert dataset_inventory["runtime_input_contract"]["unscoped_runtime_contract_fallback_allowed"] is False
+
+    layout_case = customer_scenarios["effective_layout_source_selection"]["expected_result"]
+    layout_contract = customer_local_inputs["effective_layout_source_contract"]
+    layout_reuse = layout_contract["previous_period_output_layout_only_reuse"]
+    assert {
+        "effective_layout_source": "previous_period_output_layout_only",
+        "allowed_reuse": layout_reuse["allowed"],
+        "inherited_fields": [],
+        "inherited_top20": False,
+    } == layout_case
+    assert layout_reuse["prohibited_detail_fields"] == ["C", "D", "O", "P"]
+    assert layout_reuse["prohibited_record_sets"] == ["prior_year_top20", "forecast_top20"]
+
+    metadata_write_case = customer_scenarios["local_output_metadata_write_and_version"]
+    write_contract = customer_local_inputs["local_output_metadata_write_contract"]
+    next_version = max(metadata_write_case["synthetic_input"]["existing_passed_output_versions"]) + 1
+    suffix = write_contract["version_contract"]["filename_suffix_mapping"][next_version]
+    assert {
+        "next_output_version": next_version,
+        "filename_suffix": suffix,
+        "output_version_type": write_contract["required_metadata_fields"]["output_version"]["data_type"],
+        "filename_parsing_used": write_contract["version_contract"]["filename_parsing_to_determine_output_version_allowed"],
+        "metadata_written_after_success_only": customer_output["output_target"]["local_output_metadata_write_contract"]["write_after_successful_validation_only"],
+    } == metadata_write_case["expected_result"]
+    assert {"current_revenue_cutoff_date", "prior_comparable_as_of_date"}.issubset(write_contract["required_metadata_fields"])
+
+    template_tie = customer_scenarios["quarter_first_week_template_order_tie"]
+    assert [row["customer"] for row in sorted(template_tie["synthetic_input"]["rows"], key=lambda row: (-row["C"], row["template_order"]))] == template_tie["expected_result"]
+    existing_tie = customer_policy["processing"]["detail_sorting"]["existing_customer_equal_C_tie"]
+    assert existing_tie["quarter_first_week_without_previous_output_with_eligible_current_template"] == "preserve_current_quarter_template_row_order"
+    assert existing_tie["any_other_runtime_tie_break_allowed"] is False
+
+    frozen_comparable = customer_scenarios["frozen_weekly_comparable_rule_zero_diff"]["expected_result"]
+    assert all(key not in weekly_comparable_rule["governance"] for key in frozen_comparable["customer_governance_keys_absent"])
+    assert comparable_rule["constraints"]["weekly_prior_year_rule_reuse_allowed"] is False
+    zero_diff_contract = customer_baseline["change_control"]["weekly_frozen_asset_zero_diff_contract"]
+    assert zero_diff_contract["exact_files"] == frozen_comparable["exact_zero_diff_assets"]
+    for frozen_path in zero_diff_contract["exact_files"]:
+        baseline_bytes = subprocess.check_output(
+            ["git", "show", f"{zero_diff_contract['comparison_base_commit_sha']}:{frozen_path}"],
+            cwd=ROOT,
+        )
+        assert baseline_bytes == (ROOT / frozen_path).read_bytes(), f"{frozen_path}: frozen Weekly asset changed"
 
     tolerance_case = customer_scenarios["formula_mirror_numeric_tolerance"]
     tolerance_contract = customer_policy["output_boundary"][

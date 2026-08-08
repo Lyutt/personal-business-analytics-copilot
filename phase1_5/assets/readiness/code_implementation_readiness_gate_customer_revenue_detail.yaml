@@ -28,8 +28,15 @@ implementation_readiness_checks:
   all_32_excel_result_fields_explicitly_bound: pass
   customer_run_context_locked_before_data_collection: pass
   canonical_context_bindings_and_no_runtime_guessing: pass
+  deterministic_context_initialization_before_data_collection: pass
+  conditional_template_version_requirement: pass
+  workflow_scoped_customer_run_input_manifest: pass
   local_input_template_and_previous_output_metadata_contracts: pass
+  effective_layout_source_and_layout_only_fallback_contract: pass
+  local_output_metadata_write_and_integer_version_contract: pass
   frozen_weekly_rule_restored_and_customer_adapter_bound: pass
+  frozen_weekly_comparable_rule_restored: pass
+  quarter_first_week_template_order_tie_break: pass
   result_missing_rendering_and_failed_value_prohibitions: pass
   formula_mirror_tolerance_contract: pass
   customer_synthetic_acceptance_in_ci: pass

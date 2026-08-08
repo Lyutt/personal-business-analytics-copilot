@@ -12,14 +12,20 @@ checks:
   independent_workflow_boundary: pass
   current_full_quarter_comparable_and_prior_output_inputs_explicit: pass
   customer_run_context_locked_before_data_collection: pass
+  deterministic_context_initialization_for_all_run_types: pass
+  conditional_confirmed_template_version_requirement: pass
+  customer_run_input_manifest_and_workflow_scoped_dataset_contract: pass
   canonical_context_binding_and_target_fiscal_quarter_derivation: pass
   customer_specific_technical_adapter_without_weekly_asset_mutation: pass
   previous_reporting_period_output_and_same_week_rerun_selection: pass
   no_template_quarter_first_week_prior_output_dependency: pass
+  effective_layout_source_and_layout_only_fallback: pass
+  local_output_metadata_write_and_integer_version_contract: pass
   quarter_template_current_year_quarter_version_eligibility: pass
   prior_output_local_metadata_selection_without_filename_parsing: pass
   no_shared_metric_store_write: pass
   no_cross_workflow_result_contract_publish: pass
   no_weekly_report_attachment: pass
   workflow_dependency_count_isolation: pass
+  frozen_weekly_comparable_rule_zero_change: pass
 decision: Pipeline design is complete; code implementation remains separately gated.

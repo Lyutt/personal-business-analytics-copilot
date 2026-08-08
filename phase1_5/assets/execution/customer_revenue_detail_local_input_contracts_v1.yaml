@@ -11,6 +11,7 @@ quarter_template_eligibility_contract:
     template_version: { data_type: string, nullable: false }
     template_current_year: { data_type: integer, nullable: false }
     template_quarter: { data_type: integer, allowed_values: [1, 2, 3, 4], nullable: false }
+    template_file_reference: { data_type: local_only_opaque_reference, nullable: false }
     structure_validation_status: { data_type: string, allowed_values: [passed], nullable: false }
   exact_eligibility_match:
     template_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
@@ -18,17 +19,21 @@ quarter_template_eligibility_contract:
     template_current_year: locked current_year
     template_quarter: locked quarter
     structure_validation_status: passed
+  confirmed_template_version_requirement:
+    template_candidate_present: required and exact-match validated
+    no_template_candidate: must be null and must not block context initialization
   all_conditions_required: true
   bind_eligible_metadata_to_context:
     - { metadata_field_id: template_asset_id, context_field_id: selected_template_asset_id }
     - { metadata_field_id: template_version, context_field_id: selected_template_version }
     - { metadata_field_id: template_current_year, context_field_id: selected_template_current_year }
     - { metadata_field_id: template_quarter, context_field_id: selected_template_quarter }
+    - { metadata_field_id: template_file_reference, context_field_id: selected_template_file_reference }
   mismatch_or_missing_metadata_result: unavailable
   availability_binding_consistency:
     eligible_result: quarter_template_availability must equal available
     ineligible_or_missing_result: quarter_template_availability must equal unavailable
-    selected_template_fields_when_unavailable: all null
+    selected_template_fields_when_unavailable: all null including selected_template_file_reference
   unavailable_behavior:
     may_use_as_current_quarter_template: false
     prohibited_inheritance_fields: [C, D, O, P]
@@ -56,6 +61,82 @@ previous_reporting_period_output_metadata_contract:
     output_file_reference: selected_previous_output_file_reference
   filename_parsing_for_history_selection_allowed: false
   ambiguous_missing_or_invalid_metadata_action: block_customer_workflow
+customer_run_input_manifest_contract:
+  manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
+  workflow_scope: WF_CUSTOMER_REVENUE_DETAIL
+  context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+  required_for_run_types: [scheduled, manual, backfill, rerun]
+  generated_and_validated_before_stage: DATA_COLLECTION
+  required_manifest_fields:
+    workflow_run_id: { binding: workflow_run_id, nullable: false }
+    run_attempt: { binding: run_attempt, nullable: false }
+    run_type: { binding: run_type, nullable: false }
+    workflow_id: { constant: WF_CUSTOMER_REVENUE_DETAIL }
+    context_id: { constant: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1 }
+    dataset_id: { constant: DS_REVENUE_SALES_ROLLING_DECK_QTD }
+    dataset_version: { source: approved dataset inventory governance version, nullable: false }
+    input_role: { allowed_values: [current_qtd_snapshot, prior_year_full_quarter_history_for_C, prior_year_comparable_qtd_snapshot_for_K_L] }
+    source_instance_reference: { data_type: local_only_opaque_reference, nullable: false }
+    reporting_period_id: { binding: reporting_period_id, nullable: false }
+    target_fiscal_quarter: { binding: target_fiscal_quarter, nullable: false }
+    current_revenue_cutoff_date: { binding: current_revenue_cutoff_date, nullable: false }
+    prior_comparable_as_of_date: { binding: prior_comparable_as_of_date, nullable: false }
+    prior_year_full_quarter_period_id: { binding: prior_year_full_quarter_period_id, nullable: false }
+    advertiser_mapping_version: { binding: advertiser_mapping_version, nullable: false }
+    validation_status: { allowed_values: [passed], nullable: false }
+  exact_role_bindings:
+    current_qtd_snapshot: [reporting_period_id, target_fiscal_quarter, current_revenue_cutoff_date]
+    prior_year_full_quarter_history_for_C: [prior_year_full_quarter_period_id, target_fiscal_quarter]
+    prior_year_comparable_qtd_snapshot_for_K_L: [prior_comparable_as_of_date, target_fiscal_quarter]
+  weekly_runtime_contract_reuse_allowed: false
+  filename_latest_file_or_execution_date_selection_allowed: false
+  context_mismatch_action: block_customer_workflow
+effective_layout_source_contract:
+  context_field_id: effective_layout_source
+  reference_context_field_id: effective_layout_reference
+  deterministic_priority:
+    - when: quarter_template_eligibility_contract returns available
+      value: current_quarter_template
+      reference: selected_template_file_reference
+    - when: quarter template unavailable and previous_reporting_period_output_metadata_contract returns one validated result
+      value: previous_period_output_layout_only
+      reference: selected_previous_output_file_reference
+  previous_period_output_layout_only_reuse:
+    allowed: [workbook_structure, workbook_style, customer_membership, detail_A_industry]
+    prohibited_detail_fields: [C, D, O, P]
+    prohibited_record_sets: [prior_year_top20, forecast_top20]
+    prior_quarter_business_values_or_memberships_must_be_rebuilt_or_blank_per_current_context: true
+  no_eligible_source_action: block_customer_workflow
+  runtime_alternate_layout_selection_allowed: false
+local_output_metadata_write_contract:
+  write_when: validated local XLSX output succeeds
+  required_metadata_fields:
+    workflow_run_id: { binding: workflow_run_id, nullable: false }
+    result_id: { source: validated result contract instance identifier, nullable: false }
+    reporting_period_id: { binding: reporting_period_id, nullable: false }
+    output_version: { data_type: integer, minimum: 1, nullable: false }
+    output_file_reference: { data_type: local_only_opaque_reference, nullable: false }
+    validation_status: { constant: passed }
+    completed_at: { data_type: datetime, nullable: false }
+    current_revenue_cutoff_date: { binding: current_revenue_cutoff_date, nullable: false }
+    prior_comparable_as_of_date: { binding: prior_comparable_as_of_date, nullable: false }
+  version_contract:
+    output_version_is_authoritative_integer: true
+    logical_version_label_mapping:
+      1: v1
+      2: v2
+      3: v3
+      n_greater_than_3: vN
+    filename_suffix_mapping:
+      1: no_suffix
+      2: v2
+      3: v3
+      n_greater_than_3: vN
+    next_version_for_same_reporting_period: one plus highest unique passed metadata output_version
+    filename_parsing_to_determine_output_version_allowed: false
+  next_period_read_contract: previous_reporting_period_output_metadata_contract
+  failed_or_partial_output_metadata_write_allowed: false
+  local_only_metadata_no_customer_rows: true
 constraints:
   local_file_contents_must_not_enter_git: true
   customer_rows_must_not_enter_metadata: true

@@ -144,6 +144,10 @@ asset_rules:
       - one_context_per_workflow_run
       - lock_policy
       - required_fields
+      - derived_field_bindings
+      - deterministic_initialization_contract
+      - prelock_resolution_sequence
+      - consumer_context_bindings
       - selection_and_rerun_semantics
       - constraints
 
@@ -159,6 +163,9 @@ asset_rules:
       - context_id
       - quarter_template_eligibility_contract
       - previous_reporting_period_output_metadata_contract
+      - customer_run_input_manifest_contract
+      - effective_layout_source_contract
+      - local_output_metadata_write_contract
       - constraints
 
   - asset_type: field_mapping_profile

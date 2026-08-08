@@ -15,6 +15,10 @@ dataset_readiness:
     standardization: Reuse approved Rolling Deck mappings and exact advertiser ownership mapping.
     gate: pass
 constraints:
+  dataset_runtime_input_contract_is_workflow_scoped: true
+  customer_run_input_manifest_required_for_all_rolling_deck_roles_and_run_types: true
+  weekly_runtime_contract_reuse_allowed: false
+  filename_or_latest_file_selection_allowed: false
   local_quarter_baseline_and_prior_output_are_not_shared_datasets: true
   local_inputs_must_be_ingested_upstream_of_output_mapping: true
   quarter_template_must_match_locked_current_year_quarter_and_version: true

@@ -110,8 +110,8 @@ scenarios:
   - scenario_id: quarter_template_eligibility
     synthetic_input:
       context: { current_year: 2026, quarter: 3, confirmed_template_version: SYNTH-V1 }
-      matching_template: { template_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY, template_version: SYNTH-V1, template_current_year: 2026, template_quarter: 3, structure_validation_status: passed }
-      wrong_quarter_template: { template_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY, template_version: SYNTH-V1, template_current_year: 2026, template_quarter: 2, structure_validation_status: passed }
+      matching_template: { template_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY, template_version: SYNTH-V1, template_current_year: 2026, template_quarter: 3, template_file_reference: SYNTH-TEMPLATE-REF-Q3, structure_validation_status: passed }
+      wrong_quarter_template: { template_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY, template_version: SYNTH-V1, template_current_year: 2026, template_quarter: 2, template_file_reference: SYNTH-TEMPLATE-REF-Q2, structure_validation_status: passed }
     expected_result: { matching_template: available, wrong_quarter_template: unavailable, prior_quarter_fields_inherited: false }
   - scenario_id: previous_output_metadata_contract
     expected_result:
@@ -126,3 +126,29 @@ scenarios:
   - scenario_id: formula_mirror_numeric_tolerance
     synthetic_input: { calculation_engine_value: 0.3333333333333333, excel_value: 0.33333333333333337 }
     expected_result: { comparison_passed: true, calculation_engine_remains_authoritative: true }
+  - scenario_id: deterministic_context_initialization
+    synthetic_input: { current_year: 2026, quarter: 3, reporting_period_id: SYNTH-2026Q3-P1, reporting_period_position: first, current_revenue_cutoff_date: '2026-07-09', template_candidate_exists: false }
+    expected_result: { prior_year: 2025, target_fiscal_quarter: 2026Q3, report_mode: quarter_first_week, prior_year_full_quarter_period_id: 2025Q3, prior_comparable_as_of_date: '2025-07-10', confirmed_template_version: null, locked_before_data_collection: true }
+  - scenario_id: customer_run_input_manifest_scope
+    synthetic_input: { run_type: backfill, input_roles: [current_qtd_snapshot, prior_year_full_quarter_history_for_C, prior_year_comparable_qtd_snapshot_for_K_L] }
+    expected_result: { workflow_scope: WF_CUSTOMER_REVENUE_DETAIL, manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1, weekly_contract_reused: false, filename_or_latest_guessing: false }
+  - scenario_id: effective_layout_source_selection
+    synthetic_input: { eligible_template: false, validated_previous_output: true }
+    expected_result: { effective_layout_source: previous_period_output_layout_only, allowed_reuse: [workbook_structure, workbook_style, customer_membership, detail_A_industry], inherited_fields: [], inherited_top20: false }
+  - scenario_id: local_output_metadata_write_and_version
+    synthetic_input: { existing_passed_output_versions: [1, 2] }
+    expected_result: { next_output_version: 3, filename_suffix: v3, output_version_type: integer, filename_parsing_used: false, metadata_written_after_success_only: true }
+  - scenario_id: quarter_first_week_template_order_tie
+    synthetic_input:
+      rows:
+        - { customer: SYNTH_TEMPLATE_B, C: 100, existing: true, template_order: 2 }
+        - { customer: SYNTH_TEMPLATE_A, C: 100, existing: true, template_order: 1 }
+    expected_result: [SYNTH_TEMPLATE_A, SYNTH_TEMPLATE_B]
+  - scenario_id: frozen_weekly_comparable_rule_zero_diff
+    expected_result:
+      customer_governance_keys_absent: [customer_workflow_reuse_prohibited, customer_workflow_replacement_rules]
+      customer_no_reuse_declared_only_in_customer_assets: true
+      exact_zero_diff_assets:
+        - phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml
+        - phase1_5/assets/business_rules/BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1.yaml
+        - phase1_5/assets/readiness/implementation_baseline.yaml

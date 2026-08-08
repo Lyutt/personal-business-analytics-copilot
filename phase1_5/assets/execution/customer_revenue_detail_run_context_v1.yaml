@@ -12,7 +12,7 @@ lock_policy:
 required_fields:
   workflow_run_id: { data_type: string, nullable: false }
   run_attempt: { data_type: integer, minimum: 1, nullable: false }
-  run_type: { data_type: string, allowed_values: [scheduled, manual, rerun] }
+  run_type: { data_type: string, allowed_values: [scheduled, manual, backfill, rerun] }
   workflow_execution_date: { data_type: date, nullable: false }
   current_revenue_cutoff_date: { data_type: date, nullable: false }
   current_year: { data_type: integer, nullable: false }
@@ -26,30 +26,105 @@ required_fields:
   prior_year_full_quarter_period_id: { data_type: string, nullable: false }
   quarter_template_availability: { data_type: string, allowed_values: [available, unavailable] }
   forecast_D_availability: { data_type: string, allowed_values: [available, unavailable] }
-  confirmed_template_version: { data_type: string, nullable: false }
+  confirmed_template_version:
+    data_type: string
+    nullable: true
+    required_when: quarter_template_availability equals available
+    must_be_null_when: quarter_template_availability equals unavailable
   selected_template_version: { data_type: string, nullable: true }
   selected_template_asset_id: { data_type: string, nullable: true }
   selected_template_current_year: { data_type: integer, nullable: true }
   selected_template_quarter: { data_type: integer, nullable: true }
+  selected_template_file_reference: { data_type: local_only_opaque_reference, nullable: true }
   selected_previous_output_result_id: { data_type: string, nullable: true }
-  selected_previous_output_version: { data_type: string, nullable: true }
+  selected_previous_output_version: { data_type: integer, minimum: 1, nullable: true }
   selected_previous_output_file_reference: { data_type: local_only_opaque_reference, nullable: true }
+  effective_layout_source: { data_type: string, allowed_values: [current_quarter_template, previous_period_output_layout_only], nullable: false }
+  effective_layout_reference: { data_type: local_only_opaque_reference, nullable: false }
   advertiser_mapping_version: { data_type: string, nullable: false }
   rerun_of_workflow_run_id: { data_type: string, nullable: true }
 derived_field_bindings:
+  prior_year:
+    source_field_ids: [current_year]
+    deterministic_expression: current_year minus 1
+    derive_before_context_lock: true
   target_fiscal_quarter:
     source_field_ids: [current_year, quarter]
     deterministic_expression: concatenate current_year, literal Q, and quarter
     output_pattern: 'YYYYQ[1-4]'
     derive_before_context_lock: true
     runtime_code_may_guess_or_rederive_after_lock: false
+  report_mode:
+    source_field_ids: [reporting_period_id, target_fiscal_quarter]
+    authoritative_reference: approved_reporting_calendar
+    deterministic_expression: quarter_first_week only when reporting_period_id is the first reporting period in target_fiscal_quarter; otherwise regular_week
+    derive_before_context_lock: true
+  previous_reporting_period_id:
+    source_field_ids: [reporting_period_id]
+    authoritative_reference: approved_reporting_calendar
+    deterministic_expression: exact immediately preceding reporting period identifier
+    derive_before_context_lock: true
+  prior_comparable_as_of_date:
+    source_field_ids: [current_revenue_cutoff_date, current_year]
+    deterministic_expression: for CurrentYear 2026 only, shift cutoff date back one year and add one calendar day
+    unsupported_current_year_action: block_for_owner_confirmation
+    derive_before_context_lock: true
+  prior_year_full_quarter_period_id:
+    source_field_ids: [prior_year, quarter]
+    deterministic_expression: concatenate prior_year, literal Q, and quarter
+    derive_before_context_lock: true
+deterministic_initialization_contract:
+  initialization_deadline: before DATA_COLLECTION
+  all_required_and_conditionally_required_fields_resolved_before_lock: true
+  reporting_period_id:
+    scheduled_source: approved_reporting_calendar entry selected by the scheduled trigger
+    manual_or_backfill_source: explicit canonical reporting_period_id run parameter
+    rerun_source: original locked Customer Run Context
+    execution_date_or_filename_inference_allowed: false
+  workflow_execution_date:
+    scheduled_source: trigger execution date
+    manual_or_backfill_source: explicit canonical workflow_execution_date run parameter
+    rerun_source: new attempt execution date while business-period fields remain copied from original locked context
+  current_revenue_cutoff_date:
+    scheduled_source: approved reporting calendar cutoff for locked reporting_period_id
+    manual_or_backfill_source: explicit canonical current_revenue_cutoff_date validated against the approved reporting calendar
+    rerun_source: original locked Customer Run Context
+  current_year_and_quarter:
+    source: approved reporting calendar attributes for locked reporting_period_id
+    manual_or_backfill_parameters_are_validation_inputs_only: true
+  prior_year: derived from current_year
+  report_mode: derived from approved reporting calendar position
+  previous_reporting_period_id: derived from approved reporting calendar predecessor
+  prior_comparable_as_of_date: derived by the Customer comparable-source rule binding
+  prior_year_full_quarter_period_id: derived from prior_year and quarter
+  quarter_template_availability:
+    source: quarter_template_eligibility_contract result
+  confirmed_template_version:
+    source_when_template_candidate_exists: approved local-only configuration
+    required_only_when_quarter_template_available: true
+    unavailable_value: null
+  forecast_D_availability:
+    source: eligible current-quarter template authoritative D baseline inspection
+    available_when: at least one explicit owner-supplied D value exists, including zero
+    no_eligible_quarter_template_value: unavailable
+  advertiser_mapping_version:
+    source: validated local advertiser ownership mapping metadata version
+    missing_or_ambiguous_action: block_customer_workflow
+  effective_layout_source:
+    source: effective_layout_source_contract selection result
+  effective_layout_reference:
+    source: selected eligible template file reference or validated previous-period output opaque reference
+  runtime_code_may_guess_alias_period_file_or_latest_asset: false
 prelock_resolution_sequence:
-  - bind explicit manual parameters to canonical Context field IDs
-  - resolve confirmed_template_version from approved local-only configuration
-  - derive target_fiscal_quarter from current_year and quarter
+  - resolve reporting_period_id and cutoff from the authoritative scheduled, manual, backfill, or rerun source
+  - validate current_year and quarter against the approved reporting calendar
+  - derive prior_year, target_fiscal_quarter, report_mode, previous_reporting_period_id, prior_comparable_as_of_date, and prior_year_full_quarter_period_id
+  - resolve conditional confirmed_template_version only when a current-quarter template candidate exists
   - validate quarter template metadata and bind eligible selected_template fields
   - validate and select previous reporting period output metadata when required
   - bind selected previous-output metadata fields
+  - resolve forecast_D_availability, advertiser_mapping_version, effective_layout_source, and effective_layout_reference
+  - generate and validate the Customer Run Input Manifest against this locked context candidate
   - validate all required consumer Context Bindings
   - lock Customer Run Context before DATA_COLLECTION
 postlock_metadata_selection_or_rebinding_allowed: false
@@ -57,12 +132,14 @@ consumer_context_bindings:
   BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1: [target_fiscal_quarter, report_mode]
   BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1: [current_year, prior_year, quarter, prior_year_full_quarter_period_id, target_fiscal_quarter]
   BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1: [current_revenue_cutoff_date, current_year, prior_year, quarter, prior_comparable_as_of_date, target_fiscal_quarter]
-  POLICY_CUSTOMER_REVENUE_DETAIL_V1: [workflow_execution_date, current_revenue_cutoff_date, current_year, prior_year, quarter, target_fiscal_quarter, report_mode, reporting_period_id, previous_reporting_period_id, quarter_template_availability, forecast_D_availability, confirmed_template_version]
+  POLICY_CUSTOMER_REVENUE_DETAIL_V1: [workflow_execution_date, current_revenue_cutoff_date, current_year, prior_year, quarter, target_fiscal_quarter, report_mode, reporting_period_id, previous_reporting_period_id, quarter_template_availability, forecast_D_availability, confirmed_template_version, advertiser_mapping_version, effective_layout_source]
+  CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1: [workflow_run_id, run_attempt, run_type, reporting_period_id, current_revenue_cutoff_date, target_fiscal_quarter, prior_comparable_as_of_date, prior_year_full_quarter_period_id, advertiser_mapping_version]
 manual_parameter_bindings:
   WorkflowExecutionDate: workflow_execution_date
   CurrentRevenueCutoffDate: current_revenue_cutoff_date
   CurrentYear: current_year
   Quarter: quarter
+  ReportingPeriodId: reporting_period_id
   unmapped_parameter_inference_allowed: false
 selection_and_rerun_semantics:
   actual_execution_date_may_infer_business_period: false
@@ -74,6 +151,7 @@ selection_and_rerun_semantics:
   source_roles_locked_separately:
     C: prior_year_full_quarter_history
     K_L: prior_year_comparable_qtd_snapshot
+  scheduled_manual_backfill_and_rerun_dataset_selection_must_use_locked_context: true
 constraints:
   local_paths_allowed: false
   customer_rows_allowed: false
