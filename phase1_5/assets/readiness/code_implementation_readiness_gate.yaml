@@ -1,9 +1,10 @@
 config_type: code_implementation_readiness_gate
 gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-assessment_date: 2026-08-02
-status: passed_with_runtime_bootstrap_conditions
-gate_result: passed_with_runtime_bootstrap_conditions
+assessment_date: 2026-08-03
+last_semantic_sync_date: 2026-08-08
+status: ready_awaiting_explicit_owner_approval
+gate_result: ready_awaiting_explicit_owner_approval
 owner: WORKFLOW_OWNER
 
 scope:
@@ -14,6 +15,9 @@ scope:
       status: deferred_by_owner
       blocking_weekly_implementation: false
   code_implementation_started: false
+  implementation_baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
+  implementation_baseline_version: 1.0.0
+  implementation_baseline_status: frozen_awaiting_explicit_owner_code_implementation_approval
 
 prerequisite_gate_results:
   - gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1
@@ -27,6 +31,10 @@ prerequisite_gate_results:
   - gate_id: GATE_BUSINESS_RULE_REVENUE_WF_WEEKLY_BUSINESS_REPORT_V1
     status: passed
   - gate_id: GATE_METRIC_LIBRARY_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: passed
+  - gate_id: GATE_RESULT_CONTRACT_WF_WEEKLY_BUSINESS_REPORT_V1
+    status: passed
+  - gate_id: GATE_INVENTORY_ADVERTISING_POLICY_WF_WEEKLY_BUSINESS_REPORT_V1
     status: passed
   - gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
     status: passed
@@ -45,24 +53,91 @@ implementation_readiness_checks:
   revenue_business_rules_confirmed: pass
   inventory_and_analysis_policies_explicit: pass
   metric_and_metric_variant_contracts_confirmed: pass
+  formal_result_contract_assets_confirmed: pass
+  result_contract_numeric_semantics_confirmed: pass
+  result_contract_dependency_graph_acyclic: pass
+  metric_variant_output_bindings_confirmed: pass
+  inventory_advertising_policy_gate: pass
+  external_asset_version_contracts_confirmed: pass
+  implementation_baseline_frozen: pass
   output_mapping_and_outlook_draft_contracts_confirmed: pass
   output_assembly_calculation_disabled: pass
   outlook_auto_send_false: pass
   personal_and_business_data_git_boundary: pass
   metric_store_logical_contracts: pass
   metric_store_runtime_bootstrap: conditional
+  all_initial_mvp_pipelines_execute_sequentially: pass
+  all_initial_mvp_pipelines_rerun_from_start: pass
+  mvp_stage_checkpointing_not_required: pass
+  shared_local_sqlite_metric_store_contract: pass
+  single_metric_results_table_with_logical_discriminators: pass
+  lean_metric_store_implementation_boundary: pass
+  mvp_rerun_pipeline_from_start_recovery: pass
+  mvp_implementation_sequence_fixed: pass
+  customer_analysis_metric_variant_not_applicable: pass
+  customer_analysis_omission_semantics_synchronized: pass
+  customer_analysis_zero_qualified_rows_contract_context_available: pass
+  output_mapping_never_reads_omitted_customer_contract: pass
+  reference_key_type_semantics_synchronized: pass
+  customer_analysis_fixed_narrative_rendering: pass
+  customer_analysis_inventory_commentary_positions_fixed: pass
+  customer_analysis_dynamic_table_engine_prohibited: pass
+  customer_analysis_fixed_narrative_semantics_synchronized: pass
+  shared_local_sqlite_minimum_schema_confirmed: pass
+  shared_local_sqlite_dimension_representation_confirmed: pass
+  shared_local_sqlite_idempotent_unique_key_confirmed: pass
+  local_template_commentary_anchor_bindings_confirmed: pass
+  baseline_freeze_and_version_impact_consistent: pass
+  stale_publication_status_absent: pass
+  workflow_run_context_single_date_authority: pass
+  run_input_manifest_explicit_binding: pass
+  percentage_point_storage_and_12pp_trigger: pass
+  active_pipeline_dataset_version_and_join_tbd_closed: pass
+  parameterized_result_contract_instance_selection: pass
+  result_field_value_status_consumption: pass
+  customer_duplicate_and_negative_row_exclusion: pass
+  workflow_complete_partial_blocked_statuses: pass
+  external_asset_interface_schemas: pass
+  configured_display_values_sqlite_state: pass
+  revenue_excel_recalculate_data_only_reread: pass
+  analysis_request_contract_and_dcp_registry: pass
+  ad_hoc_standard_operations_boundary: pass
+  revenue_dcp_registered_capability_coverage: pass
+  inventory_dcp_registered_capability_coverage: pass
+  natural_language_brief_to_canonical_arc: pass
+  brief_understanding_separated_from_exact_asset_selection: pass
+  synthetic_final_acceptance_in_ci: pass
+
+final_acceptance_transition:
+  corrections_pending_status_used_during_edit_and_pre_gate_validation: final_acceptance_corrections_pending
+  repository_safety_validation: passed
+  asset_integrity_validation_before_final_status_restore: passed_except_expected_pending_gate_status_mismatch
+  synthetic_acceptance_scenario_count: 14
+  synthetic_acceptance_result: passed
+  final_status_after_all_contract_checks: ready_awaiting_explicit_owner_approval
+  explicit_owner_code_implementation_approval_received: false
 
 implementation_entry_decision:
-  code_implementation_may_start: true
+  asset_baseline_ready: true
+  explicit_owner_code_implementation_approval_received: false
+  code_implementation_may_start: false
+  waiting_for_explicit_owner_approval: true
   allowed_initial_scope:
-    - Generic Analytics Core interfaces
-    - Data acquisition adapters with local runtime configuration
-    - Dataset standardization and validation
-    - Pipeline orchestration and pipeline-level recovery
-    - Business Rule and Metric Variant execution
-    - Metric Result Store interfaces and bootstrap tooling
-    - Weekly Report Output Assembly
-    - Outlook Draft creation with auto_send=false
+    - "1. Local input -> standardization -> rules -> metrics -> Result Contract -> fixed narrative output -> Weekly Report preview -> Store"
+    - "2. Outlook Draft with auto_send=false"
+    - "3. Progressively integrate Outlook, Apollo, and NovaBI Adapters"
+  mvp_execution_mode: sequential
+  mvp_recovery_mode: rerun_pipeline_from_start
+  parallel_scheduling_implemented: false
+  stage_checkpointing_implemented: false
+  failed_stage_resume_implemented: false
+  physical_metric_store_strategy: shared_local_sqlite
+  metric_store_table: metric_results
+  metric_store_discriminator_fields: [store_id, store_asset_id]
+  multi_provider_store_implemented: false
+  plugin_store_architecture_implemented: false
+  complex_orm_implemented: false
+  code_implementation_start: wait_for_explicit_owner_approval
   business_logic_auto_completion_allowed: false
   unknown_tbd_auto_resolution_allowed: false
   external_side_effects_require_runtime_confirmation: true
@@ -72,17 +147,18 @@ runtime_acceptance_decision:
   blocking_items:
     - blocker_id: BLOCKER_METRIC_STORE_INVENTORY_BOOTSTRAP
       store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
-      resolution: Configure local format, location, schemas and read/write verification
+      resolution: Configure the shared local SQLite metric_results table and verify store_id/store_asset_id reads and writes
     - blocker_id: BLOCKER_METRIC_STORE_USER_ANALYTICS_BOOTSTRAP
       store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
-      resolution: Configure local format, location, schema and read/write verification
+      resolution: Configure the shared local SQLite metric_results table and verify store_id/store_asset_id reads and writes
     - blocker_id: BLOCKER_METRIC_STORE_ADVERTISING_BOOTSTRAP
       store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
-      resolution: Configure local format, location, schema and write verification
+      resolution: Configure the shared local SQLite metric_results table and verify store_id/store_asset_id writes
   non_blocking_runtime_conditions:
     - Revenue local workbooks must exist and be accessible for each run
     - Outlook, Apollo and NovaBI sessions may require the confirmed refresh-and-retry policy
     - Local templates and recipient configuration must resolve at runtime
+    - Local External Asset versions and content fingerprints must validate before dependent scope activation
   runtime_acceptance_requires_owner_confirmation: true
 
 governance:
@@ -92,9 +168,11 @@ governance:
   outlook_auto_send: false
   customer_revenue_detail_deferred_without_blocking_weekly: true
   safety_review_required_before_each_git_operation: true
+  explicit_owner_approval_required_before_code_implementation: true
+  frozen_baseline_does_not_grant_implementation_authority: true
 
 decision:
-  final_gate_result: pass_for_code_implementation_start
+  final_gate_result: implementation_baseline_ready_awaiting_explicit_owner_approval
   runtime_gate_result: conditional_pending_local_metric_store_bootstrap
-  next_stage: Code Implementation
+  next_stage: Await explicit Owner approval for Code Implementation
   automatic_stage_transition: false

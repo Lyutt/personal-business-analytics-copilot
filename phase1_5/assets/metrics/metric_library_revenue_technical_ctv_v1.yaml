@@ -60,7 +60,9 @@ metric_variants:
     period_type: Fiscal-quarter-to-date
     dataset_dependencies:
       - DS_REVENUE_SALES_ROLLING_DECK_QTD
-    result_contract_dependency: RC_REVENUE_TECHNICAL_WEEKLY
+    output_binding:
+      result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY
+      result_field_id: qtd_performance_revenue
     business_rule_dependencies:
       - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
       - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
@@ -84,7 +86,9 @@ metric_variants:
     period_type: Fiscal-quarter-to-date
     dataset_dependencies:
       - DS_REVENUE_SALES_ROLLING_DECK_QTD
-    result_contract_dependency: RC_REVENUE_TECHNICAL_WEEKLY
+    output_binding:
+      result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY
+      result_field_id: qtd_executed_revenue
     business_rule_dependencies:
       - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
       - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
@@ -108,7 +112,9 @@ metric_variants:
     period_type: Weekly incremental within fiscal quarter
     dataset_dependencies:
       - DS_REVENUE_SALES_ROLLING_DECK_QTD
-    result_contract_dependency: RC_REVENUE_TECHNICAL_WEEKLY
+    output_binding:
+      result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY
+      result_field_id: weekly_incremental_executed_revenue
     historical_result_dependency:
       store_id: STORE_WEEKLY_REVENUE_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
@@ -134,6 +140,9 @@ metric_variants:
     comparison_type: Year-over-year
     period_type: Fiscal-quarter-to-date
     numerator_metric_variant_id: MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1
+    output_binding:
+      result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY
+      result_field_id: qtd_performance_revenue_yoy
     prior_year_source_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
     calculation_method: Day-normalized comparison
     formula: >
@@ -159,6 +168,9 @@ metric_variants:
     comparison_type: Week-over-week
     period_type: Weekly incremental within fiscal quarter
     numerator_metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+    output_binding:
+      result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY
+      result_field_id: weekly_incremental_executed_revenue_wow
     calculation_method: Direct ratio comparison
     formula: Current-week Incremental Executed Revenue / prior-week Incremental Executed Revenue - 1.
     denominator_invalid_action: Leave growth result blank and notify owner
@@ -175,6 +187,9 @@ metric_variants:
     comparison_type: Year-over-year
     period_type: Weekly incremental within fiscal quarter
     numerator_metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+    output_binding:
+      result_contract_id: RC_REVENUE_TECHNICAL_WEEKLY
+      result_field_id: weekly_incremental_executed_revenue_yoy
     prior_year_source_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
     calculation_method: Direct ratio comparison
     formula: Current-week Incremental Executed Revenue / prior-year comparable Incremental Executed Revenue - 1.
@@ -192,7 +207,9 @@ metric_variants:
     period_type: Fiscal-quarter-to-date
     dataset_dependencies:
       - DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
-    result_contract_dependency: RC_REVENUE_CTV_WEEKLY
+    output_binding:
+      result_contract_id: RC_REVENUE_CTV_WEEKLY
+      result_field_id: qtd_performance_revenue
     calculation_method: Aggregate validated standardized records
     formula: SUM(tv_total_amount_quarter) over validated CTV records.
     aggregation_level: Target fiscal quarter × CTV
@@ -211,7 +228,9 @@ metric_variants:
     period_type: Fiscal-quarter-to-date
     dataset_dependencies:
       - DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
-    result_contract_dependency: RC_REVENUE_CTV_WEEKLY
+    output_binding:
+      result_contract_id: RC_REVENUE_CTV_WEEKLY
+      result_field_id: qtd_executed_revenue
     calculation_method: Row-level derived amount followed by aggregation
     formula: >
       SUM(IFERROR(executed_revenue_amount_quarter / total_revenue_amount_quarter
@@ -235,6 +254,9 @@ metric_variants:
     comparison_type: Year-over-year
     period_type: Fiscal-quarter-to-date
     numerator_metric_variant_id: MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+    output_binding:
+      result_contract_id: RC_REVENUE_CTV_WEEKLY
+      result_field_id: qtd_performance_revenue_yoy
     prior_year_source_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
     calculation_method: Day-normalized comparison
     formula: >
@@ -260,7 +282,9 @@ metric_variants:
     period_type: Weekly date-range total
     dataset_dependencies:
       - DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
-    result_contract_dependency: RC_REVENUE_SMART_SPEAKER_WEEKLY
+    output_binding:
+      result_contract_id: RC_REVENUE_SMART_SPEAKER_WEEKLY
+      result_field_id: weekly_executed_revenue
     calculation_method: Consume validated single-row query result
     formula: Validated calibrated executed revenue for the explicitly supplied weekly date range.
     aggregation_level: Target weekly period × Smart Speaker
@@ -281,7 +305,9 @@ metric_variants:
     period_type: Fiscal-quarter-to-date
     dataset_dependencies:
       - DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
-    result_contract_dependency: RC_REVENUE_SMART_SPEAKER_WEEKLY
+    output_binding:
+      result_contract_id: RC_REVENUE_SMART_SPEAKER_WEEKLY
+      result_field_id: qtd_executed_revenue
     historical_result_dependency:
       store_id: STORE_WEEKLY_REVENUE_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
@@ -305,6 +331,9 @@ metric_variants:
     comparison_type: Week-over-week
     period_type: Weekly date-range total
     numerator_metric_variant_id: MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_V1
+    output_binding:
+      result_contract_id: RC_REVENUE_SMART_SPEAKER_WEEKLY
+      result_field_id: weekly_executed_revenue_wow
     historical_result_dependency:
       store_id: STORE_WEEKLY_REVENUE_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
@@ -325,7 +354,9 @@ metric_variants:
     period_type: Weekly date-range total
     dataset_dependencies:
       - DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
-    result_contract_dependency: RC_REVENUE_FAST_VERSION_WEEKLY
+    output_binding:
+      result_contract_id: RC_REVENUE_FAST_VERSION_WEEKLY
+      result_field_id: weekly_executed_revenue
     calculation_method: Consume validated single-row query result
     formula: Validated calibrated executed revenue for the explicitly supplied weekly date range.
     aggregation_level: Target weekly period × Fast Version
@@ -346,7 +377,9 @@ metric_variants:
     period_type: Fiscal-quarter-to-date
     dataset_dependencies:
       - DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
-    result_contract_dependency: RC_REVENUE_FAST_VERSION_WEEKLY
+    output_binding:
+      result_contract_id: RC_REVENUE_FAST_VERSION_WEEKLY
+      result_field_id: qtd_executed_revenue
     historical_result_dependency:
       store_id: STORE_WEEKLY_REVENUE_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
@@ -370,6 +403,9 @@ metric_variants:
     comparison_type: Week-over-week
     period_type: Weekly date-range total
     numerator_metric_variant_id: MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_V1
+    output_binding:
+      result_contract_id: RC_REVENUE_FAST_VERSION_WEEKLY
+      result_field_id: weekly_executed_revenue_wow
     historical_result_dependency:
       store_id: STORE_WEEKLY_REVENUE_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
@@ -395,4 +431,4 @@ approval:
   smart_speaker_and_fast_version_variant_scope: Confirmed
   owner_confirmation: confirmed_complete
   readiness_status: Passed
-  committed_or_pushed: false
+  committed_or_pushed: true

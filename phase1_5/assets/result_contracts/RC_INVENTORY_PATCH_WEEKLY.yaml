@@ -1,0 +1,124 @@
+config_type: result_contract
+result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+contract_name: Patch Weekly Inventory Result Contract
+contract_version: 1.0.0
+status: active
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+business_domain: Inventory
+business_context_id: CTX_INVENTORY_PATCH_WEEKLY
+producer: { producer_pipeline_id: PL_INVENTORY_PATCH_WEEKLY, producer_pipeline_version_constraint: 0.1.0-draft, producer_must_be_unique: true }
+contract_shape: single_record
+contract_fields:
+  - field_id: gross_inventory_count
+    field_name: 贴片总库存
+    business_definition: 通过本地时段排除规则后的贴片总库存汇总。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_PATCH_GROSS_VOLUME_V1
+    data_type: number
+    base_unit: Individual inventory unit
+    numeric_constraints: { numeric_semantics: integer_count, unit: inventory_unit, integer_only: true, precision: integer, minimum: 0, maximum: null }
+    nullable: false
+    value_status_allowed: [valid_value, calculation_failed, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    validation_requirement: Negative value pauses Patch Inventory calculation; zero continues with notification.
+    lineage_required: true
+  - field_id: disabled_inventory_count
+    field_name: 贴片禁用库存
+    business_definition: 通过本地时段排除规则后的贴片禁用库存汇总。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_PATCH_DISABLED_VOLUME_V1
+    data_type: number
+    base_unit: Individual inventory unit
+    numeric_constraints: { numeric_semantics: integer_count, unit: inventory_unit, integer_only: true, precision: integer, minimum: 0, maximum: null }
+    nullable: false
+    value_status_allowed: [valid_value, calculation_failed, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    validation_requirement: Negative value pauses Patch Inventory calculation; zero continues with notification.
+    lineage_required: true
+  - field_id: available_inventory_count
+    field_name: 贴片可用库存
+    business_definition: 通过本地时段排除规则后的贴片总库存减禁用库存汇总。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+    data_type: number
+    base_unit: Individual inventory unit
+    numeric_constraints: { numeric_semantics: integer_count, unit: inventory_unit, integer_only: true, precision: integer, minimum: 0, maximum: null }
+    nullable: false
+    value_status_allowed: [valid_value, calculation_failed, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    validation_requirement: Negative value pauses Patch Inventory calculation; zero continues with notification.
+    lineage_required: true
+  - field_id: brand_delivery_inventory_count
+    field_name: 贴片品牌投放库存
+    business_definition: 通过本地时段排除规则后的贴片品牌投放库存汇总。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_PATCH_BRAND_DELIVERY_VOLUME_V1
+    data_type: number
+    base_unit: Individual inventory unit
+    numeric_constraints: { numeric_semantics: integer_count, unit: inventory_unit, integer_only: true, precision: integer, minimum: 0, maximum: null }
+    nullable: false
+    value_status_allowed: [valid_value, calculation_failed, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    validation_requirement: Negative value pauses Patch Inventory calculation; zero continues with notification.
+    lineage_required: true
+  - field_id: performance_delivery_inventory_count
+    field_name: 贴片效果投放库存
+    business_definition: 通过本地时段排除规则后的贴片效果投放库存汇总。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_PATCH_PERFORMANCE_DELIVERY_VOLUME_V1
+    data_type: number
+    base_unit: Individual inventory unit
+    numeric_constraints: { numeric_semantics: integer_count, unit: inventory_unit, integer_only: true, precision: integer, minimum: 0, maximum: null }
+    nullable: false
+    value_status_allowed: [valid_value, calculation_failed, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    validation_requirement: Negative value pauses Patch Inventory calculation; zero continues with notification.
+    lineage_required: true
+  - field_id: commercial_delivery_inventory_count
+    field_name: 贴片商广投放库存
+    business_definition: 贴片品牌投放库存与效果投放库存之和。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_PATCH_COMMERCIAL_DELIVERY_VOLUME_V1
+    data_type: number
+    base_unit: Individual inventory unit
+    numeric_constraints: { numeric_semantics: integer_count, unit: inventory_unit, integer_only: true, precision: integer, minimum: 0, maximum: null }
+    nullable: false
+    value_status_allowed: [valid_value, calculation_failed, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    validation_requirement: Both component Metric Variants must validate; negative value pauses calculation.
+    lineage_required: true
+  - field_id: available_inventory_wow
+    field_name: 贴片可用库存环比
+    business_definition: 当周贴片可用库存与上周已验证可用库存的比率变化。
+    source_type: metric_variant
+    source_metric_variant_id: MV_INVENTORY_PATCH_AVAILABLE_VOLUME_WOW_V1
+    data_type: number
+    base_unit: Decimal ratio
+    numeric_constraints: { numeric_semantics: ratio, unit: decimal_ratio, integer_only: false, precision: preserve_source_precision, minimum: null, maximum: null }
+    nullable: true
+    value_status_allowed: [valid_value, missing, calculation_failed, pending_confirmation]
+    applicable_report_modes: [regular_week, quarter_transition_week]
+    validation_requirement: Invalid denominator leaves the change result blank and notifies owner without pausing the Pipeline.
+    lineage_required: true
+record_sets: []
+mode_semantics:
+  allowed_value_statuses: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation]
+  missing_must_not_be_mapped_to_not_applicable: true
+  downstream_consumption:
+    calculation_allowed_value_statuses: [valid_value]
+    output_allowed_value_statuses: [valid_value]
+    missing_and_not_applicable_require_explicit_field_contract: true
+    pending_confirmation_calculation_allowed: false
+    pending_confirmation_output_allowed: false
+validation:
+  producer_pipeline_validation_required: true
+  required_fields: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+  conditional_fields: []
+  unit_validation: true
+  data_type_validation: true
+  numeric_constraint_validation: true
+  duplicate_field_id_check: true
+  metric_variant_binding_check: true
+  contract_completeness_check: true
+lineage: { required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, cutoff_date, report_mode, dataset_instance_ids, mapping_profile_versions, business_rule_versions, metric_variant_versions, generated_at, validation_status, approval_status] }
+constraints: { automatic_business_inference_allowed: false, output_mapping_may_calculate: false, unknown_business_values_remain_tbd: true }

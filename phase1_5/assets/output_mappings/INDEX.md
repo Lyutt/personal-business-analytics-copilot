@@ -9,8 +9,12 @@
 
 ## Scope rules
 
-- Output Mapping references validated Result Contracts and Metric Variants explicitly.
+- Output Mapping references validated Result Contract fields explicitly and does not select Metric Variants.
 - Output Assembly performs presentation assembly only; it does not calculate or apply business rules.
+- `SLOT_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE` references the independent
+  `POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1`; resolving and
+  reusing that configured value is not Metric calculation and cannot feed other
+  business metrics.
 - Weekly Report has no file-level dependency on Customer Revenue Excel.
 - Outlook remains `auto_send: false`.
 - `.msg` templates, recipient identities, raw business data, and generated reports remain local-only.
@@ -22,4 +26,4 @@
 - Inventory and Revenue section mapping: included in `OM_WEEKLY_BUSINESS_REPORT_V1.yaml`.
 - Outlook Draft Mapping: complete, Draft-only and `auto_send=false`.
 - Customer Revenue Detail Excel Output Mapping: deferred by owner; resume after Weekly Business Report Workflow completion.
-- Code implementation authority: delegated to the final Code Implementation Readiness Gate.
+- Code Implementation remains blocked until the Owner explicitly approves the frozen Implementation Baseline ID and version.

@@ -1,6 +1,20 @@
 config_type: external_asset_reference_registry
 registry_version: 1.0.0
 status: active
+version_contract_status: complete
+version_resolution_policy:
+  repository_records_reference_contract_versions_only: true
+  actual_local_versions_and_fingerprints_must_remain_local_only: true
+  runtime_version_and_fingerprint_resolution_required_before_use: true
+  unresolved_or_changed_version_action: Block the dependent scope, notify owner, and do not substitute another local asset.
+  owner_confirmation_required_after_local_asset_change: true
+interface_schema_policy:
+  interface_schema_required_for_every_runtime_local_asset: true
+  repository_contains_schema_only_not_runtime_values: true
+  exact_key_match_required: true
+  unknown_key_action: Block the affected scope and notify owner.
+  duplicate_key_action: Block the affected scope and notify owner.
+  similarity_or_first_match_allowed: false
 
 external_assets:
   - asset_id: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX
@@ -8,51 +22,192 @@ external_assets:
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${MAP_ADVERTISER_NAME_OWNERSHIP_INDEX_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${MAP_ADVERTISER_NAME_OWNERSHIP_INDEX_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+    interface_schema:
+      record_key: raw_advertiser_name
+      required_fields:
+        - { field_id: raw_advertiser_name, data_type: string, nullable: false }
+        - { field_id: mapped_customer_or_group_name, data_type: string, nullable: false }
+        - { field_id: review_status, data_type: string, nullable: false }
 
   - asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
     asset_type: local_business_rule_asset
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+    interface_schema:
+      record_key: product_key
+      required_fields:
+        - { field_id: product_key, data_type: string, nullable: false }
+        - { field_id: target_ad_product_name, data_type: string, nullable: false }
+        - { field_id: apollo_filter_definition, data_type: object, nullable: false }
+        - { field_id: inventory_route_type, data_type: string, nullable: false }
+        - { field_id: commentary_resource_module, data_type: string, nullable: false, allowed_values: [patch_and_similar_resource_commentary, page_resource_commentary] }
+        - { field_id: fixed_display_order, data_type: number, nullable: false, integer_only: true, minimum: 1 }
+        - { field_id: sell_through_trigger_threshold_pp, data_type: number, nullable: false, unit: percentage_point, minimum: 0 }
+        - { field_id: customer_output_limit, data_type: number, nullable: false, integer_only: true, minimum: 1 }
+      unknown_product_action: Block the affected product scope and notify owner.
+      duplicate_product_key_action: Block the affected product scope and notify owner.
+      name_similarity_inference_allowed: false
 
   - asset_id: FILTER_PATCH_TIME_SLICE_EXCLUSION_LOCAL_ONLY
     asset_type: local_filter_rule
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${FILTER_PATCH_TIME_SLICE_EXCLUSION_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${FILTER_PATCH_TIME_SLICE_EXCLUSION_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+    interface_schema:
+      record_key: exclusion_rule_key
+      required_fields:
+        - { field_id: exclusion_rule_key, data_type: string, nullable: false }
+        - { field_id: time_slice_filter_definition, data_type: object, nullable: false }
 
   - asset_id: SPECIAL_PLACEMENT_EXCEPTION_LOCAL_ONLY
     asset_type: local_filter_rule
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${SPECIAL_PLACEMENT_EXCEPTION_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${SPECIAL_PLACEMENT_EXCEPTION_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+    interface_schema:
+      record_key: placement_exception_key
+      required_fields:
+        - { field_id: placement_exception_key, data_type: string, nullable: false }
+        - { field_id: placement_match_definition, data_type: object, nullable: false }
+        - { field_id: exception_action, data_type: string, nullable: false }
+
+  - asset_id: MAP_COMMERCIAL_SELLABILITY_INDEX_LOCAL_ONLY
+    asset_type: local_reference_mapping
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${MAP_COMMERCIAL_SELLABILITY_INDEX_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${MAP_COMMERCIAL_SELLABILITY_INDEX_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+    interface_schema:
+      record_key: source_inventory_key
+      required_fields:
+        - { field_id: source_inventory_key, data_type: string, nullable: false }
+        - { field_id: commercial_sellability_class, data_type: string, nullable: false }
+
+  - asset_id: RULESET_NON_PATCH_PRODUCT_INVENTORY_LOCAL_ONLY
+    asset_type: local_business_rule_asset
+    availability_scope: local_only
+    tracked_in_git: false
+    reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${RULESET_NON_PATCH_PRODUCT_INVENTORY_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${RULESET_NON_PATCH_PRODUCT_INVENTORY_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+    interface_schema:
+      record_key: product_key
+      required_fields:
+        - { field_id: product_key, data_type: string, nullable: false }
+        - { field_id: inventory_assignment_definition, data_type: object, nullable: false }
+        - { field_id: route_type, data_type: string, nullable: false }
 
   - asset_id: TEMPLATE_WEEKLY_REPORT_0724_LOCAL_ONLY
     asset_type: local_output_template
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${TEMPLATE_WEEKLY_REPORT_0724_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${TEMPLATE_WEEKLY_REPORT_0724_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+    interface_schema:
+      record_key: anchor_id
+      required_fields:
+        - { field_id: anchor_id, data_type: string, nullable: false }
+        - { field_id: placeholder_id, data_type: string, nullable: false }
+        - { field_id: required_occurrence_count, data_type: number, nullable: false, integer_only: true }
 
   - asset_id: TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_LOCAL_ONLY
     asset_type: local_output_template
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+    interface_schema:
+      record_key: anchor_id
+      required_fields:
+        - { field_id: anchor_id, data_type: string, nullable: false }
+        - { field_id: placeholder_id, data_type: string, nullable: false }
+        - { field_id: required_occurrence_count, data_type: number, nullable: false, integer_only: true }
 
   - asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
     asset_type: local_output_template
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${TEMPLATE_CUSTOMER_REVENUE_DETAIL_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${TEMPLATE_CUSTOMER_REVENUE_DETAIL_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+    interface_schema:
+      record_key: worksheet_anchor_key
+      required_fields:
+        - { field_id: worksheet_anchor_key, data_type: string, nullable: false }
+        - { field_id: worksheet_name_reference, data_type: string, nullable: false }
+        - { field_id: cell_or_range_reference, data_type: string, nullable: false }
 
   - asset_id: RECIPIENTS_WEEKLY_REPORT_BASELINE_LOCAL_ONLY
     asset_type: local_recipient_configuration
     availability_scope: local_only
     tracked_in_git: false
     reference_status: registered
+    reference_contract_version: 1.0.0
+    runtime_version_placeholder: '${RECIPIENTS_WEEKLY_REPORT_BASELINE_VERSION_LOCAL_ONLY}'
+    runtime_content_fingerprint_placeholder: '${RECIPIENTS_WEEKLY_REPORT_BASELINE_SHA256_LOCAL_ONLY}'
+    version_resolution_status: runtime_required
+    runtime_verification_required: true
+    owner_confirmation_required_on_version_change: true
+    interface_schema:
+      record_key: recipient_role
+      required_fields:
+        - { field_id: recipient_role, data_type: string, nullable: false }
+        - { field_id: address_local_reference, data_type: string, nullable: false }
+        - { field_id: recipient_type, data_type: string, nullable: false, allowed_values: [to, cc, bcc] }
 
 constraints:
   external_assets_are_definitions_not_business_logic: true
   external_assets_cannot_contain_local_paths: true
   external_assets_cannot_contain_personal_identifiers: true
   external_assets_cannot_be_auto_activated: true
+  runtime_version_values_must_not_enter_git: true
+  runtime_content_fingerprints_must_not_enter_git: true
+  unresolved_external_asset_version_blocks_only_dependent_scope: true

@@ -21,4 +21,8 @@ jobs:
       - name: Install asset validation dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-validation.txt
       - name: Validate YAML and asset integrity
+        env:
+          ASSET_VALIDATION_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: python scripts/validate_asset_integrity.py
+      - name: Run Phase 1.5 synthetic final acceptance
+        run: python scripts/validate_final_acceptance.py

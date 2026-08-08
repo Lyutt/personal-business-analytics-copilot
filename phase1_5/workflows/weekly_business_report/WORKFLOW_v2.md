@@ -2,13 +2,13 @@
 
 > Workflow_ID：`WF_WEEKLY_BUSINESS_REPORT`
 >
-> Version：`0.2.3-output-mapping-closure`
+> Version：`0.2.6-final-acceptance-closure`
 >
-> Status：Approved Architecture / Pipeline Registry Completed / Field Mapping Gate Passed / Revenue Business Rules Gate Passed / Metric Library Gate Passed / Weekly Output Mapping Gate Passed
+> Status：Phase 1.5 assets complete / Result Contract Gate Passed / Inventory and Advertising Policy Gate Passed / Implementation Baseline 1.0.0 Frozen
 >
 > 旧版保留位置：`phase1/workflows/weekly_business_report/WORKFLOW.md`
 >
-> 当前阶段：Weekly Business Report P0 资产已收口；不包含代码实现
+> 当前阶段：等待Owner明确批准`IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1`版本`1.0.0`后才可开始代码实现
 
 ## 1. Workflow 目标
 
@@ -68,7 +68,7 @@ flowchart LR
     P --> RS["Rule Sets"]
     P --> MV["Metric Variants"]
     P --> OM["Output Mappings"]
-    MV --> MR["Validated Metric Result Contract"]
+    MV --> MR["Validated Result Contract"]
     MR --> OA["Output Assembly"]
     OA --> OD["Outlook Draft<br/>auto_send=false"]
 ```
@@ -90,6 +90,24 @@ Pipeline Registry 中显式登记，不因周报展示位置改变其业务归�
 
 ## 5. Workflow 状态
 
+每个 Workflow Run 在任何 Pipeline 启动前必须生成并锁定唯一
+`Workflow Run Context`。Context 统一提供：
+
+- `run_type`：`scheduled`、`manual` 或 `backfill`；
+- `reporting_period_id` 及起止日期；
+- `current_period_start_date` / `current_period_end_date`；
+- `comparison_period_start_date` / `comparison_period_end_date`；
+- `cutoff_date` 与 `timezone=Asia/Shanghai`。
+
+Outlook、Apollo 与 NovaBI 的所有输入选择和查询参数只能读取该 Context。
+实际执行时间只作为审计元数据；Scheduled、Manual、Backfill 均不得按当前日期、
+文件名或执行时间重新推导业务日期。
+
+每次运行还必须在采集前生成轻量 `Run Input Manifest`，逐项显式绑定
+`workflow_run_id`、Dataset ID/Version、Query Asset（或显式
+`not_applicable`）、`period_role`、本地输入引用和产品参数。Manifest 不允许
+根据文件名、当前日期或列表顺序推断输入。
+
 ```mermaid
 stateDiagram-v2
     [*] --> INIT
@@ -103,7 +121,8 @@ stateDiagram-v2
     VALIDATION --> OUTPUT_GENERATION: 无确认依赖
     WAITING_CONFIRMATION --> OUTPUT_GENERATION: 已批准
     WAITING_CONFIRMATION --> BUSINESS_RULE_PROCESSING: 退回
-    OUTPUT_GENERATION --> COMPLETED
+    OUTPUT_GENERATION --> COMPLETE_DRAFT: Required结果完整
+    OUTPUT_GENERATION --> PARTIAL_DRAFT: Required失败但批准Fallback允许Draft
     DATA_COLLECTION --> BLOCKED
     DATA_STANDARDIZATION --> BLOCKED
     BUSINESS_RULE_PROCESSING --> BLOCKED
@@ -113,6 +132,12 @@ stateDiagram-v2
     BLOCKED --> TASK_PLANNING: 异常解决
     BLOCKED --> CANCELLED: 人工终止
 ```
+
+正式完成状态只有：
+
+- `complete_draft`：全部 Required Pipeline 与输出校验通过；
+- `partial_draft`：Required Pipeline 失败，但批准的 Fallback 允许使用其余已验证结果生成 Draft；Draft 正文开头必须显示受影响 Pipeline、范围、Fallback 和失败摘要，且不得标记为完整成功；
+- `blocked`：Required 失败无批准 Fallback、Run Context/Manifest 无效，或无法生成可审阅 Draft。
 
 ## 6. Pipeline 是最小执行单元
 
@@ -124,7 +149,7 @@ stateDiagram-v2
 - Mapping、Rule、Metric Variant 和 Validation 版本。
 - Required/Optional 属性。
 - Attempt。
-- 异常和补跑起点。
+- 异常、Attempt 和整条 Pipeline 重跑记录。
 
 ### Pipeline 状态矩阵
 
@@ -138,21 +163,23 @@ stateDiagram-v2
 
 ### 补跑规则
 
-- Source 或获取失败：从 `DATA_COLLECTION` 补跑该 Pipeline。
-- Mapping 修复：从 `DATA_STANDARDIZATION` 补跑该 Pipeline。
-- Rule 修复：从 `BUSINESS_RULE_PROCESSING` 补跑该 Pipeline。
-- Metric Variant 修复：从 `METRIC_CALCULATION` 补跑该 Pipeline。
-- Output Mapping 修复：只重跑 Output Assembly；上游 Validated Result Contract 不变。
-- 默认不重跑其他已成功 Pipeline。
+- 首个 MVP 的 12 个 Pipeline 全部按 Registry 登记顺序 `sequential` 执行。
+- 不存在并行执行资格；不实现并行 Pipeline 调度。
+- 任一 Pipeline 失败后的恢复模式统一为 `rerun_pipeline_from_start`。
+- 重跑从该 Pipeline 的首个适用执行阶段开始，并必须保持幂等；Attempt 递增。
+- 不实现阶段级 Checkpoint，也不支持 `resume_from_failed_stage`。
+- 默认不重跑其他已成功 Pipeline；仅当显式依赖结果失效时，后续按 Registry 顺序重跑受影响 Pipeline。
+- Output Assembly 不是 Pipeline 阶段续跑；若上游 Validated Result Contract 仍有效，可单独重新组装固定输出。
 
-跨 Pipeline 依赖导致下游结果失效时，只重跑显式依赖图中的受影响 Pipeline。
+以上运行语义以 `pipeline_registry.yaml.constraints.mvp_pipeline_execution` 为唯一配置来源。
 
 ## 7. 通用 Pipeline 执行阶段
 
 ### DATA_COLLECTION
 
-- 根据 Source_ID、Dataset_ID 和 Query_Asset_ID 获取输入。
+- 根据 Workflow Run Context 与 Run Input Manifest 中显式绑定的 Source_ID、Dataset_ID、Version、Query_Asset_ID、period_role、本地输入引用和产品参数获取输入。
 - 验证来源、数据周期、刷新时间和唯一输入。
+- 禁止按实际执行日期、当前日期或文件名推断业务日期、Dataset 或产品。
 - 不解释字段业务含义。
 
 ### DATA_STANDARDIZATION
@@ -170,15 +197,17 @@ stateDiagram-v2
 
 - 只执行 Pipeline 显式引用的 Metric_Variant_ID。
 - 不按 Metric_Name、产品名或历史结果自动选择公式。
+- 下游计算只允许消费 `value_status=valid_value`；`missing` 与 `not_applicable` 只能按字段合同明确处理，`pending_confirmation` 禁止进入计算。
 
 ### VALIDATION
 
 - 执行 Dataset、Join、Rule、Metric 和跨 Pipeline 验证。
-- 生成 Validated Metric Result Contract。
+- 生成 Validated Result Contract。
 
 ### OUTPUT_GENERATION
 
-- 只消费 Validated Metric Result Contract。
+- 只消费 Validated Result Contract 中 `value_status=valid_value` 的明确字段。
+- `missing` 与 `not_applicable` 仅按字段合同明确省略或展示；`pending_confirmation` 禁止进入周报正文。
 - 根据 Output_Mapping_ID 生成周报模块和 Outlook Draft。
 - 不重新计算指标。
 
@@ -203,7 +232,7 @@ Inventory Domain 按 Dataset / Query Asset 管理 Pipeline，不按平台拆分�
 - Sell-through Dataset。
 - DAU Dataset。
 - Product Dataset。
-- 其他 `TBD` Dataset。
+- 其他已正式登记且具备显式版本与 Run Input Manifest 绑定的 Dataset。
 
 以上只是 Dataset 类型占位，不代表已确认的真实资产。
 
@@ -214,7 +243,7 @@ Inventory Domain 按 Dataset / Query Asset 管理 Pipeline，不按平台拆分�
 - 独立 Source、Dataset、Pipeline、Rule、Metric Variant 和 Output Mapping。
 - 生成 Customer Revenue Excel。
 - 与 Weekly Workflow 不产生文件级依赖。
-- 如需共享，通过 Metrics Store 或 Validated Metric Result Contract。
+- 如需共享，通过 Metrics Store 或 Validated Result Contract。
 - Weekly Workflow 不检查 Customer Revenue Excel 是否已生成。
 
 ## 11. Required 与 Optional Pipeline
@@ -245,7 +274,7 @@ Pipeline运行时不得以本文表格代替正式Registry；若二者不一致�
 
 输入：
 
-- Validated Metric Result Contract。
+- Validated Result Contract。
 - `OM_WEEKLY_BUSINESS_REPORT_V1` 和 Version。
 - `OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1` 和 Version。
 - Template_ID 和 Version。
@@ -261,6 +290,7 @@ Pipeline运行时不得以本文表格代替正式Registry；若二者不一致�
 硬性控制：
 
 - 只接受 `validation_status=passed` 且满足批准要求的结果。
+- 产品级或参数化 Result Contract 必须按“当前 workflow_run + 当前 reporting_period + 显式产品 + validation_status=passed + latest_valid_attempt”选择；同一业务 Key 在最新有效 Attempt 仍存在多个实例时阻断对应产品，禁止随机选择。
 - 找不到唯一 Output Mapping 时阻断。
 - 模板必填占位符未填充时阻断。
 - `auto_send=false` 不允许由 Workflow 配置覆盖。
@@ -271,7 +301,7 @@ Pipeline运行时不得以本文表格代替正式Registry；若二者不一致�
 Workflow 之间只能通过：
 
 - Metrics Store。
-- Validated Metric Result Contract。
+- Validated Result Contract。
 
 共享结果至少包含：
 
@@ -313,3 +343,11 @@ Workflow 级异常只用于：
 - Output Assembly 不包含公式或业务规则。
 - Customer Revenue Detail 与 Weekly Workflow 无文件级依赖。
 - Outlook 只创建 Draft，`auto_send=false`。
+
+## 16. Ad-hoc Analysis 最小边界
+
+- 一次性 Brief 先转换为 Analysis Request Contract，再通过 DCP Registry 进行 metadata 精确匹配。
+- 无匹配或多义匹配必须请求 Owner 确认，禁止名称相似推断。
+- Temporary Execution Plan 可在已标准化或已验证数据上使用 `filter`、`group_by`、`sum`、`avg`、`count`、`period_compare`、`sort`、`rank`、`topN`、`share`、`dimension_decomposition`。
+- 上述操作不得创建新业务 Metric 公式；新口径仍需登记 Metric Variant 或 Business Rule。
+- 一次性 Brief 不创建正式 Workflow；重复需求是否固化由 Owner 后续决定。

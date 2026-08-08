@@ -44,7 +44,10 @@ metric_variants:
     period_type: Daily snapshot
     dataset_dependencies:
       - DS_NOVABI_PLATFORM_DAU
-    result_contract_dependency: RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+    output_binding:
+      result_contract_id: RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+      result_field_id: dau_count
+      record_set_id: daily_activity
     calculation_method: Consume validated daily query-result records
     formula: Validated DAU value for each returned calendar date.
     aggregation_level: Calendar date × Full platform
@@ -69,7 +72,9 @@ metric_variants:
     period_type: Weekly average
     dataset_dependencies:
       - DS_NOVABI_PLATFORM_DAU
-    result_contract_dependency: RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+    output_binding:
+      result_contract_id: RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+      result_field_id: weekly_average_dau
     input_metric_variant_id: MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1
     calculation_method: Arithmetic mean
     formula: Arithmetic mean of the seven validated daily DAU values in the explicit weekly period.
@@ -88,6 +93,9 @@ metric_variants:
     comparison_type: Week-over-week
     period_type: Weekly average
     numerator_metric_variant_id: MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1
+    output_binding:
+      result_contract_id: RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+      result_field_id: weekly_average_dau_wow
     historical_result_dependency:
       store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_PLATFORM_DAU
@@ -112,4 +120,4 @@ approval:
   calculation_rules: Confirmed
   owner_confirmation: confirmed_complete
   readiness_status: Passed
-  committed_or_pushed: false
+  committed_or_pushed: true

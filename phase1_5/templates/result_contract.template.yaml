@@ -1,0 +1,101 @@
+config_type: result_contract
+result_contract_id: RC_TBD
+contract_name: TBD
+contract_version: 1.0.0
+status: draft
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+business_domain: TBD
+business_context_id: TBD
+
+producer:
+  producer_pipeline_id: TBD
+  producer_pipeline_version_constraint: TBD
+  producer_must_be_unique: true
+
+contract_shape: single_record
+contract_dimensions: []
+
+input_dependency_authority:
+  canonical_source_asset: phase1_5/assets/metrics/METRIC_LIBRARY_TBD.yaml
+  canonical_source_path: metric_variants[].input_contract_fields
+  contract_lineage_role: derived_validation_summary
+  pipeline_registry_role: orchestration_routing_only
+
+input_contract_fields: []
+input_contract_field_routes: []
+
+contract_fields:
+  - field_id: TBD
+    field_name: TBD
+    business_definition: TBD
+    source_type: metric_variant
+    source_metric_variant_id: TBD
+    data_type: number
+    base_unit: TBD
+    numeric_constraints:
+      numeric_semantics: TBD
+      unit: TBD
+      integer_only: TBD
+      precision: TBD
+      minimum: TBD
+      maximum: TBD
+    nullable: TBD
+    value_status_allowed:
+      - valid_value
+      - missing
+      - calculation_failed
+      - not_applicable
+      - pending_confirmation
+    applicable_report_modes:
+      - regular_week
+      - quarter_transition_week
+    validation_requirement: TBD
+    lineage_required: true
+
+record_sets:
+  - record_set_id: TBD
+    record_grain: [TBD]
+    record_dimensions: []
+    context_fields: []
+    record_fields: []
+
+mode_semantics:
+  allowed_value_statuses:
+    - valid_value
+    - missing
+    - calculation_failed
+    - not_applicable
+    - pending_confirmation
+  missing_must_not_be_mapped_to_not_applicable: true
+
+validation:
+  producer_pipeline_validation_required: true
+  required_fields: []
+  conditional_fields: []
+  unit_validation: true
+  data_type_validation: true
+  numeric_constraint_validation: true
+  duplicate_field_id_check: true
+  metric_variant_binding_check: true
+  contract_completeness_check: true
+
+lineage:
+  required_instance_fields:
+    - result_id
+    - workflow_run_id
+    - pipeline_run_id
+    - reporting_period
+    - cutoff_date
+    - report_mode
+    - dataset_instance_ids
+    - mapping_profile_versions
+    - business_rule_versions
+    - metric_variant_versions
+    - generated_at
+    - validation_status
+    - approval_status
+
+constraints:
+  automatic_business_inference_allowed: false
+  output_mapping_may_calculate: false
+  unknown_business_values_remain_tbd: true

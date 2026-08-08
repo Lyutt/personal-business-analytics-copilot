@@ -1,0 +1,195 @@
+config_type: implementation_baseline
+baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
+baseline_version: 1.0.0
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+freeze_date: 2026-08-08
+status: frozen_awaiting_explicit_owner_code_implementation_approval
+freeze_revision_status: refrozen_after_final_adhoc_capability_patch
+owner: WORKFLOW_OWNER
+source_main_commit_sha: 7a6c6d007fd0e84a3d65193c1c9e60b9c3d7ddd2
+source_branch: main
+working_branch: codex/result-contract-initialization
+
+baseline_scope:
+  phase: Phase 1.5
+  workflow_scope: Weekly Business Report P0
+  asset_layers:
+    - Data Source
+    - Dataset and Query Asset
+    - Pipeline Registry
+    - Field Mapping
+    - Business Rule
+    - Inventory and Advertising Policy
+    - Metric Library
+    - Result Contract
+    - Metric Result Store logical contract
+    - External Asset reference contract
+    - Output Mapping
+    - Configured Display Value Policy
+    - Workflow Runtime Contracts
+    - Ad-hoc Analysis ARC and DCP contracts
+    - Synthetic Final Acceptance Tests
+    - Readiness and Implementation Entry
+  excluded_runtime_material:
+    - Raw business data and customer rows
+    - Email and original attachments
+    - Real templates and recipient identities
+    - Local paths, credentials, sessions, and accounts
+    - Resolved local External Asset versions and content fingerprints
+    - Generated reports and Outlook Drafts
+
+frozen_asset_versions:
+  external_asset_reference_registry: 1.0.0
+  external_asset_reference_count: 10
+  pipeline_registry: 0.1.0-initialization
+  field_mapping_profile_count: 10
+  approved_revenue_business_rule_count: 6
+  metric_library_count: 3
+  metric_variant_count: 48
+  result_contract_schema_version: 1.0.0
+  result_contract_count: 12
+  result_contract_field_count: 67
+  inventory_advertising_policy_gate_version: 1.0.0
+  configured_display_value_policy_count: 1
+  order_overall_impression_completion_rate_display_policy_version: 1.0.0
+  weekly_output_mapping_version: 1.0.0
+  outlook_draft_mapping_version: 1.0.0
+  workflow_runtime_contract_bundle_version: 1.0.0
+  analysis_request_contract_template_version: 1.0.1
+  dcp_registry_version: 1.0.1
+  synthetic_final_acceptance_suite_version: 1.0.1
+  synthetic_final_acceptance_scenario_count: 14
+
+frozen_gate_results:
+  - { gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_PIPELINE_REGISTRY_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1, status: passed }
+  - { gate_id: GATE_BUSINESS_RULE_REVENUE_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_METRIC_LIBRARY_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_RESULT_CONTRACT_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_INVENTORY_ADVERTISING_POLICY_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
+  - { gate_id: GATE_METRIC_RESULT_STORE_RUNTIME_WF_WEEKLY_BUSINESS_REPORT_V1, status: conditional }
+
+validation_contract:
+  repository_safety_validation_required: true
+  asset_integrity_validation_required: true
+  exact_diff_sensitive_data_review_required_before_git_operation: true
+  baseline_consistency_validation_required: true
+  changed_asset_requires_baseline_version_review: true
+  synthetic_final_acceptance_required: true
+  synthetic_final_acceptance_ci_required: true
+
+implementation_authorization:
+  asset_baseline_ready: true
+  code_implementation_started: false
+  explicit_owner_code_implementation_approval_received: false
+  code_implementation_may_start: false
+  approval_must_name_this_baseline_id_and_version: true
+  automated_gate_pass_does_not_grant_approval: true
+
+mvp_development_constraints:
+  mvp_execution_mode: sequential
+  parallel_product_scheduler_required: false
+  mvp_recovery_mode: rerun_pipeline_from_start
+  stage_checkpointing_required: false
+  failed_stage_resume_required: false
+  physical_metric_store_strategy: shared_local_sqlite
+  shared_local_sqlite_logical_stores:
+    - STORE_WEEKLY_INVENTORY_HISTORICAL
+    - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+    - STORE_WEEKLY_ADVERTISING_HISTORICAL
+  shared_local_sqlite_table: metric_results
+  shared_local_sqlite_configured_display_value_table: configured_display_values
+  shared_local_sqlite_discriminator_fields: [store_id, store_asset_id]
+  revenue_physical_metric_store_strategy: existing_excel_history_store
+  separate_physical_storage_engine_per_logical_store_required: false
+  multi_provider_metric_store_required: false
+  plugin_metric_store_architecture_required: false
+  complex_orm_required: false
+  customer_analysis_output_implementation: fixed_narrative_template_rendering
+  customer_analysis_output_section: inventory_and_sell_through
+  customer_analysis_output_positions:
+    - patch_and_similar_resource_commentary
+    - page_resource_commentary
+  generic_dynamic_table_renderer_required: false
+  generic_record_set_display_engine_required: false
+  dynamic_html_column_generation_required: false
+  implementation_sequence:
+    - sequence: 1
+      scope: Local input -> standardization -> rules -> metrics -> Result Contract -> fixed narrative output -> Weekly Report preview -> Store
+    - sequence: 2
+      scope: Outlook Draft
+      auto_send: false
+    - sequence: 3
+      scope: Progressively integrate Outlook, Apollo, and NovaBI Adapters
+
+change_control:
+  baseline_is_logically_frozen: true
+  repository_commit_binding_status: tracked_on_draft_pr_5_head
+  frozen_content_includes_customer_fixed_narrative_strategy: true
+  frozen_content_includes_shared_local_sqlite_contract: true
+  post_freeze_behavior_or_output_change_requires_version_review: true
+  any_asset_change_requires:
+    - Baseline version impact review
+    - Re-run repository safety validation
+    - Re-run asset integrity validation
+    - Owner review before Code Implementation approval
+  latest_baseline_version_impact_review:
+    review_date: 2026-08-08
+    change_class: final_adhoc_capability_index_patch
+    behavior_or_output_change: false
+    customer_analysis_output_strategy: fixed_narrative_template_rendering
+    customer_analysis_initial_mvp_status: included
+    physical_metric_store_strategy: shared_local_sqlite
+    mvp_execution_mode: sequential
+    mvp_recovery_mode: rerun_pipeline_from_start
+    development_complexity_reduction: true
+    code_implementation_owner_approved: false
+    baseline_version_increment_required: false
+    baseline_freeze_action: refreeze_same_version_after_final_acceptance_validation
+    final_acceptance_synthetic_scenario_count: 14
+    final_acceptance_result: passed
+    rationale: The current review adds only DCP indexes for existing Revenue and Inventory capabilities plus natural-language-to-ARC canonicalization and two synthetic tests. It creates no Metric, Result Contract, Pipeline, Workflow, formula, or Weekly MVP behavior and grants no implementation authority.
+  final_adhoc_capability_patch_review:
+    review_date: 2026-08-08
+    change_class: adhoc_index_and_arc_resolution_only
+    weekly_mvp_behavior_or_output_change: false
+    revenue_dcp_profiles_added: 4
+    inventory_dcp_index_gaps_closed: [full_site, patch, non_patch_product]
+    natural_language_brief_to_arc_supported: true
+    business_asset_selection_remains_exact_registry_id_only: true
+    new_metric_rule_result_contract_pipeline_or_workflow_created: false
+    code_implementation_started: false
+    owner_code_implementation_approval_granted: false
+    baseline_version_increment_required: false
+    incorporated_before_current_freeze: true
+  final_acceptance_behavior_change_review:
+    review_date: 2026-08-08
+    change_class: pre_implementation_runtime_contract_closure
+    behavior_or_output_change: true
+    changes_reviewed:
+      - Workflow Run Context and Run Input Manifest become the only business-date and input authorities
+      - Percentage-point outputs store true pp values using rate difference multiplied by 100
+      - Invalid duplicate and negative customer rows are excluded before calculation
+      - Partial Draft status and warning semantics are explicit
+      - Configured display state uses a second table in the existing shared SQLite
+      - ARC, DCP and synthetic acceptance contracts are added without a Workflow Engine
+    incorporated_before_current_freeze: true
+    current_frozen_baseline_includes_change: true
+    code_implementation_started: false
+    baseline_version_increment_required: false
+    owner_code_implementation_approval_granted: false
+  pre_freeze_customer_narrative_acceptance_review:
+    review_date: 2026-08-06
+    change_class: customer_analysis_fixed_narrative_output_acceptance
+    behavior_or_output_change: true
+    incorporated_before_current_freeze: true
+    current_frozen_baseline_includes_change: true
+    code_implementation_started: false
+    baseline_version_increment_required: false
+    rationale: The Owner-approved fixed narrative strategy was incorporated before the current 2026-08-08 freeze of baseline 1.0.0.
+  force_push_allowed: false
+  auto_merge_allowed: false
+  automatic_next_stage_allowed: false

@@ -9,13 +9,42 @@ gate_result: conditional
 readiness_definitions:
   implementation_ready: >-
     Logical result contract, Metric Variant bindings, write policy and failure
-    boundary are complete enough to implement.
+    boundary are complete enough for a frozen implementation baseline; actual
+    Code Implementation still requires explicit Owner approval.
   runtime_conditional: >-
-    Implementation may start, but each run must verify that the configured
-    local physical asset exists and is readable or writable as required.
+    After explicit Owner approval allows Implementation, each run must verify
+    that the configured local physical asset exists and is readable or writable
+    as required.
   runtime_bootstrap_blocked: >-
-    Logical implementation may start, but end-to-end runtime acceptance is
+    The logical baseline may be reviewed, but end-to-end runtime acceptance is
     blocked until a local physical format, location and initial schema exist.
+
+mvp_physical_store_adapter_strategy:
+  shared_generic_local_adapter_required: true
+  physical_store_strategy: shared_local_sqlite
+  provider: SQLite
+  physical_store_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+  physical_store_file_created_by_this_configuration_change: false
+  shared_table_name: metric_results
+  configured_display_value_state_table: configured_display_values
+  configured_display_value_state_shares_same_sqlite: true
+  configured_display_value_state_schema_status: confirmed
+  configured_display_value_state_is_metric_result: false
+  logical_store_discriminator_fields: [store_id, store_asset_id]
+  physical_schema_contract_source: phase1_5/assets/metric_stores/metric_result_store_registry.yaml#mvp_physical_store_adapter_strategy.physical_schema
+  physical_schema_contract_status: confirmed
+  dimension_representation_status: confirmed_canonical_json
+  idempotent_unique_key_status: confirmed
+  configured_display_value_idempotent_unique_key_status: confirmed
+  applies_to_logical_store_ids:
+    - STORE_WEEKLY_INVENTORY_HISTORICAL
+    - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+    - STORE_WEEKLY_ADVERTISING_HISTORICAL
+  separate_storage_engine_per_logical_store_required: false
+  logical_schema_and_namespace_separation_required: false
+  multi_provider_architecture_required: false
+  plugin_store_architecture_required: false
+  complex_orm_required: false
 
 readiness_records:
   - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
@@ -45,16 +74,17 @@ readiness_records:
     runtime_execution_gate: runtime_bootstrap_blocked
     runtime_gate_reason: >-
       Metric Variant bindings and Pipeline recovery policies are confirmed, but
-      the local physical format, location and schema for five Store Assets have
-      not been configured.
+      the shared SQLite schema is confirmed, but the local SQLite file and
+      metric_results table have not been initialized after Owner approval.
     pipeline_binding_count: 5
     store_asset_count: 5
     metric_and_formula_definitions_confirmed: true
-    local_storage_contract_confirmed: false
+    local_storage_contract_confirmed: true
+    local_physical_store_initialized: false
     blocking_runtime_items:
-      - Configure WEEKLY_INVENTORY_METRIC_STORE_LOCAL_ONLY
-      - Select and initialize the local physical storage format
-      - Create the five Store Asset schemas from their explicit Metric Variant bindings
+      - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
+      - Initialize the shared local SQLite metric_results table after Owner approves Code Implementation
+      - Bind the five Store Assets through store_id and store_asset_id
       - Validate one prior-week read and one current-week idempotent write
 
   - store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
@@ -63,15 +93,16 @@ readiness_records:
     implementation_readiness_gate: pass
     runtime_execution_gate: runtime_bootstrap_blocked
     runtime_gate_reason: >-
-      DAU Metric Variants and fallback behavior are confirmed, but the local
-      physical store has not been initialized.
+      DAU Metric Variants, shared schema and fallback behavior are confirmed,
+      but the local SQLite file has not been initialized.
     pipeline_binding_count: 1
     store_asset_count: 1
     metric_and_formula_definitions_confirmed: true
-    local_storage_contract_confirmed: false
+    local_storage_contract_confirmed: true
+    local_physical_store_initialized: false
     blocking_runtime_items:
-      - Configure WEEKLY_USER_ANALYTICS_METRIC_STORE_LOCAL_ONLY
-      - Select and initialize the local physical storage format
+      - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
+      - Bind the Store Asset to the shared metric_results table through store_id and store_asset_id
       - Validate one prior-week read and one current-week idempotent write
 
   - store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
@@ -80,16 +111,17 @@ readiness_records:
     implementation_readiness_gate: pass
     runtime_execution_gate: runtime_bootstrap_blocked
     runtime_gate_reason: >-
-      The Brand Moment exposure result contract is confirmed and its write
-      failure is non-blocking, but the local physical store has not been initialized.
+      The Brand Moment exposure result contract and shared schema are confirmed
+      and its write failure is non-blocking, but the local SQLite file has not been initialized.
     pipeline_binding_count: 1
     store_asset_count: 1
     metric_and_formula_definitions_confirmed: true
-    local_storage_contract_confirmed: false
+    local_storage_contract_confirmed: true
+    local_physical_store_initialized: false
     workflow_runtime_impact: non_blocking_persistence_warning
     blocking_runtime_items:
-      - Configure WEEKLY_ADVERTISING_METRIC_STORE_LOCAL_ONLY
-      - Select and initialize the local physical storage format
+      - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
+      - Bind the Store Asset to the shared metric_results table through store_id and store_asset_id
       - Validate one current-week idempotent write
 
 summary:
@@ -103,7 +135,7 @@ summary:
 
 gate_conclusion:
   metric_store_implementation_contracts: pass
-  code_implementation_start: allow
+  code_implementation_start: wait_for_explicit_owner_approval
   end_to_end_runtime_acceptance: conditional
   runtime_acceptance_blocker_count: 3
   blocker_scope:

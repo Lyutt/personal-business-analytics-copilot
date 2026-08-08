@@ -10,6 +10,11 @@ output_target:
   format: Outlook Draft
   body_mapping_id: OM_WEEKLY_BUSINESS_REPORT_V1
   recipient_source: RECIPIENTS_WEEKLY_REPORT_BASELINE_LOCAL_ONLY
+  recipient_source_version_binding:
+    asset_id: RECIPIENTS_WEEKLY_REPORT_BASELINE_LOCAL_ONLY
+    reference_contract_version: 1.0.0
+    runtime_version_reference: '${RECIPIENTS_WEEKLY_REPORT_BASELINE_VERSION_LOCAL_ONLY}'
+    runtime_version_verification_required: true
   recipient_configuration_must_remain_local_only: true
   attachments_included: false
   auto_send: false
@@ -24,6 +29,15 @@ assembly_constraints:
   may_select_metric_variant: false
   body_must_be_generated_by_approved_mapping: true
   customer_revenue_excel_dependency: false
+  workflow_completion_status_source: Workflow Runtime Contracts
+  allowed_draft_statuses: [complete_draft, partial_draft]
+  blocked_status_draft_creation_allowed: false
+  partial_draft_warning_required: true
+  partial_draft_warning_location: Draft body preface before the first report section
+  partial_draft_warning_minimum_fields: [pipeline_id, affected_report_scope, fallback_used, failure_summary]
+  partial_draft_may_be_labeled_complete_success: false
+  result_field_allowed_value_statuses: [valid_value]
+  pending_confirmation_field_display_allowed: false
 
 failure_and_warning_policy:
   draft_creation_failure:

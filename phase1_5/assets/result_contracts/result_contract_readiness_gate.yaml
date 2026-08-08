@@ -1,0 +1,72 @@
+config_type: result_contract_readiness_gate
+gate_id: GATE_RESULT_CONTRACT_WF_WEEKLY_BUSINESS_REPORT_V1
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+assessment_date: 2026-08-03
+status: passed
+gate_result: passed
+owner: WORKFLOW_OWNER
+owner_confirmation: confirmed_complete
+
+scope:
+  result_contract_count: 12
+  producer_pipeline_count: 12
+  metric_variant_output_binding_count: 48
+  result_contract_field_definition_count: 67
+  record_set_count: 2
+  unresolved_result_contract_reference_count: 0
+  unresolved_owner_confirmation_count: 0
+  runtime_code_implementation_started_at_assessment_time: false
+
+gate_checks:
+  parameterized_product_contract_instance_selection: pass
+  result_field_valid_value_only_consumption: pass
+  pending_confirmation_calculation_and_output_prohibited: pass
+  percentage_point_contract_units: pass
+  weekly_workflow_result_contract_ids_registered: pass
+  result_contract_id_uniqueness: pass
+  producer_pipeline_complete_and_unique: pass
+  producer_pipeline_registry_alignment: pass
+  contract_field_id_uniqueness: pass
+  contract_field_source_binding_complete: pass
+  metric_output_binding_complete: pass
+  input_contract_field_dependencies_complete: pass
+  input_contract_dependency_unique_authority: pass
+  contract_input_lineage_matches_metric_dependencies: pass
+  record_grain_fields_or_dimensions_resolve: pass
+  upstream_contract_field_route_conditions_explicit: pass
+  output_mapping_contract_field_references_complete: pass
+  parallel_list_mapping_removed: pass
+  active_output_display_fields_tbd_prohibited: pass
+  result_contract_cycle_check: pass
+  numeric_field_semantics_complete: pass
+  dau_record_set_grain_and_cardinality_complete: pass
+  analysis_only_non_metric_sources_explicit: pass
+  analysis_only_metric_variant_binding_not_applicable: pass
+  analysis_only_metric_variant_versions_empty: pass
+  customer_analysis_omission_semantics_explicit: pass
+  customer_analysis_qualified_zero_rows_uses_existing_context_contract: pass
+  customer_analysis_empty_record_set_does_not_fabricate_customer: pass
+  customer_id_exact_cross_period_matching_required: pass
+  empty_customer_analysis_contract_prohibited: pass
+  automatic_business_inference_disabled: pass
+  outlook_auto_send_false_unchanged: pass
+
+owner_confirmations_applied:
+  numeric_data_type: number
+  dau_daily_shape: record_set
+  dau_record_grain: [activity_date, platform_scope]
+  customer_analysis_contract_shape: record_set
+  customer_analysis_pipeline_is_analysis_only: true
+  customer_analysis_fake_metric_variant_prohibited: true
+  customer_analysis_metric_variant_binding_check: false
+  customer_analysis_metric_variant_versions: []
+
+decision:
+  result_contract_initialization_complete: true
+  result_contract_semantic_migration_complete: true
+  output_mapping_field_binding_complete: true
+  code_implementation_authorized_by_this_gate: false
+  owner_approval_status_changed_by_this_gate: false
+  final_code_implementation_gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
+  automatic_next_stage_allowed: false
+  auto_merge_authorized: false

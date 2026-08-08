@@ -1,14 +1,16 @@
 config_type: business_asset_status_index
 index_version: 1.0.0
 status: synchronized
-assessment_date: 2026-08-02
+assessment_date: 2026-08-03
+last_semantic_sync_date: 2026-08-08
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-current_stage: Code Implementation Readiness Review - Completed
+current_stage: Phase 1.5 Final Acceptance Passed - Awaiting Explicit Owner Code Implementation Approval
 
 phase_status:
   phase_1: completed_and_retained_as_historical_design_baseline
   phase_1_5_business_asset_initialization: completed_for_weekly_workflow_p0_scope
-  code_implementation: allowed_with_runtime_bootstrap_conditions
+  phase_1_5_final_acceptance: passed
+  code_implementation: awaiting_explicit_owner_approval
   end_to_end_runtime_acceptance: conditional
 
 asset_stage_gates:
@@ -36,6 +38,14 @@ asset_stage_gates:
     asset_stage: Metric Library
     status: passed
     source_artifact: phase1_5/assets/metrics/metric_library_readiness_gate.yaml
+  - gate_id: GATE_RESULT_CONTRACT_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Result Contract
+    status: passed
+    source_artifact: phase1_5/assets/result_contracts/result_contract_readiness_gate.yaml
+  - gate_id: GATE_INVENTORY_ADVERTISING_POLICY_WF_WEEKLY_BUSINESS_REPORT_V1
+    asset_stage: Inventory and Advertising Policy
+    status: passed
+    source_artifact: phase1_5/assets/policies/inventory_advertising_policy_readiness_gate.yaml
   - gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
     asset_stage: Output Mapping
     status: passed
@@ -46,8 +56,17 @@ asset_stage_gates:
     source_artifact: phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml
   - gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
     asset_stage: Code Implementation Readiness
-    status: passed_with_runtime_bootstrap_conditions
+    status: ready_awaiting_explicit_owner_approval
     source_artifact: phase1_5/assets/readiness/code_implementation_readiness_gate.yaml
+
+implementation_baseline:
+  baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
+  baseline_version: 1.0.0
+  status: frozen_awaiting_explicit_owner_code_implementation_approval
+  source_artifact: phase1_5/assets/readiness/implementation_baseline.yaml
+  explicit_owner_code_implementation_approval_received: false
+  freeze_date: 2026-08-08
+  freeze_revision_status: refrozen_after_final_adhoc_capability_patch
 
 scope_boundaries:
   weekly_business_report_p0_assets: complete
@@ -57,9 +76,47 @@ scope_boundaries:
   unresolved_business_rule_decision_count: 0
   unresolved_metric_definition_count: 0
   unresolved_asset_reference_count: 0
+  registered_versioned_external_asset_count: 10
+  customer_analysis_output_implementation: fixed_narrative_template_rendering
+  customer_analysis_output_section: inventory_and_sell_through
+  customer_analysis_output_positions:
+    - patch_and_similar_resource_commentary
+    - page_resource_commentary
+  customer_analysis_dynamic_table_renderer_required: false
+  customer_analysis_initial_mvp_status: included
+  physical_metric_store_strategy: shared_local_sqlite
+  shared_metric_store_table: metric_results
+  shared_metric_store_discriminator_fields: [store_id, store_asset_id]
+  revenue_metric_store_strategy: existing_excel_history_store
+  mvp_execution_mode: sequential
+  mvp_recovery_mode: rerun_pipeline_from_start
+  initial_mvp_pipeline_count_with_sequential_execution: 12
+  initial_mvp_pipeline_count_with_rerun_from_start: 12
+  development_complexity_reduction: true
+  code_implementation_owner_approved: false
+  code_implementation_start: wait_for_explicit_owner_approval
+  customer_analysis_qualified_zero_row_contract_mode: product_context_with_empty_customer_record_set
+  shared_metric_store_schema_status: confirmed_runtime_not_initialized
+  inventory_commentary_template_anchor_binding_status: confirmed_runtime_validation_required
+  workflow_run_context_status: confirmed_single_date_authority
+  run_input_manifest_status: confirmed_explicit_binding
+  percentage_point_contract_status: confirmed_true_pp_values
+  configured_display_value_state_table: configured_display_values
+  workflow_completion_statuses: [complete_draft, partial_draft, blocked]
+  external_asset_interface_schema_count: 10
+  ad_hoc_analysis_extension: natural_language_brief_to_arc_plus_exact_dcp_registry_selection
+  revenue_dcp_capability_profiles: [technical, ctv, smart_speaker, fast_version]
+  inventory_dcp_capability_profiles: [full_site, patch, non_patch_product, product_sell_through]
+  synthetic_final_acceptance_scenario_count: 14
+  synthetic_final_acceptance_status: passed
+  mvp_implementation_sequence:
+    - Local input -> standardization -> rules -> metrics -> Result Contract -> fixed narrative output -> Weekly Report preview -> Store
+    - Outlook Draft with auto_send=false
+    - Progressively integrate Outlook, Apollo, and NovaBI Adapters
 
 source_of_truth_order:
   - phase1_5/assets/readiness/status_index.yaml
+  - phase1_5/assets/readiness/implementation_baseline.yaml
   - phase1_5/assets/readiness/code_implementation_readiness_gate.yaml
   - Versioned assets and stage Gates under phase1_5/assets
   - phase1_5/INDEX.md
@@ -69,6 +126,8 @@ source_of_truth_order:
 constraints:
   stage_gate_does_not_independently_authorize_code_implementation: true
   final_code_gate_controls_implementation_entry: true
+  explicit_owner_approval_required_before_code_implementation: true
+  frozen_baseline_does_not_authorize_code_implementation: true
   runtime_acceptance_requires_metric_store_bootstrap: true
   auto_send_allowed: false
   auto_merge_allowed: false

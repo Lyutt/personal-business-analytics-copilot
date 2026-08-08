@@ -80,7 +80,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_FULL_SITE_WEEKLY
+      result_field_id: gross_inventory_count
     calculation_method: Aggregate query-result records only
     formula: SUM(stock_quantity) over validated query-result records.
     aggregation_level: Query-result record set × Full site
@@ -103,7 +105,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_FULL_SITE_WEEKLY
+      result_field_id: disabled_inventory_count
     calculation_method: Aggregate query-result records only
     formula: SUM(disabled_stock_quantity) over validated query-result records.
     aggregation_level: Query-result record set × Full site
@@ -126,7 +130,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_FULL_SITE_WEEKLY
+      result_field_id: available_inventory_count
     calculation_method: Row-level derivation followed by aggregation
     formula: >
       SUM(stock_quantity - disabled_stock_quantity) over validated query-result records satisfying either:
@@ -140,11 +146,20 @@ metric_variants:
       final_zero_action: Continue and notify in final output
       final_negative_action: Pause Full-site Inventory calculation and notify owner
     local_knowledge_pack_dependency:
+      asset_id: MAP_COMMERCIAL_SELLABILITY_INDEX_LOCAL_ONLY
       asset_name: 是否商广售卖index
+      reference_contract_version: 1.0.0
+      runtime_version_reference: '${MAP_COMMERCIAL_SELLABILITY_INDEX_VERSION_LOCAL_ONLY}'
+      runtime_version_verification_required: true
       purpose: Resolve commercial_sellability_flag by explicit ad-placement mapping
       storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
       mapping_content_must_remain_local_only: true
       special_placement_exception_key: '${SPECIAL_PLACEMENT_EXCEPTION_LOCAL_ONLY}'
+      special_placement_exception_asset:
+        asset_id: SPECIAL_PLACEMENT_EXCEPTION_LOCAL_ONLY
+        reference_contract_version: 1.0.0
+        runtime_version_reference: '${SPECIAL_PLACEMENT_EXCEPTION_VERSION_LOCAL_ONLY}'
+        runtime_version_verification_required: true
       mapping_missing_or_unmatched_handling: >
         If an ad placement is unmatched, the mapped value is blank, or the mapped value is neither 是 nor 否,
         treat commercial_sellability_flag as 是.
@@ -161,7 +176,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_FULL_SITE_WEEKLY
+      result_field_id: brand_delivery_inventory_count
     calculation_method: Aggregate query-result records only
     formula: SUM(brand_delivery_stock_quantity) over validated query-result records.
     aggregation_level: Query-result record set × Full site
@@ -184,7 +201,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_FULL_SITE_WEEKLY
+      result_field_id: performance_delivery_inventory_count
     calculation_method: Aggregate query-result records only
     formula: SUM(performance_delivery_stock_quantity) over validated query-result records.
     aggregation_level: Query-result record set × Full site
@@ -208,7 +227,9 @@ metric_variants:
     input_metric_variant_ids:
       - MV_INVENTORY_FULL_SITE_BRAND_DELIVERY_VOLUME_V1
       - MV_INVENTORY_FULL_SITE_PERFORMANCE_DELIVERY_VOLUME_V1
-    result_contract_dependency: RC_INVENTORY_FULL_SITE_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_FULL_SITE_WEEKLY
+      result_field_id: commercial_delivery_inventory_count
     calculation_method: Derived from validated component metrics
     formula: Full-site Brand Delivery Inventory + Full-site Performance Delivery Inventory.
     aggregation_level: Query-result record set × Full site
@@ -228,6 +249,9 @@ metric_variants:
     comparison_type: Week-over-week
     period_type: Query-result period
     numerator_metric_variant_id: MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1
+    output_binding:
+      result_contract_id: RC_INVENTORY_FULL_SITE_WEEKLY
+      result_field_id: available_inventory_wow
     historical_result_dependency:
       store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_FULL_SITE
@@ -249,11 +273,16 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+      result_field_id: gross_inventory_count
     calculation_method: Aggregate filtered query-result records only
     formula: SUM(stock_quantity) over validated records that pass the local time-slice exclusion rule.
     local_filter_dependency: &patch_time_slice_filter
       filter_id: FILTER_PATCH_TIME_SLICE_EXCLUSION_LOCAL_ONLY
+      reference_contract_version: 1.0.0
+      runtime_version_reference: '${FILTER_PATCH_TIME_SLICE_EXCLUSION_VERSION_LOCAL_ONLY}'
+      runtime_version_verification_required: true
       purpose: Exclude explicitly configured time-slice records from all Patch Inventory Metric Variants
       storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
       actual_filter_values_must_remain_local_only: true
@@ -275,7 +304,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+      result_field_id: disabled_inventory_count
     calculation_method: Aggregate filtered query-result records only
     formula: SUM(disabled_stock_quantity) over validated records that pass the local time-slice exclusion rule.
     local_filter_dependency: *patch_time_slice_filter
@@ -297,7 +328,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+      result_field_id: available_inventory_count
     calculation_method: Row-level derivation followed by filtered aggregation
     formula: >
       SUM(stock_quantity - disabled_stock_quantity) over validated records that pass the local time-slice exclusion rule.
@@ -320,7 +353,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+      result_field_id: brand_delivery_inventory_count
     calculation_method: Aggregate filtered query-result records only
     formula: SUM(brand_delivery_stock_quantity) over validated records that pass the local time-slice exclusion rule.
     local_filter_dependency: *patch_time_slice_filter
@@ -342,7 +377,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+      result_field_id: performance_delivery_inventory_count
     calculation_method: Aggregate filtered query-result records only
     formula: SUM(performance_delivery_stock_quantity) over validated records that pass the local time-slice exclusion rule.
     local_filter_dependency: *patch_time_slice_filter
@@ -365,7 +402,9 @@ metric_variants:
     input_metric_variant_ids:
       - MV_INVENTORY_PATCH_BRAND_DELIVERY_VOLUME_V1
       - MV_INVENTORY_PATCH_PERFORMANCE_DELIVERY_VOLUME_V1
-    result_contract_dependency: RC_INVENTORY_PATCH_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+      result_field_id: commercial_delivery_inventory_count
     calculation_method: Derived from validated component metrics
     formula: Patch Brand Delivery Inventory + Patch Performance Delivery Inventory.
     local_filter_dependency: *patch_time_slice_filter
@@ -386,6 +425,9 @@ metric_variants:
     comparison_type: Week-over-week
     period_type: Query-result period
     numerator_metric_variant_id: MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+    output_binding:
+      result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+      result_field_id: available_inventory_wow
     historical_result_dependency:
       store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
@@ -406,6 +448,16 @@ metric_variants:
     period_type: Query-result period
     numerator_metric_variant_id: MV_INVENTORY_PATCH_BRAND_DELIVERY_VOLUME_V1
     denominator_metric_variant_id: MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+    input_contract_fields:
+      - result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+        result_field_id: brand_delivery_inventory_count
+        required_or_optional: required
+      - result_contract_id: RC_INVENTORY_PATCH_WEEKLY
+        result_field_id: available_inventory_count
+        required_or_optional: required
+    output_binding:
+      result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+      result_field_id: patch_brand_sell_through_rate
     calculation_method: Direct ratio
     formula: Patch Brand Delivery Inventory / Patch Available Inventory.
     aggregation_level: Query-result record set × Patch
@@ -426,15 +478,19 @@ metric_variants:
     comparison_type: Week-over-week absolute rate change
     period_type: Query-result period
     numerator_metric_variant_id: MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1
+    output_binding:
+      result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+      result_field_id: patch_brand_sell_through_wow_change_pp
     historical_result_dependency:
       store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
       required_period_scope: Prior validated weekly patch sell-through result
       missing_history_recovery: Inherit Pipeline Registry policy
-    calculation_method: Direct rate difference
-    formula: Current-week Brand Sell-through Rate - prior-week Brand Sell-through Rate.
+    calculation_method: Percentage-point change from decimal rates
+    formula: (Current-week Brand Sell-through Rate - prior-week Brand Sell-through Rate) * 100.
     input_invalid_action: Block Brand Sell-through result only and notify owner
-    base_unit: Decimal rate-point difference
+    base_unit: percentage_point
+    numeric_semantics: percentage_point_change
     result_precision: Preserve source precision
     version: "1.0.0-draft"
 
@@ -449,11 +505,17 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      result_field_id: gross_inventory_count
     calculation_method: Aggregate records explicitly assigned to the requested product
     formula: SUM(total_inventory_quantity) over records assigned by the local product-rule registry.
     local_product_rule_dependency: &non_patch_product_rule_registry
+      asset_id: RULESET_NON_PATCH_PRODUCT_INVENTORY_LOCAL_ONLY
       asset_name: 分产品库存及售卖率计算逻辑
+      reference_contract_version: 1.0.0
+      runtime_version_reference: '${RULESET_NON_PATCH_PRODUCT_INVENTORY_VERSION_LOCAL_ONLY}'
+      runtime_version_verification_required: true
       role: Explicit product assignment and product-specific inventory calculation rules
       storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
       actual_product_rules_must_remain_local_only: true
@@ -481,7 +543,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      result_field_id: disabled_inventory_count
     calculation_method: Aggregate records explicitly assigned to the requested product
     formula: SUM(disabled_inventory_quantity) over records assigned by the local product-rule registry.
     local_product_rule_dependency: *non_patch_product_rule_registry
@@ -504,7 +568,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      result_field_id: available_inventory_count
     calculation_method: Row-level derivation followed by product-filtered aggregation
     formula: >
       SUM(total_inventory_quantity - disabled_inventory_quantity)
@@ -529,7 +595,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      result_field_id: brand_delivery_inventory_count
     calculation_method: Aggregate records explicitly assigned to the requested product
     formula: SUM(brand_delivery_inventory_quantity) over records assigned by the local product-rule registry.
     local_product_rule_dependency: *non_patch_product_rule_registry
@@ -552,7 +620,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      result_field_id: performance_delivery_inventory_count
     calculation_method: Aggregate records explicitly assigned to the requested product
     formula: SUM(performance_delivery_inventory_quantity) over records assigned by the local product-rule registry.
     local_product_rule_dependency: *non_patch_product_rule_registry
@@ -576,7 +646,9 @@ metric_variants:
     input_metric_variant_ids:
       - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1
       - MV_INVENTORY_NON_PATCH_PRODUCT_PERFORMANCE_DELIVERY_VOLUME_V1
-    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      result_field_id: commercial_delivery_inventory_count
     calculation_method: Derived from validated component metrics
     formula: Product Brand Delivery Inventory + Product Performance Delivery Inventory.
     local_product_rule_dependency: *non_patch_product_rule_registry
@@ -599,6 +671,9 @@ metric_variants:
     comparison_type: Week-over-week
     period_type: Query-result period
     numerator_metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
+    output_binding:
+      result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      result_field_id: available_inventory_wow
     historical_result_dependency:
       store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT
@@ -622,6 +697,16 @@ metric_variants:
     period_type: Query-result period
     numerator_metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1
     denominator_metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
+    input_contract_fields:
+      - result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+        result_field_id: brand_delivery_inventory_count
+        required_or_optional: required
+      - result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+        result_field_id: available_inventory_count
+        required_or_optional: required
+    output_binding:
+      result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+      result_field_id: non_patch_product_brand_sell_through_rate
     calculation_method: Direct ratio
     formula: Product Brand Delivery Inventory / Product Available Inventory.
     local_product_rule_dependency: *non_patch_product_rule_registry
@@ -645,15 +730,19 @@ metric_variants:
     comparison_type: Week-over-week absolute rate change
     period_type: Query-result period
     numerator_metric_variant_id: MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
+    output_binding:
+      result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+      result_field_id: non_patch_product_brand_sell_through_wow_change_pp
     historical_result_dependency:
       store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH
       required_period_scope: Prior validated product sell-through result
       missing_history_recovery: Inherit Pipeline Registry policy
-    calculation_method: Direct rate difference
-    formula: Current-week Product Brand Sell-through Rate - prior-week Product Brand Sell-through Rate.
+    calculation_method: Percentage-point change from decimal rates
+    formula: (Current-week Product Brand Sell-through Rate - prior-week Product Brand Sell-through Rate) * 100.
     input_invalid_action: Block target product sell-through result only and notify owner
-    base_unit: Decimal rate-point difference
+    base_unit: percentage_point
+    numeric_semantics: percentage_point_change
     result_precision: Preserve source precision
     version: "1.0.0-draft"
 
@@ -665,7 +754,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
-    result_contract_dependency: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    output_binding:
+      result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      result_field_id: brand_moment_available_inventory_count
     calculation_method: Apply explicit local Brand Moment denominator rule
     formula: Defined exclusively by the approved local product-rule registry.
     local_product_rule_dependency: *non_patch_product_rule_registry
@@ -689,7 +780,9 @@ metric_variants:
     period_type: Query-result period
     dataset_dependencies:
       - DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
-    result_contract_dependency: RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+    output_binding:
+      result_contract_id: RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+      result_field_id: impression_count
     calculation_method: Consume validated single-row query result
     formula: Validated impression_count from the single-row result after date-level detail is deselected.
     aggregation_level: Target weekly period × Brand Moment
@@ -715,6 +808,13 @@ metric_variants:
     comparison_type: Week-over-week
     period_type: Query-result period
     numerator_metric_variant_id: MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
+    input_contract_fields:
+      - result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+        result_field_id: brand_moment_available_inventory_count
+        required_or_optional: required
+    output_binding:
+      result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+      result_field_id: available_inventory_wow
     historical_result_dependency:
       store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
@@ -737,6 +837,16 @@ metric_variants:
     period_type: Query-result period
     numerator_metric_variant_id: MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1
     denominator_metric_variant_id: MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
+    input_contract_fields:
+      - result_contract_id: RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+        result_field_id: impression_count
+        required_or_optional: required
+      - result_contract_id: RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+        result_field_id: brand_moment_available_inventory_count
+        required_or_optional: required
+    output_binding:
+      result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+      result_field_id: sell_through_rate
     calculation_method: Direct ratio
     formula: Brand Moment Impression Count / Brand Moment Available Inventory.
     validation_rules:
@@ -759,6 +869,9 @@ metric_variants:
     comparison_type: Week-over-week absolute rate change
     period_type: Query-result period
     numerator_metric_variant_id: MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1
+    output_binding:
+      result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+      result_field_id: sell_through_wow_change_pp
     historical_result_dependency:
       store_id: STORE_WEEKLY_INVENTORY_HISTORICAL
       store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
@@ -766,10 +879,11 @@ metric_variants:
       missing_history_recovery: >
         Trigger one repair of both required upstream Pipelines, recalculate the prior Brand Moment result,
         and persist the validated repaired result before continuing. If repair fails, pause this Pipeline and notify owner.
-    calculation_method: Direct rate difference
-    formula: Current-week Brand Moment Sell-through Rate - prior-week Brand Moment Sell-through Rate.
+    calculation_method: Percentage-point change from decimal rates
+    formula: (Current-week Brand Moment Sell-through Rate - prior-week Brand Moment Sell-through Rate) * 100.
     input_invalid_action: Block Brand Moment Sell-through result only and notify owner
-    base_unit: Decimal rate-point difference
+    base_unit: percentage_point
+    numeric_semantics: percentage_point_change
     result_precision: Preserve source precision
     version: "1.0.0-draft"
 
@@ -787,7 +901,8 @@ conditional_analysis_handoff:
     Automatic selection by field similarity, name similarity, or history is prohibited.
   trigger_input_metric_variant_role: Validated product sell-through week-over-week absolute rate change
   trigger_condition: Absolute sell-through week-over-week rate change is greater than or equal to the configured product threshold
-  default_threshold: 10 percentage points
+  default_threshold_value: 10.0
+  default_threshold_unit: percentage_point
   product_specific_override_supported: true
   trigger_consumer_pipeline_id: PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
   consumer_pipeline_scope: Customer delivery change analysis only
@@ -803,4 +918,4 @@ approval:
   customer_analysis_trigger_boundary: Confirmed
   owner_confirmation: confirmed_complete
   readiness_status: Passed
-  committed_or_pushed: false
+  committed_or_pushed: true

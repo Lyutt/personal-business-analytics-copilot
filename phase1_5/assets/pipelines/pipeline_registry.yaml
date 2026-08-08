@@ -37,6 +37,12 @@ output_mapping_stage:
   output_mapping_id: OM_WEEKLY_BUSINESS_REPORT_V1
   outlook_draft_mapping_id: OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
   customer_revenue_detail_status: deferred_by_owner
+input_contract_dependency_authority:
+  canonical_source_asset: phase1_5/assets/metrics/metric_library_inventory_baseline_v1.yaml
+  canonical_source_path: metric_variants[].input_contract_fields
+  result_contract_role: derived_input_lineage_summary
+  pipeline_registry_role: orchestration_routing_only
+  duplicate_field_level_dependency_authority_allowed: false
 initialization_scope:
   included_workflows:
     - WF_WEEKLY_BUSINESS_REPORT
@@ -58,6 +64,10 @@ initialization_scope:
     - Outlook Draft creation
     - display_item: 订单整体曝光完成率
       asset_classification: Configured display value
+      configured_display_value_policy_reference:
+        policy_id: POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1
+        authority_role: canonical_selection_and_persistence_policy
+      inline_configuration_role: compatibility_summary_must_match_referenced_policy
       dataset_dependency: none
       pipeline_dependency: none
       metric_library_registration: false
@@ -71,7 +81,8 @@ initialization_scope:
       decimal_values_allowed: false
       weekly_selection_method: Select any allowed integer value excluding prior week's displayed value
       consecutive_week_repeat_allowed: false
-      prior_display_value_source: Previous generated Weekly Report output record
+      prior_display_value_source: Same local configured display value state for the previous reporting period
+      previous_report_body_parsing_allowed: false
       prior_display_value_unavailable_action:
         selection_method: Randomly select one allowed integer value
         notify_owner: false
@@ -125,7 +136,7 @@ pipelines:
         execution_order_or_dependency: >
           Thursday 17:30 revenue-stage pipeline.
           No predecessor dependency on CTV, Smart Speaker, or Fast Version
-          revenue pipelines; eligible for parallel execution.
+          revenue pipelines; execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -142,10 +153,12 @@ pipelines:
 
     dataset_dependencies:
       - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Current-period technical-line revenue input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -234,7 +247,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -249,7 +266,7 @@ pipelines:
         may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Historical Weekly Report Context Extraction
@@ -300,7 +317,7 @@ pipelines:
         execution_order_or_dependency: >
           Thursday 17:30 revenue-stage pipeline.
           No predecessor dependency on Technical Line, Smart Speaker, or Fast
-          Version revenue pipelines; eligible for parallel execution.
+          Version revenue pipelines; execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -317,10 +334,12 @@ pipelines:
 
     dataset_dependencies:
       - dataset_id: DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Current-period CTV excluding placement revenue input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -405,7 +424,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -420,7 +443,7 @@ pipelines:
         may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -468,7 +491,7 @@ pipelines:
         execution_order_or_dependency: >
           Thursday 17:30 revenue-stage pipeline.
           No predecessor dependency on the other revenue pipelines;
-          eligible for parallel execution.
+          execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -487,10 +510,12 @@ pipelines:
       - dataset_id: DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
         query_asset_id: QRY_APOLLO_QISHENG_EXECUTION_REVENUE
         query_template_parameter: 智能音箱收入查询模板
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Smart Speaker date-range revenue result
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
 
     historical_input_dependencies:
       - dependency_type: Metric Result Store
@@ -534,8 +559,8 @@ pipelines:
           query_count_per_run: 1
           query_template: 智能音箱收入查询模板
           date_parameters:
-            start_date: Thursday execution date minus 7 days
-            end_date: Thursday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           expected_result_shape: Single-row business-line period result
       qtd_acquisition_method: >
         不执行第二次Apollo QTD查询。
@@ -589,7 +614,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -604,7 +633,7 @@ pipelines:
         may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -651,7 +680,7 @@ pipelines:
         execution_order_or_dependency: >
           Thursday 17:30 revenue-stage pipeline.
           No predecessor dependency on the other revenue pipelines;
-          eligible for parallel execution.
+          execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -670,10 +699,12 @@ pipelines:
       - dataset_id: DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
         query_asset_id: QRY_APOLLO_QISHENG_EXECUTION_REVENUE
         query_template_parameter: 极速版收入查询模板
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Fast Version date-range revenue result
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
 
     historical_input_dependencies:
       - dependency_type: Metric Result Store
@@ -717,8 +748,8 @@ pipelines:
           query_count_per_run: 1
           query_template: 极速版收入查询模板
           date_parameters:
-            start_date: Thursday execution date minus 7 days
-            end_date: Thursday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           expected_result_shape: Single-row business-line period result
       qtd_acquisition_method: >
         不执行第二次Apollo QTD查询。
@@ -772,7 +803,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -787,7 +822,7 @@ pipelines:
         may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -849,10 +884,12 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
         query_asset_id: QRY_APOLLO_INVENTORY_WEEKLY_FULL_SITE_STOCK
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Full-site date-range inventory input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -883,8 +920,8 @@ pipelines:
           query_count_per_run: 1
           query_template: 周报全站库存
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           result_acquisition_method: CSV Export
           expected_result_shape: Non-empty exported CSV result file
       stages:
@@ -935,11 +972,15 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -988,7 +1029,7 @@ pipelines:
         execution_order_or_dependency: >
           Friday 10:30 inventory-stage pipeline.
           No predecessor dependency on the other normal inventory pipelines;
-          eligible for parallel execution.
+          execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -1003,10 +1044,12 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
         query_asset_id: QRY_APOLLO_INVENTORY_PATCH_STOCK
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Patch date-range inventory input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -1037,8 +1080,8 @@ pipelines:
           query_count_per_run: 1
           query_template: 贴片库存计算
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           result_acquisition_method: CSV Export
           expected_result_shape: Non-empty exported CSV result file
       stages:
@@ -1090,7 +1133,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -1104,7 +1151,7 @@ pipelines:
           may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -1152,7 +1199,7 @@ pipelines:
         execution_order_or_dependency: >
           Friday 10:30 inventory-stage pipeline.
           No predecessor dependency on the other normal inventory pipelines;
-          eligible for parallel execution.
+          execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -1167,10 +1214,12 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
         query_asset_id: QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Non-patch product date-range inventory input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -1201,8 +1250,8 @@ pipelines:
           query_count_per_run: 1
           query_template: 非贴片分产品库存数据
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           result_acquisition_method: CSV Export
           expected_result_shape: Non-empty exported CSV result file
       stages:
@@ -1254,7 +1303,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -1271,7 +1324,7 @@ pipelines:
           may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -1336,10 +1389,12 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
         query_asset_id: QRY_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Brand Moment date-range delivery input
         required: true
-        join_or_relationship_rule_id: TBD
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -1358,8 +1413,8 @@ pipelines:
             - detail_dimension: 日期
               required_state: deselected
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           result_acquisition_method: On-screen Result Copy
           expected_result_shape: One aggregated row for selected date range
       stages:
@@ -1411,7 +1466,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -1425,7 +1484,7 @@ pipelines:
           may_calculate: false
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -1553,12 +1612,16 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       upstream_rerun_required_only_if_contract_invalidated: true
       downstream_impact_rule: explicit_dependency_graph_only
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Pipeline Registry upstream contracts
         - Confirmed Brand Moment sell-through business input roles
@@ -1618,10 +1681,14 @@ pipelines:
     dataset_dependencies:
       - dataset_id: DS_NOVABI_PLATFORM_DAU
         query_asset_id: QRY_NOVABI_DAU_QUERY
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Full-platform daily DAU input
-        required: false
-        join_or_relationship_rule_id: TBD
+        required: true
+        required_scope: pipeline_execution
+        workflow_pipeline_required_or_optional_remains: optional
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -1654,8 +1721,8 @@ pipelines:
           natural_language_template: >
             从BI报表的核心数据表中，给我跑一下{start_date}-{end_date}的全平台分日DAU
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           result_acquisition_method: On-screen Result Copy
           expected_result_shape: Daily rows within selected date range
       stages:
@@ -1696,11 +1763,15 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -1717,6 +1788,8 @@ pipelines:
     source_and_data_owners: Inherit from Data Source and Dataset registries
     version: 0.1.0-draft
     approval_status: registry_initialized
+    analysis_only_pipeline: true
+    metric_variant_creation_for_result_fields: prohibited
 
     pipeline_boundary:
       start: >
@@ -1748,32 +1821,71 @@ pipelines:
           Run only after a validated product sell-through result satisfies
           the explicitly configured anomaly trigger.
         failure_handling:
+          trigger_not_met:
+            classification: normal_omission
+            notify_owner: false
+            fail_pipeline: false
+            action: Do not execute the customer query or generate an empty Contract
+          qualified_customer_zero_rows:
+            classification: normal_empty_record_set
+            notify_owner: false
+            fail_pipeline: false
+            action: Generate the validated product-level Contract context with an empty customer record set so fixed product-change-only commentary remains available
+          raw_query_zero_rows:
+            classification: source_or_routing_exception
+            notify_owner: true
+            fail_pipeline: false
+            action: Omit target product customer analysis and continue Workflow
           query_failure:
-            - Notify owner
-            - Analyze technical failure reason
-            - Continue Workflow
-          zero_customer_rows:
-            - Notify owner
-            - Analyze zero-row reason
-            - Continue Workflow
+            classification: source_or_routing_exception
+            notify_owner: true
+            fail_pipeline: false
+            action: Omit target product customer analysis and continue Workflow
+          invalid_product_mapping:
+            classification: source_or_routing_exception
+            notify_owner: true
+            fail_pipeline: false
+            action: Omit target product customer analysis and continue Workflow
           block_workflow: false
 
     trigger_contract:
       producer_result_type: Validated product sell-through result
-      trigger_rule_id: TBD
+      trigger_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
       confirmed_rule_input: abs(sell_through_rate_wow_change_pp) >= configured threshold
-      current_default_threshold: 10pp
+      current_default_threshold_value: 10.0
+      current_default_threshold_unit: percentage_point
       product_override_supported: true
       one_run_per_triggered_product: true
-      multiple_product_runs_may_execute_in_parallel: true
+      multiple_product_runs_may_execute_in_parallel: false
+      first_phase_scheduling_mode: sequential
+      upstream_trigger_field_routing:
+        routing_role: runtime_trigger_input
+        result_contract_lineage_summary_is_runtime_input: false
+        exactly_one_route_required: true
+        routes:
+          - route_id: regular_patch_products
+            route_condition: target_ad_product_name is explicitly classified as a regular patch product
+            result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+            result_field_id: patch_brand_sell_through_wow_change_pp
+          - route_id: all_products_except_regular_patch_and_brand_moment
+            route_condition: target_ad_product_name is explicitly classified as neither a regular patch product nor Brand Moment
+            result_contract_id: RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+            result_field_id: non_patch_product_brand_sell_through_wow_change_pp
+          - route_id: brand_moment
+            route_condition: target_ad_product_name is explicitly classified as Brand Moment
+            result_contract_id: RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+            result_field_id: sell_through_wow_change_pp
 
     dataset_dependencies:
       - dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
         query_asset_id: QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
-        dataset_version_constraint: TBD
+        dataset_version_constraint: ">=0.1.0,<0.2.0"
         dependency_role: Product-customer delivery change input
-        required: false
-        join_or_relationship_rule_id: TBD
+        required_when_triggered: true
+        join_or_relationship_rule_id: not_applicable
+        run_input_manifest_required: true
+        period_context_source: workflow_run_context
+        business_rule_processing_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
 
     execution:
       schedule:
@@ -1790,8 +1902,8 @@ pipelines:
           query_role: Current-week customer delivery summary
           product_parameter: Explicit triggered product
           date_parameters:
-            start_date: Friday execution date minus 7 days
-            end_date: Friday execution date minus 1 day
+            start_date: Workflow Run Context current_period_start_date
+            end_date: Workflow Run Context current_period_end_date
           grouping_dimension: 广告主
           detail_dimension_date: deselected
           expected_result_shape: Customer-level period summary rows
@@ -1799,21 +1911,46 @@ pipelines:
           query_role: Previous-week customer delivery summary
           product_parameter: Same explicit triggered product
           date_parameters:
-            start_date: Friday execution date minus 14 days
-            end_date: Friday execution date minus 8 days
+            start_date: Workflow Run Context comparison_period_start_date
+            end_date: Workflow Run Context comparison_period_end_date
           grouping_dimension: 广告主
           detail_dimension_date: deselected
           expected_result_shape: Customer-level period summary rows
       cross_period_comparison_input: Two independently validated weekly customer summaries
+      cross_period_customer_matching:
+        match_key: customer_id
+        fuzzy_customer_name_matching_allowed: false
+        duplicate_product_period_customer_id_action:
+          - Exclude every row for the duplicate key
+          - Notify owner
+          - Do not automatically merge or select a row
+        negative_impression_count_action:
+          - Exclude the row before cross-period matching
+          - Notify owner
+          - Do not include the row in change, materiality, sorting, or ranking
+        current_only_customer_comparison_period_impression_count: 0
+        comparison_only_customer_current_period_impression_count: 0
+        same_customer_id_name_conflict_action:
+          - Notify owner
+          - Exclude the conflicting customer row
+          - Do not automatically choose or merge customer names
       stages:
         - DATA_COLLECTION
         - DATA_STANDARDIZATION
         - BUSINESS_RULE_PROCESSING
-        - METRIC_CALCULATION
         - VALIDATION
       mapping_profile_ids:
         - MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1
       ordered_rule_set_ids: []
+      business_rule_processing_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+      business_rule_processing_responsibilities:
+        - duplicate_and_negative_row_exclusion
+        - exact_customer_id_cross_period_matching
+        - impression_change_derivation
+        - materiality_filtering
+        - scenario_ranking_measure_derivation
+        - sorting
+        - customer_ranking
       metric_variant_ids: []
       validation_rule_ids: []
 
@@ -1821,17 +1958,41 @@ pipelines:
       result_contract_ids:
         - RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
       result_contract_cardinality: One result per triggered product Pipeline Run
+      result_contract_shape: record_set
+      result_record_grain:
+        - target_ad_product_name
+        - current_reporting_period
+        - customer_id
+      final_customer_grain_owner_confirmation:
+        key: customer_id
+        mapped_customer_or_group_name_role: display_name_only
+        aggregate_multiple_customer_ids_by_mapped_name: false
+      no_placeholder_result_contract_when:
+        - trigger_not_met
+        - raw_query_zero_rows
+        - query_failure
+        - invalid_product_mapping
+      qualified_customer_zero_rows_result:
+        result_contract_generated: true
+        product_level_contract_fields_required: true
+        customer_record_set_row_count: 0
+        fabricated_customer_record_allowed: false
+      omitted_result_behavior: Apply explicit normal-omission or exception notification semantics and continue Weekly Workflow
       output_mapping_ids:
         - OM_WEEKLY_BUSINESS_REPORT_V1
       write_to_metrics_store: false
 
     recovery:
       retry_scope: One product-scoped Pipeline Run only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: Triggered product explanation only
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Dataset Inventory
         - Dataset Readiness Matrix
@@ -1893,7 +2054,7 @@ pipelines:
     dataset_dependencies: []
 
     result_contract_dependency_routing:
-      routing_rule_id: TBD
+      product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
       confirmed_routes:
         regular_patch_products:
           producer_pipeline_id: PL_INVENTORY_PATCH_WEEKLY
@@ -1929,7 +2090,8 @@ pipelines:
         - Target business period
         - Explicit Metric Variant ID
       one_run_per_product: true
-      multiple_product_runs_may_execute_in_parallel: true
+      multiple_product_runs_may_execute_in_parallel: false
+      first_phase_scheduling_mode: sequential
       stages:
         - DATA_COLLECTION
         - DATA_STANDARDIZATION
@@ -1964,19 +2126,23 @@ pipelines:
     downstream_consumers:
       - pipeline_id: PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
         dependency_role: Validated sell-through anomaly trigger input
-        trigger_rule_id: TBD
+        trigger_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
       - component: Weekly Report Inventory Section Assembly
         behavior: Consume validated product result only
         may_calculate: false
 
     recovery:
       retry_scope: One product-scoped Pipeline Run only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       upstream_rerun_required_only_if_contract_invalidated: true
       downstream_impact_rule: Target product outputs only
 
     governance:
-      effective_from: TBD
+      effective_from: 2026-08-08
       evidence_sources:
         - Pipeline Registry upstream contracts
         - Confirmed advertising product inventory source routing
@@ -2023,10 +2189,47 @@ constraints:
   advertising_product_inventory_source_routing:
     regular_patch_products:
       source_pipeline_id: PL_INVENTORY_PATCH_WEEKLY
-      exact_product_membership_rule_id: TBD
+      product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
     all_products_except_regular_patch:
       source_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
-      exact_product_membership_rule_id: TBD
+      product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
     confirmed_specific_binding:
       product: Brand Moment
       source_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+  mvp_pipeline_execution:
+    pipeline_ids:
+      - PL_REVENUE_TECHNICAL_WEEKLY
+      - PL_REVENUE_CTV_WEEKLY
+      - PL_REVENUE_SMART_SPEAKER_WEEKLY
+      - PL_REVENUE_FAST_VERSION_WEEKLY
+      - PL_INVENTORY_FULL_SITE_WEEKLY
+      - PL_INVENTORY_PATCH_WEEKLY
+      - PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      - PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+      - PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+      - PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+      - PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+      - PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+    first_phase_scheduling_mode: sequential
+    registered_pipeline_order_required: true
+    parallel_scheduler_required: false
+    failed_run_recovery: rerun_pipeline_from_start
+    stage_checkpointing_required: false
+    resume_from_failed_stage_required: false
+  workflow_runtime_contracts:
+    contract_bundle_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+    workflow_run_context_required_for_all_pipelines: true
+    run_input_manifest_required_for_all_dataset_inputs: true
+    supported_run_types: [scheduled, manual, backfill]
+    outlook_apollo_novabi_execution_date_inference_allowed: false
+    product_parameter_must_be_explicit: true
+  result_field_consumption:
+    calculation_allowed_value_statuses: [valid_value]
+    output_allowed_value_statuses: [valid_value]
+    missing_and_not_applicable_require_explicit_field_contract: true
+    pending_confirmation_consumption_allowed: false
+  workflow_completion_status:
+    allowed_statuses: [complete_draft, partial_draft, blocked]
+    required_pipeline_fallback_draft_status: partial_draft
+    partial_draft_warning_required: true
+    partial_draft_may_be_labeled_complete_success: false

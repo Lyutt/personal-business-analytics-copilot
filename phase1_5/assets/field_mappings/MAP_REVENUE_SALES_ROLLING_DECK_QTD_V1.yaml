@@ -2,7 +2,7 @@ config_type: field_mapping_profile
 mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
 mapping_profile_name: 销售业务线Rolling Deck季度累计业绩收入字段映射
 dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
-dataset_version_constraint: TBD
+dataset_version_constraint: ">=0.1.0,<0.2.0"
 source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
 business_domains:
   - Revenue
@@ -672,6 +672,9 @@ derived_lookup_mapping_requirements:
     output_standard_field_name: 广告主
     output_business_meaning: 经广告主归属映射后的客户/集团名称
     reference_mapping_asset_id: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX
+    reference_mapping_contract_version: 1.0.0
+    reference_mapping_runtime_version: '${MAP_ADVERTISER_NAME_OWNERSHIP_INDEX_VERSION_LOCAL_ONLY}'
+    reference_mapping_runtime_verification_required: true
     reference_mapping_asset_candidate:
       source_path: '${LOCAL_WORKFLOW_DATA_ROOT}\匹配表\广告主名称归属index.csv'
       input_column: A

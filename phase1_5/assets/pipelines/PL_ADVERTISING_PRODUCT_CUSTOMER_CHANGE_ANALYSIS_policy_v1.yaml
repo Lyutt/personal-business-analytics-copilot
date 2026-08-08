@@ -6,6 +6,8 @@ approval_status: Confirmed
 scope: >
   A conditional customer delivery-change analysis for one explicitly configured Weekly Business Report product.
   It runs only after a validated sell-through anomaly trigger and never calculates sell-through itself.
+analysis_only_pipeline: true
+metric_variant_creation_for_result_fields: prohibited
 
 trigger:
   producer_pipelines:
@@ -14,12 +16,21 @@ trigger:
   applies_to: All explicitly configured Weekly Business Report products
   required_input: Validated product sell-through week-over-week absolute rate change
   condition: Absolute rate change is greater than or equal to the product-configured threshold
-  default_threshold: 10 percentage points
+  default_threshold_value: 10.0
+  default_threshold_unit: percentage_point
   product_specific_override_supported: true
   no_trigger_action: Do not execute customer query
+  trigger_policy_id: POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1
+  runtime_input_routes_are_defined_by_pipeline_registry: true
+  result_contract_source_routes_are_lineage_summary_only: true
 
 query_product_selection:
   source_of_truth_asset_name: 奇胜收入表细分产品筛选逻辑
+  source_of_truth_asset:
+    product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+    reference_contract_version: 1.0.0
+    runtime_version_reference: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'
+    runtime_version_verification_required: true
   storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
   actual_product_filter_values_must_remain_local_only: true
   explicit_mapping_required: true
@@ -33,6 +44,35 @@ comparison_inputs:
   current_period_measure: Customer-level exposure total
   previous_period_measure: Customer-level exposure total
   result_grain: Explicit product × customer × weekly period
+  cross_period_match_key: customer_id
+  customer_name_fuzzy_matching_allowed: false
+  current_only_customer_comparison_period_exposure: 0
+  comparison_only_customer_current_period_exposure: 0
+  customer_name_conflict_for_same_customer_id:
+    notify_owner: true
+    exclude_conflicting_customer_row: true
+    automatic_name_selection_or_merge: false
+  row_integrity_before_cross_period_match:
+    duplicate_key: [target_ad_product_name, period_start_date, period_end_date, customer_id]
+    duplicate_key_action: Exclude every row for the anomalous key and notify owner; do not merge or select a row.
+    negative_impression_count_action: Exclude the row and notify owner.
+    excluded_rows_enter_change_materiality_or_ranking: false
+  final_customer_grain:
+    owner_confirmed_key: customer_id
+    mapped_customer_or_group_name_role: display_name_only
+    aggregate_multiple_customer_ids_by_mapped_name: false
+
+business_rule_processing:
+  execution_stage: BUSINESS_RULE_PROCESSING
+  metric_calculation_stage_required: false
+  responsibilities:
+    - duplicate_and_negative_row_exclusion
+    - exact_customer_id_cross_period_matching
+    - impression_change_derivation
+    - materiality_filtering
+    - scenario_ranking_measure_derivation
+    - sorting
+    - customer_ranking
 
 customer_selection:
   positive_sell_through_change:
@@ -53,29 +93,68 @@ customer_selection:
   per_product_output_limit:
     rule_type: Explicit local product-category limit
     storage_location: '${LOCAL_WORKFLOW_KNOWLEDGE_PACK_ROOT}'
+    source_asset:
+      product_routing_asset_id: BR_APOLLO_PRODUCT_FILTER_MAPPING
+      reference_contract_version: 1.0.0
+      runtime_version_reference: '${BR_APOLLO_PRODUCT_FILTER_MAPPING_VERSION_LOCAL_ONLY}'
+      runtime_version_verification_required: true
     actual_product_category_membership_must_remain_local_only: true
     maximum_count_applies: true
     if_qualified_customer_count_is_below_limit: Use actual qualified customer count
 
 failure_handling:
-  query_failure:
-    notify_owner: true
-    analyze_failure_reason: true
+  trigger_not_met:
+    classification: normal_omission
+    notify_owner: false
+    fail_pipeline: false
     block_weekly_report: false
-    product_customer_analysis_action: Omit target product customer analysis
-  zero_customer_rows:
+    product_customer_analysis_action: Do not execute customer query or generate a Result Contract
+  qualified_customer_zero_rows:
+    classification: normal_empty_record_set
+    notify_owner: false
+    fail_pipeline: false
+    block_weekly_report: false
+    result_contract_action: Generate the validated product-level context with an empty customer record set
+    product_customer_analysis_action: Keep the product sell-through change commentary without fabricated customer content
+  raw_query_zero_rows:
+    classification: source_or_routing_exception
     notify_owner: true
     analyze_zero_row_reason: true
+    fail_pipeline: false
     block_weekly_report: false
     product_customer_analysis_action: Omit target product customer analysis
-  invalid_or_missing_explicit_product_mapping:
+  query_failure:
+    classification: source_or_routing_exception
     notify_owner: true
+    analyze_failure_reason: true
+    fail_pipeline: false
+    block_weekly_report: false
+    product_customer_analysis_action: Omit target product customer analysis
+  invalid_product_mapping:
+    classification: source_or_routing_exception
+    notify_owner: true
+    fail_pipeline: false
     block_target_customer_analysis_only: true
     block_weekly_report: false
     auto_fallback_to_similar_product: false
+  result_contract_generation:
+    generate_placeholder_or_null_contract: false
+    omit_when: [trigger_not_met, raw_query_zero_rows, query_failure, invalid_product_mapping]
+    generate_product_context_with_empty_customer_record_set_when: qualified_customer_zero_rows
+    continue_weekly_workflow: true
 
 output_boundary:
   produces: Validated product-level customer delivery-change analysis result
+  result_contract_id: RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+  contract_shape: record_set
+  field_source_types_allowed:
+    - upstream_contract_field
+    - standardized_field
+    - policy_derived_field
+  field_source_assignments:
+    customer_and_exposure_fields: standardized_field
+    sell_through_change_field: upstream_contract_field
+    scenario_change_ranking_and_rank_fields: policy_derived_field
   excludes:
     - Sell-through calculation
     - Inventory calculation
@@ -87,4 +166,4 @@ governance:
   owner: WORKFLOW_OWNER
   business_approver: WORKFLOW_OWNER
   actual_customer_rows_must_remain_local_only: true
-  committed_or_pushed: false
+  committed_or_pushed: true

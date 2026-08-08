@@ -1,5 +1,9 @@
 # Weekly Business Report Workflow Closure — 2026-08-02
 
+> Historical closure record. Current authority is the Phase 1.5 Status Index
+> and `IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1` version `1.0.0`.
+> Code Implementation remains pending explicit Owner approval.
+
 ## Closure Status
 
 - Workflow：`WF_WEEKLY_BUSINESS_REPORT`

@@ -1,7 +1,8 @@
 config_type: output_mapping_readiness_gate
 gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-assessment_date: 2026-08-02
+assessment_date: 2026-08-03
+last_semantic_sync_date: 2026-08-08
 status: passed
 gate_result: passed
 owner: WORKFLOW_OWNER
@@ -11,16 +12,39 @@ scope:
   included_output_mapping_ids:
     - OM_WEEKLY_BUSINESS_REPORT_V1
     - OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
+  configured_display_value_policy:
+    policy_id: POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1
+    approval_status: owner_approved
   deferred_output_mapping_ids:
     - OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1
   deferred_reason: Customer Revenue Detail Workflow is intentionally paused while Weekly Business Report is completed.
 
 gate_checks:
+  result_field_valid_value_only_output: pass
+  pending_confirmation_report_display_prohibited: pass
+  partial_draft_warning_contract: pass
   weekly_inventory_and_revenue_section_order_explicit: pass
   weekly_section_result_contract_references_explicit: pass
-  conditional_customer_analysis_result_contract_reference_explicit: pass
+  weekly_result_contract_field_bindings_explicit: pass
+  metric_variant_parallel_lists_absent: pass
+  display_field_parallel_lists_absent: pass
+  customer_analysis_removed_from_revenue_dynamic_table_slot: pass
+  customer_analysis_fixed_inventory_commentary_positions: pass
+  customer_analysis_fixed_eight_field_selection: pass
+  customer_analysis_fixed_narrative_templates: pass
+  inventory_overview_precedes_customer_analysis_sentences: pass
+  customer_analysis_precomputed_rank_and_limit_consumption: pass
+  customer_analysis_normal_omission_and_exception_semantics: pass
+  customer_analysis_qualified_zero_rows_context_contract_consumable: pass
+  customer_analysis_omitted_contract_not_read: pass
+  inventory_commentary_local_template_anchors_explicit: pass
+  inventory_commentary_runtime_anchor_presence_validation: pass
+  customer_analysis_dynamic_rendering_prohibited: pass
   output_assembly_calculation_disabled: pass
   output_assembly_business_rule_evaluation_disabled: pass
+  configured_display_value_policy_reference_explicit: pass
+  configured_display_value_same_period_reuse_enforced: pass
+  configured_display_value_metric_and_dataset_boundaries_enforced: pass
   pipeline_output_mapping_bindings_explicit: pass
   template_variants_and_quarter_transition_rules_explicit: pass
   warning_section_configured: pass

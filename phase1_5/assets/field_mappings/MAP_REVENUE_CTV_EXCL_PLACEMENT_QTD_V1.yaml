@@ -2,7 +2,7 @@ config_type: field_mapping_profile
 mapping_profile_id: MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1
 mapping_profile_name: CTV（不含植入）季度累计业绩收入字段映射
 dataset_id: DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
-dataset_version_constraint: TBD
+dataset_version_constraint: ">=0.1.0,<0.2.0"
 source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
 business_domains:
   - Revenue

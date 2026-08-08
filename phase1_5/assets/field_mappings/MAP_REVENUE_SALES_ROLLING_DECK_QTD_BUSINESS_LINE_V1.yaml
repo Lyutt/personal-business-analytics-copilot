@@ -2,7 +2,7 @@ config_type: field_mapping_profile
 mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
 mapping_profile_name: 销售业务线Rolling Deck业务线Sheet完整季度收入映射
 dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
-dataset_version_constraint: TBD
+dataset_version_constraint: ">=0.1.0,<0.2.0"
 source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
 business_domains:
   - Revenue

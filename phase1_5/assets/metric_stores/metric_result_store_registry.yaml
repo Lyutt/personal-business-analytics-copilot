@@ -2,6 +2,99 @@ schema_version: "0.2"
 registry_scope: Personal Business Analytics Copilot
 asset_type: Metric Result Store
 
+mvp_physical_store_adapter_strategy:
+  shared_generic_local_adapter_required: true
+  physical_store_strategy: shared_local_sqlite
+  provider: SQLite
+  physical_store_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+  physical_store_file_created_by_this_configuration_change: false
+  shared_table_name: metric_results
+  logical_store_discriminator_fields: [store_id, store_asset_id]
+  row_grain: one validated Metric Variant result for one reporting period and one canonical dimension set
+  physical_schema:
+    table_name: metric_results
+    columns:
+      - { column_name: result_id, sqlite_type: TEXT, nullable: false, role: lineage_identifier }
+      - { column_name: workflow_id, sqlite_type: TEXT, nullable: false, role: lineage_identifier }
+      - { column_name: workflow_run_id, sqlite_type: TEXT, nullable: false, role: lineage_identifier }
+      - { column_name: pipeline_id, sqlite_type: TEXT, nullable: false, role: lineage_identifier }
+      - { column_name: pipeline_run_id, sqlite_type: TEXT, nullable: false, role: lineage_identifier }
+      - { column_name: store_id, sqlite_type: TEXT, nullable: false, role: logical_store_discriminator }
+      - { column_name: store_asset_id, sqlite_type: TEXT, nullable: false, role: logical_store_asset_discriminator }
+      - { column_name: metric_variant_id, sqlite_type: TEXT, nullable: false, role: metric_identity }
+      - { column_name: metric_variant_version, sqlite_type: TEXT, nullable: false, role: metric_version }
+      - { column_name: reporting_period_start, sqlite_type: TEXT, nullable: false, format: YYYY-MM-DD }
+      - { column_name: reporting_period_end, sqlite_type: TEXT, nullable: false, format: YYYY-MM-DD }
+      - { column_name: dimensions_json, sqlite_type: TEXT, nullable: false, role: canonical_dimensions }
+      - { column_name: value_numeric, sqlite_type: NUMERIC, nullable: false, role: validated_metric_value }
+      - { column_name: numeric_semantics, sqlite_type: TEXT, nullable: false, role: numeric_business_constraint }
+      - { column_name: unit, sqlite_type: TEXT, nullable: false, role: business_unit }
+      - { column_name: integer_only, sqlite_type: INTEGER, nullable: false, check: "value in [0, 1]" }
+      - { column_name: precision, sqlite_type: TEXT, nullable: false, role: precision_contract }
+      - { column_name: validation_status, sqlite_type: TEXT, nullable: false, allowed_values: [passed] }
+      - { column_name: generated_at, sqlite_type: TEXT, nullable: false, format: ISO-8601 }
+    dimension_representation:
+      storage_column: dimensions_json
+      format: canonical_json_object
+      key_semantics: Result Contract dimension or record-grain field ID
+      value_semantics: JSON scalar preserving standardized value
+      key_order: lexicographic
+      whitespace: compact
+      no_dimension_value: '{}'
+      pre_write_json_validation_required: true
+    idempotent_unique_key:
+      columns: [store_id, store_asset_id, metric_variant_id, metric_variant_version, reporting_period_start, reporting_period_end, dimensions_json]
+      same_key_same_value_action: no_op_success
+      same_key_different_value_action: reject_write_notify_owner
+      automatic_overwrite_allowed: false
+    sqlite_ddl_contract: >-
+      CREATE TABLE IF NOT EXISTS metric_results (
+      result_id TEXT NOT NULL, workflow_id TEXT NOT NULL, workflow_run_id TEXT NOT NULL,
+      pipeline_id TEXT NOT NULL, pipeline_run_id TEXT NOT NULL, store_id TEXT NOT NULL,
+      store_asset_id TEXT NOT NULL, metric_variant_id TEXT NOT NULL,
+      metric_variant_version TEXT NOT NULL, reporting_period_start TEXT NOT NULL,
+      reporting_period_end TEXT NOT NULL, dimensions_json TEXT NOT NULL,
+      value_numeric NUMERIC NOT NULL, numeric_semantics TEXT NOT NULL, unit TEXT NOT NULL,
+      integer_only INTEGER NOT NULL CHECK (integer_only IN (0,1)), precision TEXT NOT NULL,
+      validation_status TEXT NOT NULL CHECK (validation_status = 'passed'), generated_at TEXT NOT NULL,
+      UNIQUE (store_id, store_asset_id, metric_variant_id, metric_variant_version,
+      reporting_period_start, reporting_period_end, dimensions_json));
+  configured_display_value_state_schema:
+    shares_same_sqlite_file_as_metric_results: true
+    table_name: configured_display_values
+    metric_result_table: false
+    columns:
+      - { column_name: policy_id, sqlite_type: TEXT, nullable: false }
+      - { column_name: workflow_id, sqlite_type: TEXT, nullable: false }
+      - { column_name: reporting_period_id, sqlite_type: TEXT, nullable: false }
+      - { column_name: configured_value, sqlite_type: TEXT, nullable: false, allowed_values: [92%, 93%, 94%, 95%] }
+      - { column_name: selected_at, sqlite_type: TEXT, nullable: false, format: ISO-8601 }
+      - { column_name: workflow_run_id, sqlite_type: TEXT, nullable: false }
+    idempotent_unique_key:
+      columns: [policy_id, workflow_id, reporting_period_id]
+      same_key_same_value_action: read_and_reuse_success
+      same_key_different_value_action: reject_write_notify_owner
+      automatic_reselection_or_overwrite_allowed: false
+    previous_period_lookup_key: [policy_id, workflow_id, reporting_period_id]
+    sqlite_ddl_contract: >-
+      CREATE TABLE IF NOT EXISTS configured_display_values (
+      policy_id TEXT NOT NULL, workflow_id TEXT NOT NULL,
+      reporting_period_id TEXT NOT NULL, configured_value TEXT NOT NULL
+      CHECK (configured_value IN ('92%','93%','94%','95%')),
+      selected_at TEXT NOT NULL, workflow_run_id TEXT NOT NULL,
+      UNIQUE (policy_id, workflow_id, reporting_period_id));
+  applies_to_logical_store_ids:
+    - STORE_WEEKLY_INVENTORY_HISTORICAL
+    - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+    - STORE_WEEKLY_ADVERTISING_HISTORICAL
+  logical_store_contracts_remain_distinct: true
+  separate_storage_engine_per_logical_store_required: false
+  adapter_configuration_may_use_separate_local_namespaces: false
+  multi_provider_architecture_required: false
+  plugin_store_architecture_required: false
+  complex_orm_required: false
+  schema_change_requires_owner_review: true
+
 metric_result_stores:
   - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
     store_name: Weekly Revenue Historical Metric Result Store
@@ -46,6 +139,17 @@ metric_result_stores:
         新增业务记录时，复制当前季度上一条业务记录的单元格样式和数字格式。
         公式必须来自已确认配置，
         不得直接照搬未经验证的上一行公式。
+      formula_write_and_verification:
+        required_sequence:
+          - Write only formulas defined by an approved Metric or Business Rule.
+          - Recalculate the workbook with an available spreadsheet calculation engine.
+          - Save the recalculated workbook.
+          - Reopen through a data-only reader and read the cached calculated values.
+          - Compare every intended formula result with the validated current-week result and expected status.
+        calculation_engine_unavailable_action: Record a Metric Result Store write Warning, notify owner, and do not treat the workbook write as verified.
+        data_only_reread_mismatch_action: Record a Metric Result Store write Warning, notify owner, and do not overwrite the validated current-week result.
+        weekly_report_continuation: Continue Weekly Report generation from the already validated current-week Result Contract.
+        formula_text_only_check_is_sufficient: false
       quarter_transition_first_week:
         weekly_executed_revenue_wow: >
           未来所有季度切换首周均保持空白，
@@ -86,6 +190,7 @@ metric_result_stores:
         不阻断后续收入处理或Weekly Business Report生成。
         允许继续使用已经通过业务校验的当周计算结果，
         但必须向用户明确提示历史存档写入失败。
+      store_failure_completion_semantics: Store write Warning; validated current-week business results remain eligible for Draft generation.
     success_notification:
       required: true
       timing: Included in the current revenue-processing completion notice
@@ -257,8 +362,10 @@ metric_result_stores:
     readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
     implementation_contract_status: Complete
     runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
-    storage_type: Local persistent store; physical format TBD
-    storage_location: ${WEEKLY_INVENTORY_METRIC_STORE_LOCAL_ONLY}
+    storage_type: Shared local SQLite metric_results table
+    storage_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+    physical_table_name: metric_results
+    discriminator_fields: [store_id, store_asset_id]
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
       只保存经过验证的库存Metric Result。
@@ -277,7 +384,7 @@ metric_result_stores:
           - MV_INVENTORY_FULL_SITE_PERFORMANCE_DELIVERY_VOLUME_V1
           - MV_INVENTORY_FULL_SITE_COMMERCIAL_DELIVERY_VOLUME_V1
           - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_WOW_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
         business_context: Patch Weekly Inventory
@@ -289,7 +396,7 @@ metric_result_stores:
           - MV_INVENTORY_PATCH_PERFORMANCE_DELIVERY_VOLUME_V1
           - MV_INVENTORY_PATCH_COMMERCIAL_DELIVERY_VOLUME_V1
           - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_WOW_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT
         business_context: Non-patch Product Weekly Inventory
@@ -302,7 +409,7 @@ metric_result_stores:
           - MV_INVENTORY_NON_PATCH_PRODUCT_COMMERCIAL_DELIVERY_VOLUME_V1
           - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_WOW_V1
           - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
         business_context: Brand Moment Weekly Sell-through
@@ -310,7 +417,7 @@ metric_result_stores:
           - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1
           - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1
           - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH
         business_context: Product-scoped Weekly Sell-through excluding Brand Moment
@@ -320,7 +427,7 @@ metric_result_stores:
           - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1
           - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
           - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
 
   - store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
@@ -336,8 +443,10 @@ metric_result_stores:
     readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
     implementation_contract_status: Complete
     runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
-    storage_type: Local persistent store; physical format TBD
-    storage_location: ${WEEKLY_USER_ANALYTICS_METRIC_STORE_LOCAL_ONLY}
+    storage_type: Shared local SQLite metric_results table
+    storage_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+    physical_table_name: metric_results
+    discriminator_fields: [store_id, store_asset_id]
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
       只保存经过验证的User Analytics Metric Result。
@@ -348,7 +457,7 @@ metric_result_stores:
           - MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1
           - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1
           - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
 
   - store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
@@ -363,8 +472,10 @@ metric_result_stores:
     readiness_status: Implementation Contract Ready; Runtime Bootstrap Required
     implementation_contract_status: Complete
     runtime_bootstrap_status: Blocked Pending Local Physical Store Configuration
-    storage_type: Local persistent store; physical format TBD
-    storage_location: ${WEEKLY_ADVERTISING_METRIC_STORE_LOCAL_ONLY}
+    storage_type: Shared local SQLite metric_results table
+    storage_location: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+    physical_table_name: metric_results
+    discriminator_fields: [store_id, store_asset_id]
     data_source_boundary: >
       本Store不是独立Data Source或Raw Dataset，
       不保存库存或售卖率结果，只保存经过验证的Advertising Metric Result。
@@ -383,12 +494,13 @@ metric_result_stores:
           - Brand Moment sell-through result
         required_metric_variant_ids:
           - MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
 
 notes:
   - 当前登记已同步已批准的Metric Library与Pipeline绑定。
   - Revenue Store已具备实现和本地运行前提；其实际文件可用性在每次运行时验证。
   - Inventory、User Analytics与Advertising Store的逻辑契约已完成，物理格式和本地位置仍是Runtime Bootstrap阻断项。
+  - MVP只实现一个供Inventory、User Analytics与Advertising逻辑Store共用的通用本地物理Store Adapter；不分别开发三个存储引擎。
   - 技术线与CTV既有工作簿的已确认修正记录见Discovery文档。
   - 智能音箱与极速版两个空白Store Asset已于2026-07-29创建并完成表头验证。

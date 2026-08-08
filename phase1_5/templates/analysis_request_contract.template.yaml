@@ -1,0 +1,90 @@
+config_type: analysis_request_contract_template
+template_id: ARC_TEMPLATE_AD_HOC_ANALYSIS_V1
+template_version: 1.0.1
+status: confirmed_for_final_acceptance
+owner: WORKFLOW_OWNER
+
+analysis_request_contract:
+  required_fields:
+    request_id: { data_type: string, nullable: false }
+    domain: { data_type: string, nullable: false }
+    intent: { data_type: string, nullable: false }
+    period: { data_type: object, nullable: false, required_fields: [semantics, start_date, end_date] }
+    comparison: { data_type: object, nullable: false, required_fields: [mode] }
+    dimensions: { data_type: array, item_type: string, nullable: false }
+    metrics: { data_type: array, item_type: string, nullable: false }
+    filters: { data_type: array, item_type: object, nullable: false }
+    output: { data_type: object, nullable: false, required_fields: [format, audience] }
+  optional_fields:
+    capability_scope_id:
+      data_type: string
+      nullable: false
+      role: Canonical DCP capability selector resolved during Brief understanding; not a business asset ID.
+  brief_conversion:
+    natural_language_brief_supported: true
+    directly_parse_when_explicitly_expressed:
+      - domain
+      - period
+      - comparison
+      - filters
+      - output
+    canonical_resolution_from_registered_metadata:
+      intent: DCP Registry intent metadata
+      dimensions: DCP Registry and existing Dimension metadata
+      metrics: DCP Registry and existing Metric or Metric Variant metadata
+      capability_scope: DCP Registry capability_scope_id
+    user_must_supply_metric_id: false
+    user_must_supply_complete_dimensions_list: false
+    semantic_brief_understanding_allowed: true
+    business_asset_name_similarity_selection_allowed: false
+    required_field_completion:
+      request_id: generated_by_request_intake
+      comparison_when_not_expressed: { mode: none }
+      filters_when_not_expressed: []
+      output_audience_when_not_expressed: WORKFLOW_OWNER
+    metric_resolution_policy:
+      comparison_none_default: Select only the catalog entry's default non-comparison metrics.
+      explicit_week_over_week_request: Add only metrics registered with comparison dependency week_over_week.
+      explicit_year_over_year_request: Add only metrics registered with comparison dependency year_over_year.
+      user_requested_metric_subset_allowed: true
+      whole_dcp_metric_list_required: false
+      metric_without_registered_canonical_id_allowed: false
+    dcp_selection_contract:
+      exact_identity_fields: [domain, intent, capability_scope_id]
+      requested_dimensions_must_be_subset_of_supported_dimensions: true
+      requested_metrics_must_be_subset_of_supported_metrics: true
+      period_and_comparison_must_be_supported: true
+      incompatible_period_or_comparison_action: request_owner_confirmation
+      automatic_first_match_selection_allowed: false
+    conversion_stages:
+      - stage: brief_understanding
+        output: canonical ARC analytical metadata only
+        may_select_dataset_query_mapping_rule_metric_or_contract: false
+      - stage: capability_selection
+        input: structured canonical ARC
+        selection_method: Exact registered domain, intent, and capability_scope_id plus requested capability inclusion and period/comparison compatibility.
+        name_similarity_inference_allowed: false
+    prohibited_creation:
+      unregistered_metric: true
+      unregistered_business_rule: true
+      unregistered_dimension: true
+      unregistered_capability: true
+    owner_confirmation_required_only_when:
+      - no_unique_registered_canonical_match
+      - business_definition_or_metric_semantics_are_ambiguous
+      - requested_analysis_requires_a_new_business_definition
+      - period_or_comparison_not_supported_by_candidate_dcp
+    owner_confirmation_not_required_for:
+      - canonical metadata resolved uniquely from the DCP Registry
+      - user omission of Metric IDs
+      - user omission of the complete dimensions list
+      - user selection of a supported Metric subset
+  lifecycle:
+    one_time_brief_output: temporary_execution_plan
+    creates_formal_workflow: false
+    repeated_demand_action: Owner review decides whether a formal Workflow is warranted.
+  boundaries:
+    creates_metric_variant: false
+    creates_business_rule: false
+    creates_result_contract: false
+    code_implementation_authorized: false

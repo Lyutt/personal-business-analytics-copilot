@@ -12,6 +12,11 @@ output_target:
   storage_location: ${CUSTOMER_REVENUE_OUTPUT_DIR_LOCAL_ONLY}
   filename_pattern: ${CUSTOMER_REVENUE_DETAIL_FILENAME_PATTERN_LOCAL_ONLY}
   source_template_reference: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
+  source_template_version_binding:
+    asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
+    reference_contract_version: 1.0.0
+    runtime_version_reference: '${TEMPLATE_CUSTOMER_REVENUE_DETAIL_VERSION_LOCAL_ONLY}'
+    runtime_version_verification_required: true
   source_template_files_must_not_enter_git: true
   generated_output_must_not_enter_git: true
   weekly_report_attachment: false
