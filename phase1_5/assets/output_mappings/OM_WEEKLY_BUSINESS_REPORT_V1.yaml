@@ -22,6 +22,31 @@ output_target:
       reference_contract_version: 1.0.0
       runtime_version_reference: '${TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_VERSION_LOCAL_ONLY}'
       runtime_version_verification_required: true
+  local_inventory_commentary_anchor_bindings:
+    template_asset_id: TEMPLATE_WEEKLY_REPORT_0724_LOCAL_ONLY
+    applies_to_template_variants:
+      - OM_WEEKLY_BUSINESS_REPORT_REGULAR_WEEK_V1
+      - OM_WEEKLY_BUSINESS_REPORT_QUARTER_TRANSITION_WEEK_V1
+    quarter_transition_inventory_template_source: TEMPLATE_WEEKLY_REPORT_0724_LOCAL_ONLY
+    anchors:
+      - output_field_id: patch_and_similar_resource_commentary
+        local_anchor_reference: '${WEEKLY_REPORT_PATCH_AND_SIMILAR_RESOURCE_COMMENTARY_ANCHOR_LOCAL_ONLY}'
+        local_placeholder_reference: '${WEEKLY_REPORT_PATCH_AND_SIMILAR_RESOURCE_COMMENTARY_PLACEHOLDER_LOCAL_ONLY}'
+        required: true
+      - output_field_id: page_resource_commentary
+        local_anchor_reference: '${WEEKLY_REPORT_PAGE_RESOURCE_COMMENTARY_ANCHOR_LOCAL_ONLY}'
+        local_placeholder_reference: '${WEEKLY_REPORT_PAGE_RESOURCE_COMMENTARY_PLACEHOLDER_LOCAL_ONLY}'
+        required: true
+    runtime_presence_validation:
+      validate_before_output_assembly: true
+      resolved_template_file_must_exist: true
+      each_anchor_must_exist_exactly_once: true
+      each_placeholder_must_exist_exactly_once: true
+      anchor_must_contain_bound_placeholder: true
+      missing_or_duplicate_binding_action: Block Weekly Report Output Assembly, notify owner, and do not substitute another anchor.
+    rendering_scope: fixed_narrative_template_rendering_only
+    generic_anchor_discovery_allowed: false
+    generic_dynamic_renderer_allowed: false
   source_template_files_must_not_enter_git: true
   outlook_draft_mapping_id: OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1
 
@@ -154,6 +179,23 @@ section_order:
         - impression_change_count
         - customer_rank
         - applied_output_limit
+      result_field_scope:
+        record_set_header_context_fields: [target_ad_product_name, analysis_scenario, trigger_sell_through_wow_change_pp, applied_output_limit]
+        customer_record_fields: [customer_name, current_period_impression_count, impression_change_count, customer_rank]
+      contract_consumption_by_outcome:
+        qualified_customer_zero_rows:
+          result_contract_required: true
+          consume_record_set_header_context: true
+          consume_customer_records: false
+          template_mode: product_change_only
+        qualified_customer_records_exist:
+          result_contract_required: true
+          consume_record_set_header_context: true
+          consume_customer_records: true
+          template_mode: product_change_with_ranked_customers
+        omitted_contract_outcomes:
+          reasons: [trigger_not_met, raw_query_zero_rows, query_failure, invalid_product_mapping]
+          output_mapping_reads_omitted_contract: false
       retained_trace_fields_must_not_enter_report_body: true
       precomputed_customer_selection:
         inclusion_condition: customer_rank <= applied_output_limit
@@ -185,7 +227,11 @@ section_order:
         dynamic_table_generation_allowed: false
       omission_and_empty_selection:
         trigger_not_met: { classification: normal_omission, notify_owner: false, fail_workflow: false, action: Do not append an abnormal-product sentence or generate an empty Contract. }
-        qualified_customer_zero_rows: { classification: normal_omission, notify_owner: false, fail_workflow: false, action: Keep only the product sell-through change clause and do not fabricate a customer name. }
+        qualified_customer_zero_rows:
+          classification: normal_empty_record_set
+          notify_owner: false
+          fail_workflow: false
+          action: Read validated product context from the existing Contract header; keep only the product sell-through change clause and do not fabricate a customer name.
         raw_query_zero_rows: { classification: source_or_routing_exception, notify_owner: true, fail_workflow: false, action: Omit the target product customer analysis and continue Workflow. }
         query_failure: { classification: source_or_routing_exception, notify_owner: true, fail_workflow: false, action: Omit the target product customer analysis and continue Workflow. }
         invalid_product_mapping: { classification: source_or_routing_exception, notify_owner: true, fail_workflow: false, action: Omit the target product customer analysis and continue Workflow. }

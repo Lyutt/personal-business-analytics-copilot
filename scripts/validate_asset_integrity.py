@@ -482,6 +482,7 @@ def reference_kind(key: str) -> str | None:
         "filter_id": "external_asset",
         "local_knowledge_pack_dependency": "external_asset",
         "template_id": "external_asset",
+        "template_asset_id": "external_asset",
         "recipient_configuration_id": "external_asset",
         "product_routing_asset_id": "external_asset",
         "field_mapping_gate_id": "gate",
@@ -1672,24 +1673,38 @@ def validate_mvp_acceptance_semantics(
                 f"{product_routing_asset_id}"
             )
 
-    for pipeline_id in (sell_through_id, customer_id):
+    registered_pipeline_ids = [
+        item.get("pipeline_id")
+        for item in registry.get("pipelines", [])
+        if isinstance(item, dict) and isinstance(item.get("pipeline_id"), str)
+    ]
+    mvp_execution = registry.get("constraints", {}).get(
+        "mvp_pipeline_execution", {}
+    )
+    if mvp_execution.get("pipeline_ids") != registered_pipeline_ids or mvp_execution.get(
+        "first_phase_scheduling_mode"
+    ) != "sequential" or mvp_execution.get("registered_pipeline_order_required") is not True or mvp_execution.get(
+        "failed_run_recovery"
+    ) != "rerun_pipeline_from_start" or mvp_execution.get(
+        "parallel_scheduler_required"
+    ) is not False or mvp_execution.get("stage_checkpointing_required") is not False or mvp_execution.get(
+        "resume_from_failed_stage_required"
+    ) is not False:
+        errors.append(f"{registry_file}: all initial MVP Pipeline execution semantics are incomplete")
+
+    for pipeline_id in registered_pipeline_ids:
         pipeline = pipelines.get(pipeline_id, {})
         pipeline_trigger = pipeline.get("trigger_contract", {})
         pipeline_execution = pipeline.get("execution", {})
-        parallel_value = (
-            pipeline_trigger.get("multiple_product_runs_may_execute_in_parallel")
-            if pipeline_id == customer_id
-            else pipeline_execution.get("multiple_product_runs_may_execute_in_parallel")
-        )
-        scheduling_mode = (
-            pipeline_trigger.get("first_phase_scheduling_mode")
-            if pipeline_id == customer_id
-            else pipeline_execution.get("first_phase_scheduling_mode")
-        )
-        if parallel_value is not False or scheduling_mode != "sequential":
-            errors.append(f"{registry_file}:{pipeline_id}: MVP product runs must be sequential")
+        for container_name, container in (
+            ("execution", pipeline_execution),
+            ("trigger_contract", pipeline_trigger),
+        ):
+            if container.get("multiple_product_runs_may_execute_in_parallel") is True:
+                errors.append(f"{registry_file}:{pipeline_id}.{container_name}: parallel execution is prohibited")
         recovery = pipeline.get("recovery", {})
         expected_recovery = {
+            "recovery_mode": "rerun_pipeline_from_start",
             "resume_from_failed_stage": False,
             "restart_from_pipeline_start": True,
             "restart_must_be_idempotent": True,
@@ -1698,6 +1713,30 @@ def validate_mvp_acceptance_semantics(
         for key, expected in expected_recovery.items():
             if recovery.get(key) != expected:
                 errors.append(f"{registry_file}:{pipeline_id}.recovery.{key}: expected {expected!r}")
+
+    def contains_text(value: Any, needle: str) -> bool:
+        if isinstance(value, str):
+            return needle.lower() in value.lower()
+        if isinstance(value, dict):
+            return any(contains_text(item, needle) for item in value.values())
+        if isinstance(value, list):
+            return any(contains_text(item, needle) for item in value)
+        return False
+
+    if contains_text(registry, "eligible for parallel execution"):
+        errors.append(f"{registry_file}: stale parallel-execution eligibility text is prohibited")
+
+    workflow_file = "phase1_5/workflows/weekly_business_report/WORKFLOW_v2.md"
+    workflow_text = (REPOSITORY_ROOT / workflow_file).read_text(encoding="utf-8")
+    required_workflow_terms = (
+        "12 个 Pipeline 全部按 Registry 登记顺序 `sequential` 执行",
+        "恢复模式统一为 `rerun_pipeline_from_start`",
+        "不支持 `resume_from_failed_stage`",
+    )
+    if any(term not in workflow_text for term in required_workflow_terms) or (
+        "eligible for parallel execution" in workflow_text.lower()
+    ):
+        errors.append(f"{workflow_file}: MVP sequential and full-rerun semantics are not synchronized")
 
     customer_contract_file = (
         "phase1_5/assets/result_contracts/"
@@ -1725,7 +1764,7 @@ def validate_mvp_acceptance_semantics(
 
     expected_omission = {
         "trigger_not_met": ("normal_omission", False),
-        "qualified_customer_zero_rows": ("normal_omission", False),
+        "qualified_customer_zero_rows": ("normal_empty_record_set", False),
         "raw_query_zero_rows": ("source_or_routing_exception", True),
         "query_failure": ("source_or_routing_exception", True),
         "invalid_product_mapping": ("source_or_routing_exception", True),
@@ -1747,6 +1786,39 @@ def validate_mvp_acceptance_semantics(
                 "notify_owner"
             ) is not notify_owner:
                 errors.append(f"{container_file}: omission semantics invalid for {reason}")
+
+    generation = customer_contract.get("generation_policy", {})
+    if "qualified_customer_zero_rows" in generation.get("omit_contract_when", []) or generation.get(
+        "generate_when_valid_product_context_exists"
+    ) is not True or generation.get("customer_records_required_for_generation") is not False:
+        errors.append(f"{customer_contract_file}: qualified zero rows must retain the existing context Contract")
+    customer_record_set = next(
+        (
+            item
+            for item in customer_contract.get("record_sets", [])
+            if item.get("record_set_id") == "customer_delivery_changes"
+        ),
+        {},
+    )
+    zero_semantics = customer_record_set.get("zero_record_semantics", {})
+    if customer_record_set.get("context_field_materialization") != "record_set_header" or customer_record_set.get(
+        "context_fields_exist_independently_of_customer_records"
+    ) is not True or zero_semantics.get("allowed_when") != "qualified_customer_zero_rows" or zero_semantics.get(
+        "customer_record_count"
+    ) != 0 or zero_semantics.get("fabricated_customer_record_allowed") is not False:
+        errors.append(f"{customer_contract_file}: empty customer record-set context semantics are incomplete")
+    customer_outputs = customer.get("outputs", {})
+    if "qualified_customer_zero_rows" in customer_outputs.get(
+        "no_placeholder_result_contract_when", []
+    ) or customer_outputs.get("qualified_customer_zero_rows_result", {}).get(
+        "result_contract_generated"
+    ) is not True:
+        errors.append(f"{registry_file}:{customer_id}: qualified zero-row output must generate the existing Contract")
+    policy_generation = policy.get("failure_handling", {}).get("result_contract_generation", {})
+    if "qualified_customer_zero_rows" in policy_generation.get("omit_when", []) or policy_generation.get(
+        "generate_product_context_with_empty_customer_record_set_when"
+    ) != "qualified_customer_zero_rows":
+        errors.append(f"{policy_file}: qualified zero rows cannot omit the existing Contract")
 
     non_patch_file = (
         "phase1_5/assets/result_contracts/RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY.yaml"
@@ -1791,6 +1863,46 @@ def validate_mvp_acceptance_semantics(
     }:
         errors.append(f"{dau_file}: DAU fixed dimension must be platform_scope=full_platform")
 
+    dau_pipeline_id = "PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY"
+    dau_pipeline = pipelines.get(dau_pipeline_id, {})
+    dau_workflow_binding = next(
+        (
+            item
+            for item in dau_pipeline.get("workflow_bindings", [])
+            if item.get("workflow_id") == "WF_WEEKLY_BUSINESS_REPORT"
+        ),
+        {},
+    )
+    dau_dataset = next(
+        (
+            item
+            for item in dau_pipeline.get("dataset_dependencies", [])
+            if item.get("dataset_id") == "DS_NOVABI_PLATFORM_DAU"
+        ),
+        {},
+    )
+    if dau_workflow_binding.get("required_or_optional") != "optional":
+        errors.append(f"{registry_file}:{dau_pipeline_id}: Workflow binding must remain optional")
+    if dau_dataset.get("required") is not True or dau_dataset.get(
+        "required_scope"
+    ) != "pipeline_execution" or dau_dataset.get(
+        "workflow_pipeline_required_or_optional_remains"
+    ) != "optional":
+        errors.append(f"{registry_file}:{dau_pipeline_id}: DAU Dataset must be required at Pipeline execution")
+    dau_readiness = next(
+        (
+            item
+            for item in readiness.get("dataset_readiness", [])
+            if item.get("dataset_id") == "DS_NOVABI_PLATFORM_DAU"
+        ),
+        {},
+    )
+    dau_usage = dau_readiness.get("workflow_usage", {})
+    if dau_usage.get("usage_role") != "optional" or dau_usage.get(
+        "pipeline_execution_input_required"
+    ) is not True:
+        errors.append(f"{readiness_file}: DAU Workflow/Pipeline requiredness is inconsistent")
+
     store_file = "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
     stores = documents.get(store_file, {})
     strategy = stores.get("mvp_physical_store_adapter_strategy", {})
@@ -1819,6 +1931,54 @@ def validate_mvp_acceptance_semantics(
         )
     ):
         errors.append(f"{store_file}: MVP shared local SQLite strategy is incomplete")
+    physical_schema = strategy.get("physical_schema", {})
+    expected_schema_columns = [
+        "result_id",
+        "workflow_id",
+        "workflow_run_id",
+        "pipeline_id",
+        "pipeline_run_id",
+        "store_id",
+        "store_asset_id",
+        "metric_variant_id",
+        "metric_variant_version",
+        "reporting_period_start",
+        "reporting_period_end",
+        "dimensions_json",
+        "value_numeric",
+        "numeric_semantics",
+        "unit",
+        "integer_only",
+        "precision",
+        "validation_status",
+        "generated_at",
+    ]
+    actual_schema_columns = [
+        item.get("column_name")
+        for item in physical_schema.get("columns", [])
+        if isinstance(item, dict)
+    ]
+    expected_unique_key = [
+        "store_id",
+        "store_asset_id",
+        "metric_variant_id",
+        "metric_variant_version",
+        "reporting_period_start",
+        "reporting_period_end",
+        "dimensions_json",
+    ]
+    dimension_representation = physical_schema.get("dimension_representation", {})
+    idempotent_key = physical_schema.get("idempotent_unique_key", {})
+    if physical_schema.get("table_name") != "metric_results" or actual_schema_columns != expected_schema_columns or dimension_representation.get(
+        "format"
+    ) != "canonical_json_object" or dimension_representation.get("key_order") != "lexicographic" or dimension_representation.get(
+        "no_dimension_value"
+    ) != "{}" or idempotent_key.get("columns") != expected_unique_key or idempotent_key.get(
+        "same_key_same_value_action"
+    ) != "no_op_success" or idempotent_key.get("same_key_different_value_action") != "reject_write_notify_owner" or idempotent_key.get(
+        "automatic_overwrite_allowed"
+    ) is not False:
+        errors.append(f"{store_file}: shared SQLite minimum schema or idempotent key is incomplete")
     for store in stores.get("metric_result_stores", []):
         if store.get("store_id") in expected_store_ids and (
             store.get("storage_type") != "Shared local SQLite metric_results table"
@@ -1855,21 +2015,23 @@ def validate_mvp_acceptance_semantics(
         "multi_provider_architecture_required": False,
         "plugin_store_architecture_required": False,
         "complex_orm_required": False,
+        "physical_schema_contract_status": "confirmed",
+        "dimension_representation_status": "confirmed_canonical_json",
+        "idempotent_unique_key_status": "confirmed",
     }.items():
         if store_readiness_strategy.get(key) != expected:
             errors.append(f"{store_readiness_file}:mvp_physical_store_adapter_strategy.{key}: expected {expected!r}")
-
-    mvp_execution = registry.get("constraints", {}).get(
-        "mvp_product_scoped_execution", {}
-    )
-    if mvp_execution.get("first_phase_scheduling_mode") != "sequential" or mvp_execution.get(
-        "failed_run_recovery"
-    ) != "rerun_pipeline_from_start" or mvp_execution.get(
-        "parallel_scheduler_required"
-    ) is not False or mvp_execution.get("stage_checkpointing_required") is not False or mvp_execution.get(
-        "resume_from_failed_stage_required"
-    ) is not False:
-        errors.append(f"{registry_file}: lean MVP execution and recovery semantics are incomplete")
+    store_readiness = documents.get(store_readiness_file, {})
+    if store_readiness.get("gate_conclusion", {}).get(
+        "code_implementation_start"
+    ) != "wait_for_explicit_owner_approval":
+        errors.append(f"{store_readiness_file}: code implementation must wait for explicit Owner approval")
+    for record in store_readiness.get("readiness_records", []):
+        if record.get("store_id") in expected_store_ids and (
+            record.get("local_storage_contract_confirmed") is not True
+            or record.get("local_physical_store_initialized") is not False
+        ):
+            errors.append(f"{store_readiness_file}:{record.get('store_id')}: schema readiness and runtime initialization state conflict")
 
     dataset_file = "phase1_5/assets/datasets/dataset_inventory.yaml"
     dataset_document = documents.get(dataset_file, {})
@@ -1977,6 +2139,39 @@ def validate_customer_analysis_narrative_mapping(
     if narrative.get("fixed_consumed_result_fields") != expected_fields:
         errors.append(f"{mapping_file}: customer narrative must consume exactly eight fixed fields")
 
+    expected_field_scope = {
+        "record_set_header_context_fields": [
+            "target_ad_product_name",
+            "analysis_scenario",
+            "trigger_sell_through_wow_change_pp",
+            "applied_output_limit",
+        ],
+        "customer_record_fields": [
+            "customer_name",
+            "current_period_impression_count",
+            "impression_change_count",
+            "customer_rank",
+        ],
+    }
+    if narrative.get("result_field_scope") != expected_field_scope:
+        errors.append(f"{mapping_file}: fixed customer narrative field scopes are invalid")
+    consumption = narrative.get("contract_consumption_by_outcome", {})
+    qualified_zero = consumption.get("qualified_customer_zero_rows", {})
+    omitted_consumption = consumption.get("omitted_contract_outcomes", {})
+    if qualified_zero.get("result_contract_required") is not True or qualified_zero.get(
+        "consume_record_set_header_context"
+    ) is not True or qualified_zero.get("consume_customer_records") is not False or qualified_zero.get(
+        "template_mode"
+    ) != "product_change_only":
+        errors.append(f"{mapping_file}: qualified zero rows must consume only the existing Contract context")
+    if omitted_consumption.get("reasons") != [
+        "trigger_not_met",
+        "raw_query_zero_rows",
+        "query_failure",
+        "invalid_product_mapping",
+    ] or omitted_consumption.get("output_mapping_reads_omitted_contract") is not False:
+        errors.append(f"{mapping_file}: Output Mapping cannot read an omitted customer Contract")
+
     contract_file = (
         "phase1_5/assets/result_contracts/"
         "RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS.yaml"
@@ -2035,7 +2230,7 @@ def validate_customer_analysis_narrative_mapping(
     omissions = narrative.get("omission_and_empty_selection", {})
     expected_omissions = {
         "trigger_not_met": ("normal_omission", False),
-        "qualified_customer_zero_rows": ("normal_omission", False),
+        "qualified_customer_zero_rows": ("normal_empty_record_set", False),
         "raw_query_zero_rows": ("source_or_routing_exception", True),
         "query_failure": ("source_or_routing_exception", True),
         "invalid_product_mapping": ("source_or_routing_exception", True),
@@ -2052,6 +2247,42 @@ def validate_customer_analysis_narrative_mapping(
         "action", ""
     ):
         errors.append(f"{mapping_file}: qualified-customer empty result must not fabricate")
+
+    anchor_contract = mapping.get("output_target", {}).get(
+        "local_inventory_commentary_anchor_bindings", {}
+    )
+    expected_anchor_refs = {
+        "patch_and_similar_resource_commentary": (
+            "${WEEKLY_REPORT_PATCH_AND_SIMILAR_RESOURCE_COMMENTARY_ANCHOR_LOCAL_ONLY}",
+            "${WEEKLY_REPORT_PATCH_AND_SIMILAR_RESOURCE_COMMENTARY_PLACEHOLDER_LOCAL_ONLY}",
+        ),
+        "page_resource_commentary": (
+            "${WEEKLY_REPORT_PAGE_RESOURCE_COMMENTARY_ANCHOR_LOCAL_ONLY}",
+            "${WEEKLY_REPORT_PAGE_RESOURCE_COMMENTARY_PLACEHOLDER_LOCAL_ONLY}",
+        ),
+    }
+    actual_anchor_refs = {
+        item.get("output_field_id"): (
+            item.get("local_anchor_reference"),
+            item.get("local_placeholder_reference"),
+        )
+        for item in anchor_contract.get("anchors", [])
+        if isinstance(item, dict) and item.get("required") is True
+    }
+    anchor_validation = anchor_contract.get("runtime_presence_validation", {})
+    if anchor_contract.get("template_asset_id") != "TEMPLATE_WEEKLY_REPORT_0724_LOCAL_ONLY" or actual_anchor_refs != expected_anchor_refs or any(
+        anchor_validation.get(key) is not True
+        for key in (
+            "validate_before_output_assembly",
+            "resolved_template_file_must_exist",
+            "each_anchor_must_exist_exactly_once",
+            "each_placeholder_must_exist_exactly_once",
+            "anchor_must_contain_bound_placeholder",
+        )
+    ) or anchor_contract.get("rendering_scope") != "fixed_narrative_template_rendering_only" or anchor_contract.get(
+        "generic_anchor_discovery_allowed"
+    ) is not False or anchor_contract.get("generic_dynamic_renderer_allowed") is not False:
+        errors.append(f"{mapping_file}: local commentary anchor bindings are incomplete")
 
     prohibitions = narrative.get("implementation_prohibitions", {})
     required_prohibitions = {
@@ -2099,7 +2330,8 @@ def validate_customer_analysis_narrative_mapping(
         "latest_baseline_version_impact_review", {}
     )
     expected_impact_review = {
-        "review_date": "2026-08-06",
+        "review_date": "2026-08-08",
+        "behavior_or_output_change": False,
         "customer_analysis_output_strategy": "fixed_narrative_template_rendering",
         "customer_analysis_initial_mvp_status": "included",
         "physical_metric_store_strategy": "shared_local_sqlite",
@@ -2117,6 +2349,19 @@ def validate_customer_analysis_narrative_mapping(
             errors.append(f"{baseline_file}:latest_baseline_version_impact_review.{key}: expected {expected!r}")
     if documents.get(baseline_file, {}).get("baseline_version") != "1.0.0":
         errors.append(f"{baseline_file}: baseline_version must remain 1.0.0")
+    baseline_document = documents.get(baseline_file, {})
+    change_control = baseline_document.get("change_control", {})
+    pre_freeze_review = change_control.get(
+        "pre_freeze_customer_narrative_acceptance_review", {}
+    )
+    if str(baseline_document.get("freeze_date")) != "2026-08-08" or baseline_document.get(
+        "freeze_revision_status"
+    ) != "refrozen_after_acceptance_consistency_corrections" or change_control.get(
+        "baseline_is_logically_frozen"
+    ) is not True or change_control.get("repository_commit_binding_status") != "tracked_on_draft_pr_5_head" or pre_freeze_review.get(
+        "behavior_or_output_change"
+    ) is not True or pre_freeze_review.get("incorporated_before_current_freeze") is not True:
+        errors.append(f"{baseline_file}: frozen state and version-impact history are inconsistent")
 
     baseline_sequence = baseline_constraints.get("implementation_sequence", [])
     if baseline_constraints.get("mvp_execution_mode") != "sequential" or baseline_constraints.get(
@@ -2147,12 +2392,18 @@ def validate_customer_analysis_narrative_mapping(
         "mvp_recovery_mode": "rerun_pipeline_from_start",
         "development_complexity_reduction": True,
         "code_implementation_owner_approved": False,
+        "code_implementation_start": "wait_for_explicit_owner_approval",
+        "initial_mvp_pipeline_count_with_sequential_execution": 12,
+        "initial_mvp_pipeline_count_with_rerun_from_start": 12,
+        "customer_analysis_qualified_zero_row_contract_mode": "product_context_with_empty_customer_record_set",
+        "shared_metric_store_schema_status": "confirmed_runtime_not_initialized",
+        "inventory_commentary_template_anchor_binding_status": "confirmed_runtime_validation_required",
     }
     for key, expected in expected_status.items():
         if status_scope.get(key) != expected:
             errors.append(f"{status_file}:scope_boundaries.{key}: expected {expected!r}")
-    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-06":
-        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-06")
+    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-08":
+        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-08")
 
     output_gate_file = (
         "phase1_5/assets/output_mappings/"
@@ -2166,6 +2417,10 @@ def validate_customer_analysis_narrative_mapping(
         "customer_analysis_fixed_narrative_templates",
         "inventory_overview_precedes_customer_analysis_sentences",
         "customer_analysis_precomputed_rank_and_limit_consumption",
+        "customer_analysis_qualified_zero_rows_context_contract_consumable",
+        "customer_analysis_omitted_contract_not_read",
+        "inventory_commentary_local_template_anchors_explicit",
+        "inventory_commentary_runtime_anchor_presence_validation",
         "customer_analysis_dynamic_rendering_prohibited",
     }
     gate_checks = output_gate.get("gate_checks", {})
@@ -2187,6 +2442,10 @@ def validate_customer_analysis_narrative_mapping(
         "shared_local_sqlite"
     ) or entry.get("metric_store_table") != "metric_results":
         errors.append(f"{code_gate_file}: lean MVP entry semantics are incomplete")
+    if entry.get("code_implementation_start") != "wait_for_explicit_owner_approval" or code_gate.get(
+        "scope", {}
+    ).get("implementation_baseline_status") != "frozen_awaiting_explicit_owner_code_implementation_approval":
+        errors.append(f"{code_gate_file}: implementation authorization and frozen baseline state conflict")
 
     return 1
 
@@ -2331,7 +2590,13 @@ def validate_implementation_baseline(
         checked += 1
 
     baseline_index = status_index.get("implementation_baseline", {})
-    for key in ("baseline_id", "baseline_version", "status"):
+    for key in (
+        "baseline_id",
+        "baseline_version",
+        "status",
+        "freeze_date",
+        "freeze_revision_status",
+    ):
         if baseline_index.get(key) != baseline.get(key):
             errors.append(
                 f"{status_file}:implementation_baseline.{key}: does not match baseline asset"
@@ -2350,6 +2615,44 @@ def validate_implementation_baseline(
         if container.get(key) is not False:
             errors.append(f"Implementation Baseline approval gate requires {key}=false")
         checked += 1
+
+    store_gate_file = (
+        "phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml"
+    )
+    store_gate = documents.get(store_gate_file, {})
+    if store_gate.get("gate_conclusion", {}).get(
+        "code_implementation_start"
+    ) != "wait_for_explicit_owner_approval" or gate_decision.get(
+        "code_implementation_start"
+    ) != "wait_for_explicit_owner_approval":
+        errors.append("Metric Store and final Code Implementation Gates must both wait for explicit Owner approval")
+    checked += 1
+
+    stale_publication_paths: list[str] = []
+
+    def find_stale_publication_state(value: Any, path: str = "") -> None:
+        if isinstance(value, dict):
+            if value.get("committed_or_pushed") is False:
+                stale_publication_paths.append(path or "<root>")
+            for key, child in value.items():
+                find_stale_publication_state(child, f"{path}.{key}" if path else str(key))
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                find_stale_publication_state(child, f"{path}[{index}]")
+
+    for file, document in documents.items():
+        if file.startswith("phase1_5/assets/"):
+            find_stale_publication_state(document, file)
+    if stale_publication_paths:
+        errors.append(
+            "stale committed_or_pushed=false states remain: "
+            + ", ".join(stale_publication_paths)
+        )
+    if baseline.get("change_control", {}).get(
+        "repository_commit_binding_status"
+    ) != "tracked_on_draft_pr_5_head":
+        errors.append(f"{baseline_file}: repository publication state is stale")
+    checked += 1
 
     expected_counts = {
         "external_asset_reference_count": len(

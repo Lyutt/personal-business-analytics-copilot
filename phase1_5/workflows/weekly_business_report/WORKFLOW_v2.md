@@ -2,7 +2,7 @@
 
 > Workflow_ID：`WF_WEEKLY_BUSINESS_REPORT`
 >
-> Version：`0.2.4-implementation-baseline`
+> Version：`0.2.5-acceptance-correction`
 >
 > Status：Phase 1.5 assets complete / Result Contract Gate Passed / Inventory and Advertising Policy Gate Passed / Implementation Baseline 1.0.0 Frozen
 >
@@ -124,7 +124,7 @@ stateDiagram-v2
 - Mapping、Rule、Metric Variant 和 Validation 版本。
 - Required/Optional 属性。
 - Attempt。
-- 异常和补跑起点。
+- 异常、Attempt 和整条 Pipeline 重跑记录。
 
 ### Pipeline 状态矩阵
 
@@ -138,14 +138,15 @@ stateDiagram-v2
 
 ### 补跑规则
 
-- Source 或获取失败：从 `DATA_COLLECTION` 补跑该 Pipeline。
-- Mapping 修复：从 `DATA_STANDARDIZATION` 补跑该 Pipeline。
-- Rule 修复：从 `BUSINESS_RULE_PROCESSING` 补跑该 Pipeline。
-- Metric Variant 修复：从 `METRIC_CALCULATION` 补跑该 Pipeline。
-- Output Mapping 修复：只重跑 Output Assembly；上游 Validated Result Contract 不变。
-- 默认不重跑其他已成功 Pipeline。
+- 首个 MVP 的 12 个 Pipeline 全部按 Registry 登记顺序 `sequential` 执行。
+- 不存在并行执行资格；不实现并行 Pipeline 调度。
+- 任一 Pipeline 失败后的恢复模式统一为 `rerun_pipeline_from_start`。
+- 重跑从该 Pipeline 的首个适用执行阶段开始，并必须保持幂等；Attempt 递增。
+- 不实现阶段级 Checkpoint，也不支持 `resume_from_failed_stage`。
+- 默认不重跑其他已成功 Pipeline；仅当显式依赖结果失效时，后续按 Registry 顺序重跑受影响 Pipeline。
+- Output Assembly 不是 Pipeline 阶段续跑；若上游 Validated Result Contract 仍有效，可单独重新组装固定输出。
 
-跨 Pipeline 依赖导致下游结果失效时，只重跑显式依赖图中的受影响 Pipeline。
+以上运行语义以 `pipeline_registry.yaml.constraints.mvp_pipeline_execution` 为唯一配置来源。
 
 ## 7. 通用 Pipeline 执行阶段
 

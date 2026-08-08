@@ -99,10 +99,11 @@ failure_handling:
     block_weekly_report: false
     product_customer_analysis_action: Do not execute customer query or generate a Result Contract
   qualified_customer_zero_rows:
-    classification: normal_omission
+    classification: normal_empty_record_set
     notify_owner: false
     fail_pipeline: false
     block_weekly_report: false
+    result_contract_action: Generate the validated product-level context with an empty customer record set
     product_customer_analysis_action: Keep the product sell-through change commentary without fabricated customer content
   raw_query_zero_rows:
     classification: source_or_routing_exception
@@ -127,7 +128,8 @@ failure_handling:
     auto_fallback_to_similar_product: false
   result_contract_generation:
     generate_placeholder_or_null_contract: false
-    omit_when: [trigger_not_met, qualified_customer_zero_rows, raw_query_zero_rows, query_failure, invalid_product_mapping]
+    omit_when: [trigger_not_met, raw_query_zero_rows, query_failure, invalid_product_mapping]
+    generate_product_context_with_empty_customer_record_set_when: qualified_customer_zero_rows
     continue_weekly_workflow: true
 
 output_boundary:
@@ -153,4 +155,4 @@ governance:
   owner: WORKFLOW_OWNER
   business_approver: WORKFLOW_OWNER
   actual_customer_rows_must_remain_local_only: true
-  committed_or_pushed: false
+  committed_or_pushed: true

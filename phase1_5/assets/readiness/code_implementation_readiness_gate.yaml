@@ -2,7 +2,7 @@ config_type: code_implementation_readiness_gate
 gate_id: GATE_CODE_IMPLEMENTATION_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 assessment_date: 2026-08-03
-last_semantic_sync_date: 2026-08-06
+last_semantic_sync_date: 2026-08-08
 status: ready_awaiting_explicit_owner_approval
 gate_result: ready_awaiting_explicit_owner_approval
 owner: WORKFLOW_OWNER
@@ -17,7 +17,7 @@ scope:
   code_implementation_started: false
   implementation_baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
   implementation_baseline_version: 1.0.0
-  implementation_baseline_status: frozen
+  implementation_baseline_status: frozen_awaiting_explicit_owner_code_implementation_approval
 
 prerequisite_gate_results:
   - gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1
@@ -66,7 +66,8 @@ implementation_readiness_checks:
   personal_and_business_data_git_boundary: pass
   metric_store_logical_contracts: pass
   metric_store_runtime_bootstrap: conditional
-  mvp_product_scoped_execution_is_sequential: pass
+  all_initial_mvp_pipelines_execute_sequentially: pass
+  all_initial_mvp_pipelines_rerun_from_start: pass
   mvp_stage_checkpointing_not_required: pass
   shared_local_sqlite_metric_store_contract: pass
   single_metric_results_table_with_logical_discriminators: pass
@@ -75,11 +76,19 @@ implementation_readiness_checks:
   mvp_implementation_sequence_fixed: pass
   customer_analysis_metric_variant_not_applicable: pass
   customer_analysis_omission_semantics_synchronized: pass
+  customer_analysis_zero_qualified_rows_contract_context_available: pass
+  output_mapping_never_reads_omitted_customer_contract: pass
   reference_key_type_semantics_synchronized: pass
   customer_analysis_fixed_narrative_rendering: pass
   customer_analysis_inventory_commentary_positions_fixed: pass
   customer_analysis_dynamic_table_engine_prohibited: pass
   customer_analysis_fixed_narrative_semantics_synchronized: pass
+  shared_local_sqlite_minimum_schema_confirmed: pass
+  shared_local_sqlite_dimension_representation_confirmed: pass
+  shared_local_sqlite_idempotent_unique_key_confirmed: pass
+  local_template_commentary_anchor_bindings_confirmed: pass
+  baseline_freeze_and_version_impact_consistent: pass
+  stale_publication_status_absent: pass
 
 implementation_entry_decision:
   asset_baseline_ready: true
@@ -101,6 +110,7 @@ implementation_entry_decision:
   multi_provider_store_implemented: false
   plugin_store_architecture_implemented: false
   complex_orm_implemented: false
+  code_implementation_start: wait_for_explicit_owner_approval
   business_logic_auto_completion_allowed: false
   unknown_tbd_auto_resolution_allowed: false
   external_side_effects_require_runtime_confirmation: true

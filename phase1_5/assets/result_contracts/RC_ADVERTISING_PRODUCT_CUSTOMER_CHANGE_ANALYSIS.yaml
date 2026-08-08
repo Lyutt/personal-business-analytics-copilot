@@ -11,20 +11,20 @@ contract_shape: record_set
 analysis_only_pipeline: true
 metric_variant_required: false
 generation_policy:
-  generate_only_when_valid_records_exist: true
+  generate_when_valid_product_context_exists: true
+  customer_records_required_for_generation: false
   omit_contract_when:
     - trigger_not_met
-    - qualified_customer_zero_rows
     - raw_query_zero_rows
     - query_failure
     - invalid_product_mapping
   omission_semantics:
     trigger_not_met: { classification: normal_omission, notify_owner: false, fail_pipeline: false, continue_weekly_workflow: true }
-    qualified_customer_zero_rows: { classification: normal_omission, notify_owner: false, fail_pipeline: false, retain_product_change_commentary: true, fabricate_customer_content: false, continue_weekly_workflow: true }
+    qualified_customer_zero_rows: { classification: normal_empty_record_set, notify_owner: false, fail_pipeline: false, generate_product_context_contract: true, retain_product_change_commentary: true, fabricate_customer_content: false, continue_weekly_workflow: true }
     raw_query_zero_rows: { classification: source_or_routing_exception, notify_owner: true, omit_target_product_analysis_only: true, continue_weekly_workflow: true }
     query_failure: { classification: source_or_routing_exception, notify_owner: true, omit_target_product_analysis_only: true, continue_weekly_workflow: true }
     invalid_product_mapping: { classification: source_or_routing_exception, notify_owner: true, omit_target_product_analysis_only: true, continue_weekly_workflow: true }
-  omitted_contract_behavior: Apply the explicit omission semantics without generating a placeholder or null Contract.
+  omitted_contract_behavior: Apply the explicit omission semantics without generating a placeholder or null Contract; qualified_customer_zero_rows is not an omitted Contract outcome.
 record_sets:
   - record_set_id: customer_delivery_changes
     record_grain: [target_ad_product_name, current_reporting_period, customer_id]
@@ -33,6 +33,14 @@ record_sets:
         dimension_type: period_range
         start_field_id: current_period_start_date
         end_field_id: current_period_end_date
+    context_field_materialization: record_set_header
+    context_fields_exist_independently_of_customer_records: true
+    zero_record_semantics:
+      allowed_when: qualified_customer_zero_rows
+      required_context_field_ids: [target_ad_product_name, analysis_scenario, trigger_sell_through_wow_change_pp]
+      customer_record_count: 0
+      fabricated_customer_record_allowed: false
+      output_use: fixed_product_change_only_narrative
     cross_period_customer_match_key: customer_id
     customer_name_fuzzy_matching_allowed: false
     missing_side_impression_count: 0
@@ -296,12 +304,15 @@ contract_fields: []
 mode_semantics: { allowed_value_statuses: [valid_value, missing, calculation_failed, not_applicable, pending_confirmation], missing_must_not_be_mapped_to_not_applicable: true }
 validation:
   producer_pipeline_validation_required: true
-  required_fields: [customer_delivery_changes.target_ad_product_name, customer_delivery_changes.analysis_scenario, customer_delivery_changes.current_period_start_date, customer_delivery_changes.current_period_end_date, customer_delivery_changes.comparison_period_start_date, customer_delivery_changes.comparison_period_end_date, customer_delivery_changes.trigger_sell_through_wow_change_pp, customer_delivery_changes.applied_trigger_threshold_pp, customer_delivery_changes.selection_basis, customer_delivery_changes.applied_materiality_threshold_count, customer_delivery_changes.applied_output_limit, customer_delivery_changes.customer_id, customer_delivery_changes.customer_name, customer_delivery_changes.current_period_impression_count, customer_delivery_changes.comparison_period_impression_count, customer_delivery_changes.impression_change_count, customer_delivery_changes.ranking_measure, customer_delivery_changes.customer_rank]
-  conditional_fields: []
+  required_fields: [customer_delivery_changes.target_ad_product_name, customer_delivery_changes.analysis_scenario, customer_delivery_changes.current_period_start_date, customer_delivery_changes.current_period_end_date, customer_delivery_changes.comparison_period_start_date, customer_delivery_changes.comparison_period_end_date, customer_delivery_changes.trigger_sell_through_wow_change_pp, customer_delivery_changes.applied_trigger_threshold_pp, customer_delivery_changes.selection_basis, customer_delivery_changes.applied_materiality_threshold_count, customer_delivery_changes.applied_output_limit]
+  conditional_fields:
+    - condition: customer_delivery_changes contains one or more customer records
+      field_ids: [customer_delivery_changes.customer_id, customer_delivery_changes.customer_name, customer_delivery_changes.current_period_impression_count, customer_delivery_changes.comparison_period_impression_count, customer_delivery_changes.impression_change_count, customer_delivery_changes.ranking_measure, customer_delivery_changes.customer_rank]
   exact_customer_id_cross_period_match_required: true
   customer_name_fuzzy_match_prohibited: true
   customer_name_conflict_exclusion_required: true
-  omit_empty_or_invalid_contract_required: true
+  omit_invalid_contract_required: true
+  empty_customer_record_set_allowed_only_for: qualified_customer_zero_rows
   unit_validation: true
   data_type_validation: true
   numeric_constraint_validation: true

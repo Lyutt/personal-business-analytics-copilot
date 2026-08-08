@@ -2,8 +2,9 @@ config_type: implementation_baseline
 baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
 baseline_version: 1.0.0
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-freeze_date: 2026-08-03
+freeze_date: 2026-08-08
 status: frozen_awaiting_explicit_owner_code_implementation_approval
+freeze_revision_status: refrozen_after_acceptance_consistency_corrections
 owner: WORKFLOW_OWNER
 source_main_commit_sha: 7a6c6d007fd0e84a3d65193c1c9e60b9c3d7ddd2
 source_branch: main
@@ -115,15 +116,19 @@ mvp_development_constraints:
 
 change_control:
   baseline_is_logically_frozen: true
-  repository_commit_binding_status: pending_owner_review_and_commit
+  repository_commit_binding_status: tracked_on_draft_pr_5_head
+  frozen_content_includes_customer_fixed_narrative_strategy: true
+  frozen_content_includes_shared_local_sqlite_contract: true
+  post_freeze_behavior_or_output_change_requires_version_review: true
   any_asset_change_requires:
     - Baseline version impact review
     - Re-run repository safety validation
     - Re-run asset integrity validation
     - Owner review before Code Implementation approval
   latest_baseline_version_impact_review:
-    review_date: 2026-08-06
-    change_class: lean_mvp_readiness_semantics_acceptance
+    review_date: 2026-08-08
+    change_class: cross_asset_acceptance_consistency_correction
+    behavior_or_output_change: false
     customer_analysis_output_strategy: fixed_narrative_template_rendering
     customer_analysis_initial_mvp_status: included
     physical_metric_store_strategy: shared_local_sqlite
@@ -132,14 +137,17 @@ change_control:
     development_complexity_reduction: true
     code_implementation_owner_approved: false
     baseline_version_increment_required: false
-    rationale: Acceptance semantics are clarified and MVP implementation complexity is reduced without changing the frozen 1.0.0 business baseline or granting Code Implementation approval.
-  current_acceptance_fix_version_impact_review:
+    baseline_freeze_action: refreeze_same_version_after_non_behavioral_consistency_corrections
+    rationale: The correction removes contradictory execution, empty-result consumption, readiness, template-binding, and publication-state representations without changing approved formulas, thresholds, mappings, output order, or fixed narrative text.
+  pre_freeze_customer_narrative_acceptance_review:
     review_date: 2026-08-06
     change_class: customer_analysis_fixed_narrative_output_acceptance
     behavior_or_output_change: true
+    incorporated_before_current_freeze: true
+    current_frozen_baseline_includes_change: true
     code_implementation_started: false
     baseline_version_increment_required: false
-    rationale: The Draft baseline now fixes the approved Inventory commentary locations and removes the unimplemented Revenue dynamic-table approach before Owner code implementation approval.
+    rationale: The Owner-approved fixed narrative strategy was incorporated before the current 2026-08-08 freeze of baseline 1.0.0.
   force_push_allowed: false
   auto_merge_allowed: false
   automatic_next_stage_allowed: false

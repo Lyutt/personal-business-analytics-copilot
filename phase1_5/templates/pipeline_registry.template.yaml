@@ -47,7 +47,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     governance:

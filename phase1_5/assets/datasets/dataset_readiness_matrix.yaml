@@ -174,7 +174,10 @@ dataset_readiness:
     source_id: SRC_INTERNAL_PLATFORM_NOVABI
     query_asset_id: QRY_NOVABI_DAU_QUERY
     registration_status: confirmed
-    workflow_usage: { usage_role: optional, report_section_or_usage: Weekly Business Report Inventory Section - Overall DAU change }
+    workflow_usage:
+      usage_role: optional
+      report_section_or_usage: Weekly Business Report Inventory Section - Overall DAU change
+      pipeline_execution_input_required: true
     readiness:
       status: conditional
       blocking_tbd_items: []
@@ -182,7 +185,10 @@ dataset_readiness:
         - NovaBI account switching may require manual action
         - Missing DAU output is allowed and may remain blank
     standardization: { status: completed, exceptions: [] }
-    gate: { pipeline_registry_eligible: allow, decision_reason: Optional dataset with confirmed blank-and-continue fallback, owner: BI Team }
+    gate:
+      pipeline_registry_eligible: allow
+      decision_reason: Workflow Pipeline is optional, but DS_NOVABI_PLATFORM_DAU is required whenever PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY executes; blank-and-continue applies only after the optional Pipeline fails.
+      owner: BI Team
 
   - dataset_id: DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
     source_id: SRC_INTERNAL_PLATFORM_APOLLO

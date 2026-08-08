@@ -120,4 +120,4 @@ approval:
   calculation_rules: Confirmed
   owner_confirmation: confirmed_complete
   readiness_status: Passed
-  committed_or_pushed: false
+  committed_or_pushed: true

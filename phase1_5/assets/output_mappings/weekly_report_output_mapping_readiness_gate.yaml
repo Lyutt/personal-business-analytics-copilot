@@ -2,7 +2,7 @@ config_type: output_mapping_readiness_gate
 gate_id: GATE_OUTPUT_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 assessment_date: 2026-08-03
-last_semantic_sync_date: 2026-08-06
+last_semantic_sync_date: 2026-08-08
 status: passed
 gate_result: passed
 owner: WORKFLOW_OWNER
@@ -32,6 +32,10 @@ gate_checks:
   inventory_overview_precedes_customer_analysis_sentences: pass
   customer_analysis_precomputed_rank_and_limit_consumption: pass
   customer_analysis_normal_omission_and_exception_semantics: pass
+  customer_analysis_qualified_zero_rows_context_contract_consumable: pass
+  customer_analysis_omitted_contract_not_read: pass
+  inventory_commentary_local_template_anchors_explicit: pass
+  inventory_commentary_runtime_anchor_presence_validation: pass
   customer_analysis_dynamic_rendering_prohibited: pass
   output_assembly_calculation_disabled: pass
   output_assembly_business_rule_evaluation_disabled: pass

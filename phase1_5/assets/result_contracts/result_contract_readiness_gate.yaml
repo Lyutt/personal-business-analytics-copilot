@@ -40,6 +40,8 @@ gate_checks:
   analysis_only_metric_variant_binding_not_applicable: pass
   analysis_only_metric_variant_versions_empty: pass
   customer_analysis_omission_semantics_explicit: pass
+  customer_analysis_qualified_zero_rows_uses_existing_context_contract: pass
+  customer_analysis_empty_record_set_does_not_fabricate_customer: pass
   customer_id_exact_cross_period_matching_required: pass
   empty_customer_analysis_contract_prohibited: pass
   automatic_business_inference_disabled: pass

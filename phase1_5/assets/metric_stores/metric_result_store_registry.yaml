@@ -10,6 +10,55 @@ mvp_physical_store_adapter_strategy:
   physical_store_file_created_by_this_configuration_change: false
   shared_table_name: metric_results
   logical_store_discriminator_fields: [store_id, store_asset_id]
+  row_grain: one validated Metric Variant result for one reporting period and one canonical dimension set
+  physical_schema:
+    table_name: metric_results
+    columns:
+      - { column_name: result_id, sqlite_type: TEXT, nullable: false, role: lineage_identifier }
+      - { column_name: workflow_id, sqlite_type: TEXT, nullable: false, role: lineage_identifier }
+      - { column_name: workflow_run_id, sqlite_type: TEXT, nullable: false, role: lineage_identifier }
+      - { column_name: pipeline_id, sqlite_type: TEXT, nullable: false, role: lineage_identifier }
+      - { column_name: pipeline_run_id, sqlite_type: TEXT, nullable: false, role: lineage_identifier }
+      - { column_name: store_id, sqlite_type: TEXT, nullable: false, role: logical_store_discriminator }
+      - { column_name: store_asset_id, sqlite_type: TEXT, nullable: false, role: logical_store_asset_discriminator }
+      - { column_name: metric_variant_id, sqlite_type: TEXT, nullable: false, role: metric_identity }
+      - { column_name: metric_variant_version, sqlite_type: TEXT, nullable: false, role: metric_version }
+      - { column_name: reporting_period_start, sqlite_type: TEXT, nullable: false, format: YYYY-MM-DD }
+      - { column_name: reporting_period_end, sqlite_type: TEXT, nullable: false, format: YYYY-MM-DD }
+      - { column_name: dimensions_json, sqlite_type: TEXT, nullable: false, role: canonical_dimensions }
+      - { column_name: value_numeric, sqlite_type: NUMERIC, nullable: false, role: validated_metric_value }
+      - { column_name: numeric_semantics, sqlite_type: TEXT, nullable: false, role: numeric_business_constraint }
+      - { column_name: unit, sqlite_type: TEXT, nullable: false, role: business_unit }
+      - { column_name: integer_only, sqlite_type: INTEGER, nullable: false, check: "value in [0, 1]" }
+      - { column_name: precision, sqlite_type: TEXT, nullable: false, role: precision_contract }
+      - { column_name: validation_status, sqlite_type: TEXT, nullable: false, allowed_values: [passed] }
+      - { column_name: generated_at, sqlite_type: TEXT, nullable: false, format: ISO-8601 }
+    dimension_representation:
+      storage_column: dimensions_json
+      format: canonical_json_object
+      key_semantics: Result Contract dimension or record-grain field ID
+      value_semantics: JSON scalar preserving standardized value
+      key_order: lexicographic
+      whitespace: compact
+      no_dimension_value: '{}'
+      pre_write_json_validation_required: true
+    idempotent_unique_key:
+      columns: [store_id, store_asset_id, metric_variant_id, metric_variant_version, reporting_period_start, reporting_period_end, dimensions_json]
+      same_key_same_value_action: no_op_success
+      same_key_different_value_action: reject_write_notify_owner
+      automatic_overwrite_allowed: false
+    sqlite_ddl_contract: >-
+      CREATE TABLE IF NOT EXISTS metric_results (
+      result_id TEXT NOT NULL, workflow_id TEXT NOT NULL, workflow_run_id TEXT NOT NULL,
+      pipeline_id TEXT NOT NULL, pipeline_run_id TEXT NOT NULL, store_id TEXT NOT NULL,
+      store_asset_id TEXT NOT NULL, metric_variant_id TEXT NOT NULL,
+      metric_variant_version TEXT NOT NULL, reporting_period_start TEXT NOT NULL,
+      reporting_period_end TEXT NOT NULL, dimensions_json TEXT NOT NULL,
+      value_numeric NUMERIC NOT NULL, numeric_semantics TEXT NOT NULL, unit TEXT NOT NULL,
+      integer_only INTEGER NOT NULL CHECK (integer_only IN (0,1)), precision TEXT NOT NULL,
+      validation_status TEXT NOT NULL CHECK (validation_status = 'passed'), generated_at TEXT NOT NULL,
+      UNIQUE (store_id, store_asset_id, metric_variant_id, metric_variant_version,
+      reporting_period_start, reporting_period_end, dimensions_json));
   applies_to_logical_store_ids:
     - STORE_WEEKLY_INVENTORY_HISTORICAL
     - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
@@ -20,6 +69,7 @@ mvp_physical_store_adapter_strategy:
   multi_provider_architecture_required: false
   plugin_store_architecture_required: false
   complex_orm_required: false
+  schema_change_requires_owner_review: true
 
 metric_result_stores:
   - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
@@ -298,7 +348,7 @@ metric_result_stores:
           - MV_INVENTORY_FULL_SITE_PERFORMANCE_DELIVERY_VOLUME_V1
           - MV_INVENTORY_FULL_SITE_COMMERCIAL_DELIVERY_VOLUME_V1
           - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_WOW_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PATCH
         business_context: Patch Weekly Inventory
@@ -310,7 +360,7 @@ metric_result_stores:
           - MV_INVENTORY_PATCH_PERFORMANCE_DELIVERY_VOLUME_V1
           - MV_INVENTORY_PATCH_COMMERCIAL_DELIVERY_VOLUME_V1
           - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_WOW_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT
         business_context: Non-patch Product Weekly Inventory
@@ -323,7 +373,7 @@ metric_result_stores:
           - MV_INVENTORY_NON_PATCH_PRODUCT_COMMERCIAL_DELIVERY_VOLUME_V1
           - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_WOW_V1
           - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
         business_context: Brand Moment Weekly Sell-through
@@ -331,7 +381,7 @@ metric_result_stores:
           - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1
           - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1
           - MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
       - store_asset_id: STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH
         business_context: Product-scoped Weekly Sell-through excluding Brand Moment
@@ -341,7 +391,7 @@ metric_result_stores:
           - MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1
           - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1
           - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
 
   - store_id: STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
@@ -371,7 +421,7 @@ metric_result_stores:
           - MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1
           - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1
           - MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
 
   - store_id: STORE_WEEKLY_ADVERTISING_HISTORICAL
@@ -408,7 +458,7 @@ metric_result_stores:
           - Brand Moment sell-through result
         required_metric_variant_ids:
           - MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1
-        physical_schema_status: pending_local_runtime_configuration
+        physical_schema_status: shared_metric_results_schema_confirmed_runtime_not_initialized
         lifecycle_status: Registered
 
 notes:

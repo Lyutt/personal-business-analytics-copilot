@@ -27,6 +27,10 @@ mvp_physical_store_adapter_strategy:
   physical_store_file_created_by_this_configuration_change: false
   shared_table_name: metric_results
   logical_store_discriminator_fields: [store_id, store_asset_id]
+  physical_schema_contract_source: phase1_5/assets/metric_stores/metric_result_store_registry.yaml#mvp_physical_store_adapter_strategy.physical_schema
+  physical_schema_contract_status: confirmed
+  dimension_representation_status: confirmed_canonical_json
+  idempotent_unique_key_status: confirmed
   applies_to_logical_store_ids:
     - STORE_WEEKLY_INVENTORY_HISTORICAL
     - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
@@ -65,12 +69,13 @@ readiness_records:
     runtime_execution_gate: runtime_bootstrap_blocked
     runtime_gate_reason: >-
       Metric Variant bindings and Pipeline recovery policies are confirmed, but
-      the local physical format, location and schema for five Store Assets have
-      not been configured.
+      the shared SQLite schema is confirmed, but the local SQLite file and
+      metric_results table have not been initialized after Owner approval.
     pipeline_binding_count: 5
     store_asset_count: 5
     metric_and_formula_definitions_confirmed: true
-    local_storage_contract_confirmed: false
+    local_storage_contract_confirmed: true
+    local_physical_store_initialized: false
     blocking_runtime_items:
       - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
       - Initialize the shared local SQLite metric_results table after Owner approves Code Implementation
@@ -83,12 +88,13 @@ readiness_records:
     implementation_readiness_gate: pass
     runtime_execution_gate: runtime_bootstrap_blocked
     runtime_gate_reason: >-
-      DAU Metric Variants and fallback behavior are confirmed, but the local
-      physical store has not been initialized.
+      DAU Metric Variants, shared schema and fallback behavior are confirmed,
+      but the local SQLite file has not been initialized.
     pipeline_binding_count: 1
     store_asset_count: 1
     metric_and_formula_definitions_confirmed: true
-    local_storage_contract_confirmed: false
+    local_storage_contract_confirmed: true
+    local_physical_store_initialized: false
     blocking_runtime_items:
       - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
       - Bind the Store Asset to the shared metric_results table through store_id and store_asset_id
@@ -100,12 +106,13 @@ readiness_records:
     implementation_readiness_gate: pass
     runtime_execution_gate: runtime_bootstrap_blocked
     runtime_gate_reason: >-
-      The Brand Moment exposure result contract is confirmed and its write
-      failure is non-blocking, but the local physical store has not been initialized.
+      The Brand Moment exposure result contract and shared schema are confirmed
+      and its write failure is non-blocking, but the local SQLite file has not been initialized.
     pipeline_binding_count: 1
     store_asset_count: 1
     metric_and_formula_definitions_confirmed: true
-    local_storage_contract_confirmed: false
+    local_storage_contract_confirmed: true
+    local_physical_store_initialized: false
     workflow_runtime_impact: non_blocking_persistence_warning
     blocking_runtime_items:
       - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
@@ -123,7 +130,7 @@ summary:
 
 gate_conclusion:
   metric_store_implementation_contracts: pass
-  code_implementation_start: allow
+  code_implementation_start: wait_for_explicit_owner_approval
   end_to_end_runtime_acceptance: conditional
   runtime_acceptance_blocker_count: 3
   blocker_scope:

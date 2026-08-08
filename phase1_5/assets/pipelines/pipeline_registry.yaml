@@ -136,7 +136,7 @@ pipelines:
         execution_order_or_dependency: >
           Thursday 17:30 revenue-stage pipeline.
           No predecessor dependency on CTV, Smart Speaker, or Fast Version
-          revenue pipelines; eligible for parallel execution.
+          revenue pipelines; execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -245,7 +245,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -311,7 +315,7 @@ pipelines:
         execution_order_or_dependency: >
           Thursday 17:30 revenue-stage pipeline.
           No predecessor dependency on Technical Line, Smart Speaker, or Fast
-          Version revenue pipelines; eligible for parallel execution.
+          Version revenue pipelines; execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -416,7 +420,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -479,7 +487,7 @@ pipelines:
         execution_order_or_dependency: >
           Thursday 17:30 revenue-stage pipeline.
           No predecessor dependency on the other revenue pipelines;
-          eligible for parallel execution.
+          execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -600,7 +608,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -662,7 +674,7 @@ pipelines:
         execution_order_or_dependency: >
           Thursday 17:30 revenue-stage pipeline.
           No predecessor dependency on the other revenue pipelines;
-          eligible for parallel execution.
+          execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -783,7 +795,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -946,7 +962,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     governance:
@@ -999,7 +1019,7 @@ pipelines:
         execution_order_or_dependency: >
           Friday 10:30 inventory-stage pipeline.
           No predecessor dependency on the other normal inventory pipelines;
-          eligible for parallel execution.
+          execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -1101,7 +1121,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -1163,7 +1187,7 @@ pipelines:
         execution_order_or_dependency: >
           Friday 10:30 inventory-stage pipeline.
           No predecessor dependency on the other normal inventory pipelines;
-          eligible for parallel execution.
+          execute sequentially in the registered MVP order.
         failure_handling:
           immediate_action:
             - Notify owner of the failure reason
@@ -1265,7 +1289,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -1422,7 +1450,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     cross_pipeline_dependencies:
@@ -1564,7 +1596,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       upstream_rerun_required_only_if_contract_invalidated: true
       downstream_impact_rule: explicit_dependency_graph_only
 
@@ -1631,7 +1667,9 @@ pipelines:
         query_asset_id: QRY_NOVABI_DAU_QUERY
         dataset_version_constraint: TBD
         dependency_role: Full-platform daily DAU input
-        required: false
+        required: true
+        required_scope: pipeline_execution
+        workflow_pipeline_required_or_optional_remains: optional
         join_or_relationship_rule_id: TBD
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
@@ -1707,7 +1745,11 @@ pipelines:
 
     recovery:
       retry_scope: pipeline_only
-      resume_from_failed_stage: true
+      recovery_mode: rerun_pipeline_from_start
+      resume_from_failed_stage: false
+      restart_from_pipeline_start: true
+      restart_must_be_idempotent: true
+      stage_checkpoint_persistence_required: false
       downstream_impact_rule: explicit_dependency_graph_only
 
     governance:
@@ -1767,10 +1809,10 @@ pipelines:
             fail_pipeline: false
             action: Do not execute the customer query or generate an empty Contract
           qualified_customer_zero_rows:
-            classification: normal_omission
+            classification: normal_empty_record_set
             notify_owner: false
             fail_pipeline: false
-            action: Retain product change commentary without fabricated customer content
+            action: Generate the validated product-level Contract context with an empty customer record set so fixed product-change-only commentary remains available
           raw_query_zero_rows:
             classification: source_or_routing_exception
             notify_owner: true
@@ -1892,10 +1934,14 @@ pipelines:
         - customer_id
       no_placeholder_result_contract_when:
         - trigger_not_met
-        - qualified_customer_zero_rows
         - raw_query_zero_rows
         - query_failure
         - invalid_product_mapping
+      qualified_customer_zero_rows_result:
+        result_contract_generated: true
+        product_level_contract_fields_required: true
+        customer_record_set_row_count: 0
+        fabricated_customer_record_allowed: false
       omitted_result_behavior: Apply explicit normal-omission or exception notification semantics and continue Weekly Workflow
       output_mapping_ids:
         - OM_WEEKLY_BUSINESS_REPORT_V1
@@ -1903,6 +1949,7 @@ pipelines:
 
     recovery:
       retry_scope: One product-scoped Pipeline Run only
+      recovery_mode: rerun_pipeline_from_start
       resume_from_failed_stage: false
       restart_from_pipeline_start: true
       restart_must_be_idempotent: true
@@ -2051,6 +2098,7 @@ pipelines:
 
     recovery:
       retry_scope: One product-scoped Pipeline Run only
+      recovery_mode: rerun_pipeline_from_start
       resume_from_failed_stage: false
       restart_from_pipeline_start: true
       restart_must_be_idempotent: true
@@ -2113,11 +2161,22 @@ constraints:
     confirmed_specific_binding:
       product: Brand Moment
       source_pipeline_id: PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
-  mvp_product_scoped_execution:
+  mvp_pipeline_execution:
     pipeline_ids:
-      - PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+      - PL_REVENUE_TECHNICAL_WEEKLY
+      - PL_REVENUE_CTV_WEEKLY
+      - PL_REVENUE_SMART_SPEAKER_WEEKLY
+      - PL_REVENUE_FAST_VERSION_WEEKLY
+      - PL_INVENTORY_FULL_SITE_WEEKLY
+      - PL_INVENTORY_PATCH_WEEKLY
+      - PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+      - PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+      - PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+      - PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
       - PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+      - PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
     first_phase_scheduling_mode: sequential
+    registered_pipeline_order_required: true
     parallel_scheduler_required: false
     failed_run_recovery: rerun_pipeline_from_start
     stage_checkpointing_required: false
