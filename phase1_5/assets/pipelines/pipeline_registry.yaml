@@ -19,6 +19,7 @@ stage_completion:
 readiness_gate:
   status: Pass
   assessment_date: 2026-07-29
+  weekly_declared_dataset_dependency_count: 10
   initialized_pipeline_count: 13
   weekly_frozen_pipeline_count: 12
   independently_added_customer_pipeline_count: 1
@@ -2200,6 +2201,10 @@ pipelines:
         join_or_relationship_rule_id: not_applicable
         run_input_manifest_required: true
         period_context_source: workflow_run_context
+        context_field_bindings:
+          target_fiscal_quarter: target_fiscal_quarter
+          report_mode: report_mode
+        runtime_context_inference_allowed: false
 
     historical_input_dependencies:
       - dependency_type: Local historical revenue archive
@@ -2207,12 +2212,18 @@ pipelines:
         input_role: prior_year_full_quarter_history_for_C
         relationship_rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
         period_context_source: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+        context_field_bindings:
+          prior_year_full_quarter_period_id: prior_year_full_quarter_period_id
+          target_fiscal_quarter: target_fiscal_quarter
         exact_single_readable_source_required: true
       - dependency_type: Local historical revenue archive
         dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
         input_role: prior_year_comparable_qtd_snapshot_for_K_L
         relationship_rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
         period_context_source: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+        context_field_bindings:
+          prior_comparable_as_of_date: prior_comparable_as_of_date
+          target_fiscal_quarter: target_fiscal_quarter
         exact_single_readable_source_required: true
 
     local_input_dependencies:
@@ -2220,17 +2231,24 @@ pipelines:
         external_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
         required: false_when_absent_at_quarter_start
         fallback: Require the previous reporting period validated output for layout/customer list/industry; rebuild C and leave D/O/P blank.
+        local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+        eligibility_contract_section: quarter_template_eligibility_contract
+        eligibility_must_match_locked_context_fields: [current_year, quarter, confirmed_template_version]
+        filename_parsing_for_eligibility_allowed: false
       - input_role: immediately_preceding_approved_output
         producer_workflow_id: WF_CUSTOMER_REVENUE_DETAIL
         required: true_for_regular_week_or_when_quarter_first_week_template_is_unavailable
         read_only: true
         output_mapping_id: OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1
+        local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+        metadata_contract_section: previous_reporting_period_output_metadata_contract
         selection_contract:
           reporting_period_must_equal_run_context_previous_reporting_period_id: true
           validation_status_required: passed
           same_reporting_period_attempt_allowed: false
           unique_highest_output_version_required: true
           ambiguous_or_missing_action: block_customer_workflow
+          filename_parsing_for_selection_allowed: false
         same_week_rerun:
           reuse_locked_previous_reporting_period_selection: true
           earlier_same_week_attempt_must_not_shift_M_N_Q_R: true
@@ -2239,16 +2257,43 @@ pipelines:
       execution_mode: sequential
       workflow_run_context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
       workflow_run_context_lock_required_before_data_collection: true
+      context_binding_required_before_business_rule_processing: true
+      canonical_context_field_ids:
+        - workflow_execution_date
+        - current_revenue_cutoff_date
+        - current_year
+        - prior_year
+        - quarter
+        - target_fiscal_quarter
+        - report_mode
+        - reporting_period_id
+        - previous_reporting_period_id
+        - prior_comparable_as_of_date
+        - prior_year_full_quarter_period_id
+        - confirmed_template_version
+      target_fiscal_quarter_derivation_binding:
+        source_field_ids: [current_year, quarter]
+        target_field_id: target_fiscal_quarter
+        derive_before_context_lock: true
+        runtime_code_guessing_allowed: false
+      local_input_prelock_resolution_required: true
+      postlock_template_or_previous_output_reselection_allowed: false
       schedule: { day_of_week: Thursday, start_time: "17:40", timezone: Asia/Shanghai }
       source_wait_policy_id: POLICY_CUSTOMER_REVENUE_DETAIL_V1
       manual_trigger_allowed: true
       manual_trigger_required_parameters: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter]
+      manual_parameter_to_context_bindings:
+        WorkflowExecutionDate: workflow_execution_date
+        CurrentRevenueCutoffDate: current_revenue_cutoff_date
+        CurrentYear: current_year
+        Quarter: quarter
+        automatic_alias_or_value_inference_allowed: false
       stages: [DATA_COLLECTION, DATA_STANDARDIZATION, BUSINESS_RULE_PROCESSING, METRIC_CALCULATION, VALIDATION]
       mapping_profile_ids:
         - MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
         - MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
       ordered_rule_set_ids:
-        - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+        - BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1
         - BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
         - BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
       metric_variant_ids:

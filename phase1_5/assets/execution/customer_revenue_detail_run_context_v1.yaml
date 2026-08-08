@@ -18,6 +18,7 @@ required_fields:
   current_year: { data_type: integer, nullable: false }
   prior_year: { data_type: integer, nullable: false }
   quarter: { data_type: integer, allowed_values: [1, 2, 3, 4] }
+  target_fiscal_quarter: { data_type: string, pattern_semantics: 'YYYYQ[1-4]', nullable: false, derivation_only: true }
   report_mode: { data_type: string, allowed_values: [regular_week, quarter_first_week] }
   reporting_period_id: { data_type: string, nullable: false }
   previous_reporting_period_id: { data_type: string, nullable: true }
@@ -25,11 +26,44 @@ required_fields:
   prior_year_full_quarter_period_id: { data_type: string, nullable: false }
   quarter_template_availability: { data_type: string, allowed_values: [available, unavailable] }
   forecast_D_availability: { data_type: string, allowed_values: [available, unavailable] }
+  confirmed_template_version: { data_type: string, nullable: false }
   selected_template_version: { data_type: string, nullable: true }
+  selected_template_asset_id: { data_type: string, nullable: true }
+  selected_template_current_year: { data_type: integer, nullable: true }
+  selected_template_quarter: { data_type: integer, nullable: true }
   selected_previous_output_result_id: { data_type: string, nullable: true }
   selected_previous_output_version: { data_type: string, nullable: true }
+  selected_previous_output_file_reference: { data_type: local_only_opaque_reference, nullable: true }
   advertiser_mapping_version: { data_type: string, nullable: false }
   rerun_of_workflow_run_id: { data_type: string, nullable: true }
+derived_field_bindings:
+  target_fiscal_quarter:
+    source_field_ids: [current_year, quarter]
+    deterministic_expression: concatenate current_year, literal Q, and quarter
+    output_pattern: 'YYYYQ[1-4]'
+    derive_before_context_lock: true
+    runtime_code_may_guess_or_rederive_after_lock: false
+prelock_resolution_sequence:
+  - bind explicit manual parameters to canonical Context field IDs
+  - resolve confirmed_template_version from approved local-only configuration
+  - derive target_fiscal_quarter from current_year and quarter
+  - validate quarter template metadata and bind eligible selected_template fields
+  - validate and select previous reporting period output metadata when required
+  - bind selected previous-output metadata fields
+  - validate all required consumer Context Bindings
+  - lock Customer Run Context before DATA_COLLECTION
+postlock_metadata_selection_or_rebinding_allowed: false
+consumer_context_bindings:
+  BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1: [target_fiscal_quarter, report_mode]
+  BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1: [current_year, prior_year, quarter, prior_year_full_quarter_period_id, target_fiscal_quarter]
+  BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1: [current_revenue_cutoff_date, current_year, prior_year, quarter, prior_comparable_as_of_date, target_fiscal_quarter]
+  POLICY_CUSTOMER_REVENUE_DETAIL_V1: [workflow_execution_date, current_revenue_cutoff_date, current_year, prior_year, quarter, target_fiscal_quarter, report_mode, reporting_period_id, previous_reporting_period_id, quarter_template_availability, forecast_D_availability, confirmed_template_version]
+manual_parameter_bindings:
+  WorkflowExecutionDate: workflow_execution_date
+  CurrentRevenueCutoffDate: current_revenue_cutoff_date
+  CurrentYear: current_year
+  Quarter: quarter
+  unmapped_parameter_inference_allowed: false
 selection_and_rerun_semantics:
   actual_execution_date_may_infer_business_period: false
   previous_output_period_must_equal: previous_reporting_period_id
@@ -45,3 +79,4 @@ constraints:
   customer_rows_allowed: false
   credentials_allowed: false
   external_side_effects_allowed: false
+  runtime_field_alias_guessing_allowed: false

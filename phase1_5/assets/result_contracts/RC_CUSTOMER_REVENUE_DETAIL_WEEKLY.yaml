@@ -70,7 +70,7 @@ record_sets:
         nullable: true
         value_status_allowed: [valid_value, missing, calculation_failed]
         applicable_report_modes: [regular_week, quarter_first_week]
-        validation_requirement: Must originate from the approved quarter baseline or the availability-aware new-customer default; blank must not be coerced to zero.
+        validation_requirement: Must originate from the approved quarter baseline or the availability-aware new-customer default; D remains blank when unavailable, while only the E formula consumes blank D with Excel zero semantics.
         lineage_required: true
       - &ratio_nullable
         field_id: forecast_yoy
@@ -84,7 +84,7 @@ record_sets:
         nullable: true
         value_status_allowed: [valid_value, missing, calculation_failed]
         applicable_report_modes: [regular_week, quarter_first_week]
-        validation_requirement: Unavailable forecast D or an invalid denominator produces blank; absolute value at least 100 percent warns only.
+        validation_requirement: Apply exactly IFERROR(D/C-1,""); blank D is consumed as numeric zero, while zero/invalid C produces blank; absolute value at least 100 percent warns only.
         lineage_required: true
       - field_id: current_qtd_performance
         field_name: Current QTD Performance
@@ -468,10 +468,14 @@ mode_semantics:
   missing_must_not_be_mapped_to_not_applicable: true
   downstream_consumption:
     calculation_allowed_value_statuses: [valid_value]
-    output_allowed_value_statuses: [valid_value]
+    output_allowed_value_statuses: [valid_value, missing]
     missing_and_not_applicable_require_explicit_field_contract: true
+    missing_output_requires_nullable_or_missing_field_contract: true
+    missing_output_rendering: blank_cell
     pending_confirmation_calculation_allowed: false
     pending_confirmation_output_allowed: false
+    calculation_failed_calculation_allowed: false
+    calculation_failed_output_allowed: false
 
 validation:
   producer_pipeline_validation_required: true

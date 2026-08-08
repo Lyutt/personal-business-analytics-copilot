@@ -63,6 +63,9 @@
 |---|---|---|
 | `BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1` | Weekly收入模块常规周与季度切换首周判定 | Approved v1.0.0 |
 | `BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1` | 技术线单计硬广收入记录纳入规则 | Approved v1.0.0 |
+| `BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1` | Customer Revenue Detail 技术线资格适配器 | Approved design-only v1.0.0 |
+| `BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1` | Customer C列去年完整季度历史源选择 | Approved design-only v1.0.0 |
+| `BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1` | Customer K/L去年同期可比源选择 | Approved design-only v1.0.0 |
 | `BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1` | 细分业务线QTD历史累计承接资格规则 | Approved v1.0.0 |
 | `BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1` | Rolling Deck周度与季度结算邮件分类 | Approved v1.0.0 |
 | `BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1` | 季度切换首周上季度完整收入结果来源选择 | Approved v1.0.0 |

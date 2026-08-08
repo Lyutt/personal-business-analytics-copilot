@@ -7,12 +7,17 @@ gate_result: passed
 scope:
   pipeline_id: PL_CUSTOMER_REVENUE_DETAIL_WEEKLY
   registry_asset: phase1_5/assets/pipelines/pipeline_registry.yaml
+  declared_dataset_dependency_count: 1
 checks:
   independent_workflow_boundary: pass
   current_full_quarter_comparable_and_prior_output_inputs_explicit: pass
   customer_run_context_locked_before_data_collection: pass
+  canonical_context_binding_and_target_fiscal_quarter_derivation: pass
+  customer_specific_technical_adapter_without_weekly_asset_mutation: pass
   previous_reporting_period_output_and_same_week_rerun_selection: pass
   no_template_quarter_first_week_prior_output_dependency: pass
+  quarter_template_current_year_quarter_version_eligibility: pass
+  prior_output_local_metadata_selection_without_filename_parsing: pass
   no_shared_metric_store_write: pass
   no_cross_workflow_result_contract_publish: pass
   no_weekly_report_attachment: pass

@@ -49,15 +49,18 @@ must reuse the locked previous reporting period selection; an earlier attempt
 from the same reporting period can never become M/N/Q/R history.
 
 The Calculation Engine Result Contract is authoritative. Excel formula cells
-E/G/H/I are display-and-audit mirrors only; a formula result mismatch blocks
-output. Formula cells do not grant Output Mapping authority to originate or
-change business values.
+E/G/H/I are display-and-audit mirrors only. Compare unrounded numeric values with
+relative tolerance `1e-12` and absolute tolerance `1e-9`; display rounding never
+enters the comparison. A mismatch outside tolerance blocks output. Formula cells
+do not grant Output Mapping authority to originate or change business values.
 
 ## Confirmed business semantics
 
-- Filter the standardized business line to Technical and apply the existing
-  technical single-count eligibility rule. Preserve negative values, reversals
-  and exact duplicate source records; no additional deduplication is allowed.
+- Filter the standardized business line to Technical through
+  `BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1`. The frozen Weekly
+  technical rule is unchanged and is not a Customer runtime dependency.
+  Preserve negative values, reversals and exact duplicate source records; no
+  additional deduplication is allowed.
 - Map advertiser to the approved customer/group by exact mapping only. An
   unmatched advertiser uses the raw advertiser name as the temporary customer,
   generates a warning, and does not block. Mapping changes rerun the current
@@ -83,7 +86,8 @@ change business values.
   industry by descending signed current performance, then executed revenue,
   then preceding-week industry, then industry name ascending; notify when the
   final fallback is needed.
-- E=`IF(D="","",IFERROR(D/C-1,""))`; G=`IF(D="","",IFERROR(F/D,""))`，确保 D 不可用时 E/G 同步为空；
+- E strictly equals `IFERROR(D/C-1,"")`; Excel numeric semantics treat blank D
+  as zero. G=`IF(D="","",IFERROR(F/D,""))`;
   H=`IFERROR(F/K-1,"")`; I=`F-M`, except quarter week one where I=F.
   Calculation uses full precision. Money displays as integer with thousands
   separators and rates as integer percentages.
@@ -109,6 +113,14 @@ change business values.
   the forecast Top20 header until D becomes available. If D remains absent all
   quarter, the empty forecast Top20 is non-blocking. If both the quarter template
   and previous-period validated output are unavailable, block the Workflow.
+- A quarter template is eligible only when its explicit metadata matches locked
+  `current_year`, `quarter`, selected template version and passed structure
+  validation. Otherwise it is unavailable; prior-quarter C/D/O/P and both Top20
+  memberships must not be inherited.
+- Previous-output selection uses local metadata fields `workflow_run_id`,
+  `result_id`, `reporting_period_id`, `output_version`, `output_file_reference`,
+  `validation_status` and `completed_at`. Period or version selection must never
+  parse the filename.
 
 ## Validation, warnings and output
 

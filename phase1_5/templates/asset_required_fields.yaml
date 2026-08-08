@@ -147,6 +147,20 @@ asset_rules:
       - selection_and_rerun_semantics
       - constraints
 
+  - asset_type: customer_revenue_detail_local_input_contracts
+    selector: { key: config_type, value: customer_revenue_detail_local_input_contracts }
+    required_paths:
+      - config_type
+      - bundle_id
+      - bundle_version
+      - status
+      - workflow_id
+      - owner
+      - context_id
+      - quarter_template_eligibility_contract
+      - previous_reporting_period_output_metadata_contract
+      - constraints
+
   - asset_type: field_mapping_profile
     selector: { key: config_type, value: field_mapping_profile }
     required_paths:

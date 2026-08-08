@@ -50,8 +50,8 @@ scenarios:
       reporting_period_id: SYNTH-P2
       previous_reporting_period_id: SYNTH-P1
       outputs:
-        - { result_id: PREV-V1, reporting_period_id: SYNTH-P1, output_version: 1, validation_status: passed }
-        - { result_id: SAME-WEEK, reporting_period_id: SYNTH-P2, output_version: 2, validation_status: passed }
+        - { workflow_run_id: SYNTH-RUN-P1, result_id: PREV-V1, reporting_period_id: SYNTH-P1, output_version: 1, output_file_reference: SYNTH-LOCAL-REF-P1, validation_status: passed, completed_at: '2026-08-01T18:00:00+08:00' }
+        - { workflow_run_id: SYNTH-RUN-P2, result_id: SAME-WEEK, reporting_period_id: SYNTH-P2, output_version: 2, output_file_reference: SYNTH-LOCAL-REF-P2, validation_status: passed, completed_at: '2026-08-08T18:00:00+08:00' }
     expected_result: { selected_previous_result_id: PREV-V1, same_week_attempt_used: false }
   - scenario_id: customer_run_context_lock
     synthetic_input:
@@ -64,13 +64,65 @@ scenarios:
       current_values: { SYNTH_A: { F: 10, J: 8 } }
     expected_result: { SYNTH_A: { F: 10, J: 8 }, SYNTH_B: { F: 0, J: 0 } }
   - scenario_id: workflow_dependency_count_isolation
+    synthetic_input: { legacy_global_mixed_dataset_dependency_count: 11 }
     expected_result:
-      pipeline_count: 1
-      dataset_dependency_count: 1
-      mapping_profile_dependency_count: 2
-      business_rule_dependency_count: 3
-      metric_variant_dependency_count: 14
-      result_contract_dependency_count: 1
-      output_mapping_dependency_count: 1
-      policy_dependency_count: 1
-      external_asset_dependency_count: 1
+      weekly_dataset_dependency_count: 10
+      customer_dataset_dependency_count: 1
+      legacy_global_mixed_count_used: false
+  - scenario_id: forecast_E_blank_D_as_zero
+    synthetic_input:
+      rows:
+        - { D: null, C: 100 }
+        - { D: null, C: 0 }
+    expected_result: [-1.0, null]
+  - scenario_id: canonical_context_binding_and_target_quarter
+    synthetic_input: { current_year: 2026, quarter: 3 }
+    expected_result: { target_fiscal_quarter: 2026Q3, runtime_guessing_used: false }
+  - scenario_id: result_missing_output_rendering
+    synthetic_input: { field_nullable: true, value_status: missing }
+    expected_result: { rendered_value: blank_cell, calculation_failed_output_allowed: false, pending_confirmation_output_allowed: false }
+  - scenario_id: industry_selection_order
+    synthetic_input:
+      template_industry: null
+      candidates:
+        - { industry: SYNTH_INDUSTRY_A, F: 10, J: 100, matches_previous: false }
+        - { industry: SYNTH_INDUSTRY_B, F: 10, J: 100, matches_previous: true }
+      name_fallback_candidates:
+        - { industry: SYNTH_INDUSTRY_B, F: 10, J: 100, matches_previous: false }
+        - { industry: SYNTH_INDUSTRY_A, F: 10, J: 100, matches_previous: false }
+    expected_result:
+      previous_industry_case: { selected_industry: SYNTH_INDUSTRY_B, final_name_fallback_used: false }
+      name_fallback_case: { selected_industry: SYNTH_INDUSTRY_A, final_name_fallback_used: true, notification_required: true }
+  - scenario_id: detail_sorting_contract
+    synthetic_input:
+      rows:
+        - { customer: SYNTH_EXISTING_B, C: 100, D: 5, F: 2, existing: true, previous_order: 2 }
+        - { customer: SYNTH_EXISTING_A, C: 100, D: 9, F: 8, existing: true, previous_order: 1 }
+        - { customer: SYNTH_NEW_B, C: 90, D: 5, F: 8, existing: false }
+        - { customer: SYNTH_NEW_A, C: 90, D: 5, F: 9, existing: false }
+        - { customer: SYNTH_NEW_ZERO, C: 0, D: 100, F: 100, existing: false }
+    expected_result: [SYNTH_EXISTING_A, SYNTH_EXISTING_B, SYNTH_NEW_A, SYNTH_NEW_B, SYNTH_NEW_ZERO]
+  - scenario_id: unmatched_advertiser_notification_payload
+    expected_result:
+      payload_fields: [raw_advertiser_company_name, temporary_customer_name, grouped_current_qtd_performance_F, grouped_current_qtd_executed_J, advertiser_mapping_version]
+      raw_order_rows_included: false
+      persistence_scope: local_only_exception_or_run_record
+  - scenario_id: quarter_template_eligibility
+    synthetic_input:
+      context: { current_year: 2026, quarter: 3, confirmed_template_version: SYNTH-V1 }
+      matching_template: { template_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY, template_version: SYNTH-V1, template_current_year: 2026, template_quarter: 3, structure_validation_status: passed }
+      wrong_quarter_template: { template_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY, template_version: SYNTH-V1, template_current_year: 2026, template_quarter: 2, structure_validation_status: passed }
+    expected_result: { matching_template: available, wrong_quarter_template: unavailable, prior_quarter_fields_inherited: false }
+  - scenario_id: previous_output_metadata_contract
+    expected_result:
+      required_metadata_fields: [workflow_run_id, result_id, reporting_period_id, output_version, output_file_reference, validation_status, completed_at]
+      filename_parsing_used: false
+  - scenario_id: frozen_weekly_rule_and_customer_adapter
+    expected_result:
+      weekly_workflows: [WF_WEEKLY_BUSINESS_REPORT]
+      weekly_report_modes: [regular_week, quarter_transition_week]
+      customer_report_modes: [regular_week, quarter_first_week]
+      weekly_rule_is_customer_runtime_dependency: false
+  - scenario_id: formula_mirror_numeric_tolerance
+    synthetic_input: { calculation_engine_value: 0.3333333333333333, excel_value: 0.33333333333333337 }
+    expected_result: { comparison_passed: true, calculation_engine_remains_authoritative: true }

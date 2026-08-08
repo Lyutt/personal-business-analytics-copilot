@@ -13,7 +13,7 @@ approval_status: approved_design_only
 effective_from: 2026-08-08
 purpose: Select the exact prior-year comparable QTD snapshot used only for detail K/L and their carried Q/R values.
 inputs:
-  required_context_fields: [CurrentRevenueCutoffDate, CurrentYear, PriorYear, Quarter, PriorComparableAsOfDate]
+  required_context_fields: [current_revenue_cutoff_date, current_year, prior_year, quarter, prior_comparable_as_of_date, target_fiscal_quarter]
   required_standard_fields: [business_line_level_1, fiscal_quarter, advertiser_name, performance_revenue_amount, executed_revenue_amount]
   required_result_contract_ids: []
 conditions:
@@ -22,7 +22,7 @@ conditions:
   workflow_year_2027_or_later_action: block_for_owner_reconfirmation
   exact_single_readable_source_required: true
   same_quarter_required: true
-  technical_eligibility_rule_id: BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+  technical_eligibility_rule_id: BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1
   signed_numeric_values_allowed: true
   zero_or_negative_value_allowed: true
   full_quarter_history_allowed: false
@@ -43,3 +43,14 @@ constraints:
   weekly_prior_year_rule_reuse_allowed: false
   metric_formula_allowed: false
   customer_data_must_remain_local_only: true
+  runtime_context_field_guessing_allowed: false
+context_binding:
+  context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+  exact_field_bindings:
+    current_revenue_cutoff_date: current_revenue_cutoff_date
+    current_year: current_year
+    prior_year: prior_year
+    quarter: quarter
+    prior_comparable_as_of_date: prior_comparable_as_of_date
+    target_fiscal_quarter: target_fiscal_quarter
+  missing_or_conflicting_binding_action: block_customer_workflow

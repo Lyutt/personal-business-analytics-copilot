@@ -11,7 +11,7 @@ working_branch: codex/customer-revenue-detail-initialization
 baseline_scope:
   phase: Phase 1.5
   workflow_scope: Customer Revenue Detail V1 design assets
-  asset_layers: [Dataset reuse, Pipeline Registry, Field Mapping reuse, Business Rule and Pipeline Policy, Metric Library, Result Contract, Output Mapping, Readiness]
+  asset_layers: [Dataset reuse, Pipeline Registry, Customer Run Context, Local Input Metadata Contracts, Field Mapping reuse, Business Rule and Pipeline Policy, Metric Library, Result Contract, Output Mapping, Synthetic Acceptance, Readiness]
   excluded_runtime_material: [Raw business data, customer rows, emails and attachments, local mapping contents, real templates, generated workbooks, local paths, credentials and sessions]
 frozen_asset_versions:
   count_scope: workflow_specific
@@ -23,10 +23,12 @@ frozen_asset_versions:
   pipeline_policy_version: 1.0.0
   run_context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
   run_context_version: 1.0.0
+  local_input_contract_bundle_id: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+  local_input_contract_bundle_version: 1.0.0
   explicit_output_field_binding_count: 32
   synthetic_acceptance_suite_id: CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1
   synthetic_acceptance_suite_version: 1.0.0
-  synthetic_acceptance_scenario_count: 12
+  synthetic_acceptance_scenario_count: 22
 workflow_dependency_counts:
   pipeline_count: 1
   dataset_dependency_count: 1

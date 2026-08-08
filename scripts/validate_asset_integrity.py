@@ -2562,20 +2562,40 @@ def validate_phase1_5_final_closure(
 
     registry = documents.get(registry_file, {})
     pipelines = registry.get("pipelines", []) if isinstance(registry, dict) else []
+    weekly_pipelines = [
+        pipeline
+        for pipeline in pipelines
+        if any(
+            isinstance(binding, dict)
+            and binding.get("workflow_id") == "WF_WEEKLY_BUSINESS_REPORT"
+            for binding in pipeline.get("workflow_bindings", [])
+        )
+    ]
     dependencies = [
         dependency
-        for pipeline in pipelines
+        for pipeline in weekly_pipelines
         for dependency in pipeline.get("dataset_dependencies", [])
         if isinstance(dependency, dict)
     ]
-    if len(dependencies) != 11 or any(
-        dependency.get("dataset_version_constraint") != ">=0.1.0,<0.2.0"
-        or dependency.get("join_or_relationship_rule_id") != "not_applicable"
-        or dependency.get("run_input_manifest_required") is not True
-        or dependency.get("period_context_source") != "workflow_run_context"
-        for dependency in dependencies
+    declared_weekly_dependency_count = registry.get("readiness_gate", {}).get(
+        "weekly_declared_dataset_dependency_count"
+    )
+    if (
+        not isinstance(declared_weekly_dependency_count, int)
+        or len(dependencies) != declared_weekly_dependency_count
+        or any(
+            dependency.get("dataset_version_constraint") != ">=0.1.0,<0.2.0"
+            or dependency.get("join_or_relationship_rule_id") != "not_applicable"
+            or dependency.get("run_input_manifest_required") is not True
+            or dependency.get("period_context_source") != "workflow_run_context"
+            for dependency in dependencies
+        )
     ):
-        errors.append(f"{registry_file}: active Dataset version, Join, Context, or Manifest binding is incomplete")
+        errors.append(
+            f"{registry_file}: Weekly Dataset dependencies must match the "
+            f"workflow-isolated Gate declaration {declared_weekly_dependency_count!r} "
+            "and retain active Version, Join, Context, and Manifest bindings"
+        )
     if "TBD" in yaml.safe_dump(registry, allow_unicode=True):
         errors.append(f"{registry_file}: Active Pipeline Registry must not retain runtime TBD")
     checked += 1
@@ -2658,13 +2678,33 @@ def validate_phase1_5_final_closure(
     for file in contract_files:
         document = documents[file]
         downstream = document.get("mode_semantics", {}).get("downstream_consumption", {})
+        is_customer_revenue_contract = (
+            document.get("result_contract_id")
+            == "RC_CUSTOMER_REVENUE_DETAIL_WEEKLY"
+        )
+        expected_output_statuses = (
+            ["valid_value", "missing"]
+            if is_customer_revenue_contract
+            else ["valid_value"]
+        )
         if (
             downstream.get("calculation_allowed_value_statuses") != ["valid_value"]
-            or downstream.get("output_allowed_value_statuses") != ["valid_value"]
+            or downstream.get("output_allowed_value_statuses")
+            != expected_output_statuses
             or downstream.get("pending_confirmation_calculation_allowed") is not False
             or downstream.get("pending_confirmation_output_allowed") is not False
         ):
             errors.append(f"{file}: Result field consumption statuses are incomplete")
+        if is_customer_revenue_contract and (
+            downstream.get("missing_output_requires_nullable_or_missing_field_contract")
+            is not True
+            or downstream.get("missing_output_rendering") != "blank_cell"
+            or downstream.get("calculation_failed_calculation_allowed") is not False
+            or downstream.get("calculation_failed_output_allowed") is not False
+        ):
+            errors.append(
+                f"{file}: Customer missing rendering or failed-value prohibitions are incomplete"
+            )
         for field in document.get("contract_fields", []):
             field_id = str(field.get("field_id", ""))
             constraints = field.get("numeric_constraints", {})
@@ -3377,14 +3417,11 @@ def validate_implementation_baseline(
             def distinct_values(values: list[Any]) -> set[str]:
                 return {value for value in values if isinstance(value, str) and value}
 
-            dataset_ids = distinct_values(
-                [
-                    dependency.get("dataset_id")
-                    for pipeline in workflow_pipelines
-                    for section in ("dataset_dependencies", "historical_input_dependencies")
-                    for dependency in pipeline.get(section, [])
-                    if isinstance(dependency, dict)
-                ]
+            dataset_dependency_count = sum(
+                1
+                for pipeline in workflow_pipelines
+                for dependency in pipeline.get("dataset_dependencies", [])
+                if isinstance(dependency, dict)
             )
             mapping_ids = distinct_values(
                 [
@@ -3447,7 +3484,7 @@ def validate_implementation_baseline(
             )
             expected_dependency_counts = {
                 "pipeline_count": len(workflow_pipelines),
-                "dataset_dependency_count": len(dataset_ids),
+                "dataset_dependency_count": dataset_dependency_count,
                 "mapping_profile_dependency_count": len(mapping_ids),
                 "business_rule_dependency_count": len(rule_ids),
                 "metric_variant_dependency_count": len(variant_ids),
@@ -3456,12 +3493,22 @@ def validate_implementation_baseline(
                 "policy_dependency_count": len(policy_ids),
                 "external_asset_dependency_count": len(external_asset_ids),
             }
-            if declared_dependency_counts != expected_dependency_counts:
+            unknown_count_keys = set(declared_dependency_counts) - set(
+                expected_dependency_counts
+            )
+            if unknown_count_keys:
                 errors.append(
-                    f"{baseline_file}:workflow_dependency_counts must be isolated to "
-                    f"{workflow_id}; expected {expected_dependency_counts}"
+                    f"{baseline_file}:workflow_dependency_counts contains unknown keys "
+                    f"{sorted(unknown_count_keys)}"
                 )
-            checked += len(expected_dependency_counts)
+            for count_key, declared_count in declared_dependency_counts.items():
+                if expected_dependency_counts.get(count_key) != declared_count:
+                    errors.append(
+                        f"{baseline_file}:workflow_dependency_counts.{count_key} must "
+                        f"be isolated to {workflow_id}; expected "
+                        f"{expected_dependency_counts.get(count_key)!r}"
+                    )
+                checked += 1
 
         if workflow_id == "WF_WEEKLY_BUSINESS_REPORT":
             store_gate_file = (

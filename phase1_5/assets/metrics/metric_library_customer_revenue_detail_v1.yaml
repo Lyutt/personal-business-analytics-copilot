@@ -21,7 +21,7 @@ metric_definitions:
     metric_name: Customer Forecast YoY
     business_name: 分客户预估同比
     business_domain: Revenue
-    definition: Current-quarter forecast divided by prior-year quarter revenue minus one; blank when forecast D is unavailable or the denominator is invalid.
+    definition: Current-quarter forecast divided by prior-year quarter revenue minus one using Excel IFERROR semantics; blank D is treated as numeric zero and an invalid denominator returns blank.
     base_unit: Decimal ratio
     result_precision: Preserve full precision
     version: 1.0.0
@@ -70,7 +70,8 @@ metric_variants:
     calculation_method: Preserve owner-supplied quarter baseline D. When locked forecast_D_availability is unavailable, D remains blank for every customer; when available, a new customer without an explicit forecast receives zero.
     availability_context_field: forecast_D_availability
     explicit_zero_is_available_value: true
-    blank_must_not_be_coerced_to_zero: true
+    blank_D_result_field_must_not_be_coerced_to_zero: true
+    downstream_formula_E_blank_numeric_exception: treat_as_zero
     period_type: Current full fiscal quarter forecast
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -167,7 +168,8 @@ metric_variants:
     metric_name: Customer Forecast YoY
     business_context: Customer Revenue Detail
     calculation_method: Direct ratio
-    formula: 'IF(current_quarter_forecast is blank, blank, IFERROR(current_quarter_forecast / prior_year_quarter_revenue - 1, blank))'
+    formula: 'IFERROR(current_quarter_forecast / prior_year_quarter_revenue - 1, blank)'
+    blank_current_quarter_forecast_numeric_semantics: treat_as_zero
     period_type: Fiscal quarter comparison
     base_unit: Decimal ratio
     result_precision: Preserve full precision

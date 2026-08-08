@@ -1,0 +1,57 @@
+config_type: business_rule
+rule_id: BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1
+rule_name: Customer Revenue Technical Eligibility Adapter
+rule_category: Revenue Record Eligibility Adapter
+business_domains: [Revenue]
+applicable_workflow_ids: [WF_CUSTOMER_REVENUE_DETAIL]
+applicable_pipeline_ids: [PL_CUSTOMER_REVENUE_DETAIL_WEEKLY]
+business_context_ids: [CTX_CUSTOMER_REVENUE_DETAIL_WEEKLY]
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved_design_only
+effective_from: 2026-08-08
+purpose: Apply the confirmed Technical single-count eligibility semantics to Customer Revenue Detail without modifying or runtime-reusing the frozen Weekly rule asset.
+inputs:
+  required_context_fields: [target_fiscal_quarter, report_mode]
+  required_standard_fields: [business_line_level_1, fiscal_quarter, performance_revenue_amount, executed_revenue_amount]
+  required_result_contract_ids: []
+applicability:
+  report_modes: [regular_week, quarter_first_week]
+  data_roles: [current_quarter_qtd, prior_year_full_quarter, prior_year_comparable_qtd]
+context_binding:
+  context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
+  exact_field_bindings:
+    target_fiscal_quarter: target_fiscal_quarter
+    report_mode: report_mode
+  missing_or_conflicting_binding_action: block_customer_workflow
+  runtime_field_name_guessing_allowed: false
+conditions:
+  include_when_all:
+    - { field: business_line_level_1, operator: exact_equals, value: 硬广 }
+    - { field: fiscal_quarter, operator: exact_equals, context_value: target_fiscal_quarter }
+  fiscal_quarter_format: { pattern_semantics: 'YYYYQ[1-4]' }
+actions:
+  on_match: [include_record_in_customer_technical_single_count_set, preserve_signed_amount_original_sign, preserve_executed_amount_original_sign]
+  on_non_target_valid_business_line: [exclude_record]
+  on_blank_or_nontext_business_line: [exclude_record, add_to_consolidated_owner_notification]
+  on_quarter_mismatch: [exclude_record, add_to_consolidated_owner_notification]
+  on_blank_or_invalid_quarter: [exclude_record, add_to_consolidated_owner_notification]
+validation:
+  deterministic: true
+  exact_business_line_match_required: true
+  fuzzy_or_similarity_match_allowed: false
+  fiscal_quarter_format_validation_required: true
+  report_mode_must_be_explicitly_supported: true
+  excluded_record_must_not_enter_metric_input: true
+  owner_notification_required: true
+governance:
+  frozen_weekly_semantics_reference: BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+  frozen_weekly_asset_is_runtime_dependency: false
+  change_reason: Isolate Customer report modes and Context Binding from the frozen Weekly rule.
+constraints:
+  runtime_context_inference_allowed: false
+  automatic_rule_completion_allowed: false
+  metric_formula_allowed: false
+  output_formatting_allowed: false
+  customer_data_must_remain_local_only: true

@@ -15,6 +15,11 @@ gate_checks:
   explicit_result_field_binding_count_32: pass
   output_mapping_business_calculation_disabled: pass
   formula_mirror_validation: pass
+  formula_mirror_numeric_tolerance_without_authority_change: pass
+  strict_E_IFERROR_blank_D_as_zero: pass
+  result_contract_missing_to_blank_rendering_only: pass
+  template_eligibility_current_year_quarter_version: pass
+  previous_output_metadata_selection_not_filename_parsing: pass
   dynamic_row_formula_filter_style_extension: pass
   inherited_red_manual_fill_clearance: pass
   collision_suffix_without_overwrite: pass

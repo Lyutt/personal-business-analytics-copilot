@@ -17,6 +17,7 @@ consistency_checks:
   exact_match_only: pass
   fuzzy_match_prohibited: pass
   unmatched_does_not_block: pass
+  unmatched_notification_payload_is_grouped_and_local_only: pass
   raw_order_rows_not_logged: pass
 gate_decision: pass
 constraints:

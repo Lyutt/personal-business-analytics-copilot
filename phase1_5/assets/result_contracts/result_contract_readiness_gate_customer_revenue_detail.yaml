@@ -16,6 +16,8 @@ gate_checks:
   generated_top20_rank_and_tie_break_semantics: pass
   forecast_D_availability_bound_to_run_context: pass
   forecast_D_unavailable_remains_blank: pass
+  missing_field_status_renders_blank_in_output_mapping: pass
+  calculation_failed_and_pending_confirmation_output_prohibited: pass
   current_missing_customer_F_J_zero_fill: pass
   metric_variant_output_bindings: pass
   local_only_lineage_boundary: pass

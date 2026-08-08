@@ -31,9 +31,15 @@ trigger:
     context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
     lock_before_data_collection: true
     immutable_after_lock: true
+    canonical_field_id_binding_required: true
+    target_fiscal_quarter_binding:
+      source_field_ids: [current_year, quarter]
+      target_field_id: target_fiscal_quarter
+      derive_before_lock: true
+    runtime_context_field_guessing_allowed: false
 
 processing:
-  technical_filter_and_single_count_rule_id: BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+  technical_filter_and_single_count_rule_id: BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1
   prior_year_source_roles:
     C_full_quarter:
       rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
@@ -51,6 +57,23 @@ processing:
     unmatched_action: temporary_customer_equals_raw_advertiser_and_warn
     unmatched_blocks: false
     rerun_scope_after_mapping_change: current_week_only
+    unmatched_advertiser_notification:
+      aggregation_grain: one_row_per_raw_advertiser_company_name
+      payload_fields:
+        - raw_advertiser_company_name
+        - temporary_customer_name
+        - grouped_current_qtd_performance_F
+        - grouped_current_qtd_executed_J
+        - advertiser_mapping_version
+      payload_source_bindings:
+        raw_advertiser_company_name: unmatched standardized advertiser_name
+        temporary_customer_name: exact raw advertiser company name fallback
+        grouped_current_qtd_performance_F: grouped validated Customer F result
+        grouped_current_qtd_executed_J: grouped validated Customer J result
+        advertiser_mapping_version: locked advertiser_mapping_version
+      prohibited_payload: [raw_order_rows, order_ids, email_content, source_attachment]
+      persistence_scope: local_only_exception_or_run_record
+      repository_or_shared_log_persistence_allowed: false
   source_record_handling:
     preserve_negative_values: true
     preserve_reversals: true
@@ -60,6 +83,32 @@ processing:
   duplicate_result_row_action: block_workflow
   customer_universe: union_of_quarter_baseline_prior_output_current_and_prior_year_results
   retain_zero_customers_through_quarter: true
+  industry_selection:
+    output_field: A
+    authoritative_first_choice:
+      source: eligible current-quarter template
+      field: industry
+      condition: nonblank
+    source_fallback_candidate_grain: customer_or_group_and_source_industry
+    source_fallback_order:
+      - { key: grouped_signed_current_performance_F, direction: descending }
+      - { key: grouped_signed_current_executed_J, direction: descending }
+      - { key: matches_previous_reporting_period_industry, direction: true_first }
+      - { key: industry_name, direction: ascending }
+    final_name_order_fallback_notification_required: true
+    blank_after_all_candidates: allowed_with_warning
+    runtime_tie_break_guessing_allowed: false
+  detail_sorting:
+    output_record_set: customer_detail
+    primary_order: { key: C, direction: descending, signed_numeric_order: true }
+    existing_customer_equal_C_tie: preserve_previous_reporting_period_row_order
+    new_customer_equal_C_tie_order:
+      - { key: D, direction: descending, blank_position: last }
+      - { key: F, direction: descending }
+      - { key: customer_name, direction: ascending }
+    new_customer_blank_or_zero_C_partition: bottom
+    sorting_must_be_deterministic: true
+    runtime_sort_key_inference_allowed: false
   missing_current_customer_zero_fill:
     condition: Customer is in the union but has no eligible row in the validated current snapshot.
     F: 0
@@ -69,6 +118,7 @@ processing:
     availability_source: locked Run Context forecast_D_availability
     available_when: At least one owner-supplied D value, including an explicit zero, is present in the authoritative quarter baseline.
     unavailable_behavior: Preserve D as blank for every customer; do not convert blank to zero.
+    formula_E_exception: D remains blank in the Result Contract and output cell, but formula E consumes blank D with Excel numeric zero semantics.
     new_customer_when_available: D equals zero unless an owner-supplied value exists.
     new_customer_when_unavailable: D remains blank.
   quarter_first_week_prior_output_fields: blank_M_N_Q_R
@@ -76,16 +126,29 @@ processing:
     template_available: optional
     template_unavailable: required_for_layout_customer_list_and_industry
     template_and_previous_output_both_unavailable: block_customer_workflow
+  quarter_template_eligibility:
+    local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+    exact_match_required: [template_asset_id, template_version, template_current_year, template_quarter, structure_validation_status]
+    context_match: { template_current_year: current_year, template_quarter: quarter, template_version: confirmed_template_version }
+    mismatch_result: unavailable
+    previous_quarter_C_D_O_P_inheritance_allowed: false
+    previous_quarter_top20_membership_inheritance_allowed: false
+    filename_parsing_allowed: false
   quarter_first_week_incremental_performance: I_equals_F
   previous_output_selection:
+    local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+    metadata_contract_section: previous_reporting_period_output_metadata_contract
+    required_metadata_fields: [workflow_run_id, result_id, reporting_period_id, output_version, output_file_reference, validation_status, completed_at]
     required_period: locked previous_reporting_period_id
     validation_status: passed
     same_reporting_period_attempt_allowed: false
     unique_highest_output_version_required: true
     same_week_rerun_reuses_locked_selection: true
     same_week_rerun_must_not_shift_M_N_Q_R: true
+    filename_parsing_for_period_or_version_allowed: false
   formulas:
-    E: 'IF(D="","",IFERROR(D/C-1,""))'
+    E: 'IFERROR(D/C-1,"")'
+    E_blank_D_numeric_semantics: treat_as_zero
     G: 'IF(D="","",IFERROR(F/D,""))'
     H: 'IFERROR(F/K-1,"")'
     I_regular_week: F-M
@@ -100,6 +163,7 @@ processing:
     ratios_recomputed_after_aggregation: true
     output_cells: static_validated_values_A_to_G
     existing_template_membership:
+      eligibility_prerequisite: quarter_template_eligibility equals available for locked current_year and quarter
       valid_existing_list_is_authoritative: true
       preserve_and_freeze_without_reranking: true
       invalid_or_missing_list_action: generate_by_confirmed_ranking_then_freeze
@@ -123,6 +187,8 @@ failure_handling:
     - duplicate_customer_result_row
     - reconciliation_outside_absolute_CNY_1
     - required_template_structure_invalid
+    - quarter_template_metadata_ineligible_when_template_is_required
+    - previous_output_metadata_missing_invalid_or_ambiguous
     - formula_mirror_mismatch
   warning_only_conditions:
     - unmatched_advertiser
@@ -137,6 +203,15 @@ output_boundary:
   output_mapping_may_calculate_business_values: false
   excel_formula_mirror_columns: [E, G, H, I]
   formula_mirror_mismatch_action: block_output
+  formula_mirror_numeric_comparison:
+    comparison_algorithm: math_isclose_on_unrounded_numeric_results
+    relative_tolerance: 1.0e-12
+    absolute_tolerance: 1.0e-9
+    pass_condition: absolute_difference_lte_max_of_absolute_tolerance_and_relative_tolerance_times_larger_absolute_operand
+    display_rounding_must_not_enter_comparison: true
+    blank_error_nan_or_infinity_equivalence: exact_status_match_required
+    calculation_failed_or_non_numeric_mirror_action: block_output
+    comparison_pass_may_change_authoritative_result: false
   collision_policy: create_next_v_suffix_without_overwrite_and_notify
   inherited_red_manual_fill_action: clear
   preserve_normal_template_style: true

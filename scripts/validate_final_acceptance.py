@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+import math
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,16 @@ TECHNICAL_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_TECHNICAL_SIN
 WEEKLY_COMPARABLE_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml"
 CUSTOMER_FULL_QUARTER_RULE = ROOT / "phase1_5/assets/business_rules/BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1.yaml"
 CUSTOMER_COMPARABLE_RULE = ROOT / "phase1_5/assets/business_rules/BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml"
+CUSTOMER_TECHNICAL_ADAPTER = ROOT / "phase1_5/assets/business_rules/BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1.yaml"
+CUSTOMER_LOCAL_INPUTS = ROOT / "phase1_5/assets/execution/customer_revenue_detail_local_input_contracts_v1.yaml"
+CUSTOMER_RESULT_CONTRACT = ROOT / "phase1_5/assets/result_contracts/RC_CUSTOMER_REVENUE_DETAIL_WEEKLY.yaml"
+PIPELINE_REGISTRY = ROOT / "phase1_5/assets/pipelines/pipeline_registry.yaml"
+CUSTOMER_BASELINE = ROOT / "phase1_5/assets/readiness/implementation_baseline_customer_revenue_detail.yaml"
+CUSTOMER_BUSINESS_RULE_GATE = ROOT / "phase1_5/assets/business_rules/business_rule_readiness_gate_customer_revenue_detail.yaml"
+CUSTOMER_PIPELINE_GATE = ROOT / "phase1_5/assets/pipelines/pipeline_registry_readiness_gate_customer_revenue_detail.yaml"
+CUSTOMER_FIELD_MAPPING_GATE = ROOT / "phase1_5/assets/field_mappings/field_mapping_readiness_gate_customer_revenue_detail.yaml"
+CUSTOMER_RESULT_GATE = ROOT / "phase1_5/assets/result_contracts/result_contract_readiness_gate_customer_revenue_detail.yaml"
+CUSTOMER_OUTPUT_GATE = ROOT / "phase1_5/assets/output_mappings/output_mapping_readiness_gate_customer_revenue_detail.yaml"
 
 
 def load(path: Path) -> dict[str, Any]:
@@ -53,6 +64,18 @@ def resolve_forecast_d(
 def select_previous_period_output(
     outputs: list[dict[str, Any]], previous_reporting_period_id: str
 ) -> str:
+    required_metadata = {
+        "workflow_run_id",
+        "result_id",
+        "reporting_period_id",
+        "output_version",
+        "output_file_reference",
+        "validation_status",
+        "completed_at",
+    }
+    assert all(
+        required_metadata.issubset(item) for item in outputs
+    ), "previous output metadata contract is incomplete"
     candidates = [
         item
         for item in outputs
@@ -64,6 +87,73 @@ def select_previous_period_output(
     selected = [item for item in candidates if item["output_version"] == highest_version]
     assert len(selected) == 1, "previous output highest version must be unique"
     return selected[0]["result_id"]
+
+
+def excel_forecast_yoy(d_value: float | None, c_value: float | None) -> float | None:
+    numerator = 0 if d_value is None else d_value
+    if c_value in (None, 0):
+        return None
+    return numerator / c_value - 1
+
+
+def select_industry(
+    template_industry: str | None, candidates: list[dict[str, Any]]
+) -> tuple[str | None, bool]:
+    if template_industry:
+        return template_industry, False
+    ordered = sorted(
+        candidates,
+        key=lambda row: (
+            -row["F"],
+            -row["J"],
+            not row["matches_previous"],
+            row["industry"],
+        ),
+    )
+    if not ordered:
+        return None, True
+    name_fallback_used = len(ordered) > 1 and (
+        ordered[0]["F"], ordered[0]["J"], ordered[0]["matches_previous"]
+    ) == (
+        ordered[1]["F"], ordered[1]["J"], ordered[1]["matches_previous"]
+    )
+    return ordered[0]["industry"], name_fallback_used
+
+
+def sort_customer_detail(rows: list[dict[str, Any]]) -> list[str]:
+    def sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+        c_value = row.get("C")
+        new_zero_partition = not row.get("existing") and c_value in (None, 0)
+        numeric_c = float("-inf") if c_value is None else c_value
+        if row.get("existing"):
+            tie_key = (0, row["previous_order"], 0, 0, "")
+        else:
+            d_value = row.get("D")
+            d_blank = d_value is None
+            tie_key = (
+                1,
+                0,
+                d_blank,
+                -(0 if d_value is None else d_value),
+                -row["F"],
+                row["customer"],
+            )
+        return (new_zero_partition, -numeric_c, *tie_key)
+
+    return [row["customer"] for row in sorted(rows, key=sort_key)]
+
+
+def template_is_eligible(
+    metadata: dict[str, Any], context: dict[str, Any]
+) -> bool:
+    return (
+        metadata.get("template_asset_id")
+        == "TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY"
+        and metadata.get("template_version") == context.get("confirmed_template_version")
+        and metadata.get("template_current_year") == context.get("current_year")
+        and metadata.get("template_quarter") == context.get("quarter")
+        and metadata.get("structure_validation_status") == "passed"
+    )
 
 
 def rank_customer_top20(
@@ -213,6 +303,16 @@ def main() -> int:
     weekly_comparable_rule = load(WEEKLY_COMPARABLE_RULE)
     full_quarter_rule = load(CUSTOMER_FULL_QUARTER_RULE)
     comparable_rule = load(CUSTOMER_COMPARABLE_RULE)
+    customer_technical_adapter = load(CUSTOMER_TECHNICAL_ADAPTER)
+    customer_local_inputs = load(CUSTOMER_LOCAL_INPUTS)
+    customer_result_contract = load(CUSTOMER_RESULT_CONTRACT)
+    pipeline_registry = load(PIPELINE_REGISTRY)
+    customer_baseline = load(CUSTOMER_BASELINE)
+    customer_business_rule_gate = load(CUSTOMER_BUSINESS_RULE_GATE)
+    customer_pipeline_gate = load(CUSTOMER_PIPELINE_GATE)
+    customer_field_mapping_gate = load(CUSTOMER_FIELD_MAPPING_GATE)
+    customer_result_gate = load(CUSTOMER_RESULT_GATE)
+    customer_output_gate = load(CUSTOMER_OUTPUT_GATE)
     scenarios = scenario_map(suite)
     customer_scenarios = scenario_map(customer_suite)
     semantic_cases = semantic_case_map(suite)
@@ -222,7 +322,54 @@ def main() -> int:
     assert customer_suite.get("contains_real_business_data") is False
     assert customer_suite.get("external_side_effects_allowed") is False
     assert customer_suite.get("suite_id") == "CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1"
-    assert len(customer_scenarios) == 12
+    assert len(customer_scenarios) == 22
+    gate_check_contract = {
+        "business_rule": (
+            customer_business_rule_gate["gate_checks"],
+            {
+                "industry_selection_structured_contract",
+                "detail_sorting_structured_contract",
+                "unmatched_advertiser_notification_payload_contract",
+                "quarter_template_eligibility_contract",
+                "previous_output_metadata_contract_without_filename_parsing",
+                "formula_mirror_numeric_tolerance_contract",
+            },
+        ),
+        "pipeline": (
+            customer_pipeline_gate["checks"],
+            {
+                "canonical_context_binding_and_target_fiscal_quarter_derivation",
+                "customer_specific_technical_adapter_without_weekly_asset_mutation",
+                "quarter_template_current_year_quarter_version_eligibility",
+                "prior_output_local_metadata_selection_without_filename_parsing",
+                "workflow_dependency_count_isolation",
+            },
+        ),
+        "field_mapping": (
+            customer_field_mapping_gate["consistency_checks"],
+            {"unmatched_notification_payload_is_grouped_and_local_only"},
+        ),
+        "result_contract": (
+            customer_result_gate["gate_checks"],
+            {
+                "missing_field_status_renders_blank_in_output_mapping",
+                "calculation_failed_and_pending_confirmation_output_prohibited",
+            },
+        ),
+        "output_mapping": (
+            customer_output_gate["gate_checks"],
+            {
+                "formula_mirror_numeric_tolerance_without_authority_change",
+                "strict_E_IFERROR_blank_D_as_zero",
+                "result_contract_missing_to_blank_rendering_only",
+                "template_eligibility_current_year_quarter_version",
+                "previous_output_metadata_selection_not_filename_parsing",
+            },
+        ),
+    }
+    for gate_name, (checks, required_check_ids) in gate_check_contract.items():
+        assert required_check_ids.issubset(checks), f"{gate_name} Gate checks incomplete"
+        assert all(checks[check_id] == "pass" for check_id in required_check_ids)
 
     context = runtime["workflow_run_context"]
     assert context["query_parameter_authority"]["actual_execution_date_business_date_inference_allowed"] is False
@@ -376,9 +523,15 @@ def main() -> int:
     assert customer_scenarios["quarter_first_week_applicability"]["expected_result"][
         "technical_eligibility_applies"
     ] is True
-    assert "quarter_first_week" in technical_rule["applicability"][
-        "report_modes_by_workflow"
-    ]["WF_CUSTOMER_REVENUE_DETAIL"]
+    assert technical_rule["applicable_workflow_ids"] == ["WF_WEEKLY_BUSINESS_REPORT"]
+    assert technical_rule["applicability"]["report_modes"] == [
+        "regular_week",
+        "quarter_transition_week",
+    ]
+    assert customer_technical_adapter["applicability"]["report_modes"] == [
+        "regular_week",
+        "quarter_first_week",
+    ]
     assert customer_scenarios[
         "quarter_first_week_without_template_requires_previous_output"
     ]["expected_result"] == {
@@ -409,7 +562,10 @@ def main() -> int:
     forecast_policy = customer_policy["processing"]["forecast_D_semantics"]
     assert "including an explicit zero" in forecast_policy["available_when"]
     assert "Preserve D as blank" in forecast_policy["unavailable_behavior"]
-    assert customer_policy["processing"]["formulas"]["E"].startswith('IF(D="",""')
+    assert customer_policy["processing"]["formulas"]["E"] == 'IFERROR(D/C-1,"")'
+    assert customer_policy["processing"]["formulas"][
+        "E_blank_D_numeric_semantics"
+    ] == "treat_as_zero"
     assert customer_policy["processing"]["formulas"]["G"].startswith('IF(D="",""')
 
     coverage = customer_scenarios["explicit_output_binding_coverage"]["expected_result"]
@@ -504,13 +660,204 @@ def main() -> int:
         "missing_or_blank_allowed": False,
     }
 
-    expected_dependencies = customer_scenarios[
-        "workflow_dependency_count_isolation"
-    ]["expected_result"]
-    customer_baseline = load(
-        ROOT / "phase1_5/assets/readiness/implementation_baseline_customer_revenue_detail.yaml"
+    dependency_case = customer_scenarios["workflow_dependency_count_isolation"]
+    expected_dependencies = dependency_case["expected_result"]
+    assert pipeline_registry["readiness_gate"][
+        "weekly_declared_dataset_dependency_count"
+    ] == expected_dependencies["weekly_dataset_dependency_count"]
+    assert customer_baseline["workflow_dependency_counts"][
+        "dataset_dependency_count"
+    ] == expected_dependencies["customer_dataset_dependency_count"]
+    assert customer_pipeline_gate["scope"][
+        "declared_dataset_dependency_count"
+    ] == expected_dependencies["customer_dataset_dependency_count"]
+    workflow_dataset_counts: dict[str, int] = defaultdict(int)
+    for pipeline in pipeline_registry["pipelines"]:
+        workflows = {
+            binding.get("workflow_id")
+            for binding in pipeline.get("workflow_bindings", [])
+            if isinstance(binding, dict)
+        }
+        for workflow_id in workflows:
+            workflow_dataset_counts[workflow_id] += sum(
+                isinstance(item, dict)
+                for item in pipeline.get("dataset_dependencies", [])
+            )
+    assert workflow_dataset_counts["WF_WEEKLY_BUSINESS_REPORT"] == 10
+    assert workflow_dataset_counts["WF_CUSTOMER_REVENUE_DETAIL"] == 1
+    assert expected_dependencies["legacy_global_mixed_count_used"] is False
+
+    forecast_e = customer_scenarios["forecast_E_blank_D_as_zero"]
+    assert [
+        excel_forecast_yoy(row["D"], row["C"])
+        for row in forecast_e["synthetic_input"]["rows"]
+    ] == forecast_e["expected_result"]
+    detail_formula = customer_output["workbook_layout"]["sheets"][0][
+        "formula_policy"
+    ]["formulas"]
+    assert detail_formula["E"] == 'IFERROR(D/C-1,"")'
+    assert detail_formula["E_blank_D_numeric_semantics"] == "treat_as_zero"
+
+    context_case = customer_scenarios[
+        "canonical_context_binding_and_target_quarter"
+    ]
+    context_input = context_case["synthetic_input"]
+    derived_quarter = f"{context_input['current_year']}Q{context_input['quarter']}"
+    assert {
+        "target_fiscal_quarter": derived_quarter,
+        "runtime_guessing_used": False,
+    } == context_case["expected_result"]
+    assert customer_context["derived_field_bindings"]["target_fiscal_quarter"][
+        "source_field_ids"
+    ] == ["current_year", "quarter"]
+    assert customer_context["constraints"][
+        "runtime_field_alias_guessing_allowed"
+    ] is False
+    for rule in (customer_technical_adapter, full_quarter_rule, comparable_rule):
+        required_fields = set(rule["inputs"]["required_context_fields"])
+        assert required_fields.issubset(customer_context["required_fields"])
+        assert set(rule["context_binding"]["exact_field_bindings"]) == required_fields
+
+    missing_case = customer_scenarios["result_missing_output_rendering"]
+    downstream = customer_result_contract["mode_semantics"]["downstream_consumption"]
+    assert missing_case["expected_result"] == {
+        "rendered_value": downstream["missing_output_rendering"],
+        "calculation_failed_output_allowed": downstream[
+            "calculation_failed_output_allowed"
+        ],
+        "pending_confirmation_output_allowed": downstream[
+            "pending_confirmation_output_allowed"
+        ],
+    }
+    assert downstream["output_allowed_value_statuses"] == ["valid_value", "missing"]
+    output_consumption = customer_output["assembly_constraints"][
+        "result_field_consumption_contract"
+    ]
+    assert output_consumption["missing_output_rendering"] == "blank_cell"
+    assert output_consumption["calculation_failed_output_allowed"] is False
+    assert output_consumption["pending_confirmation_output_allowed"] is False
+
+    industry_case = customer_scenarios["industry_selection_order"]
+    selected_industry, name_fallback = select_industry(
+        industry_case["synthetic_input"]["template_industry"],
+        industry_case["synthetic_input"]["candidates"],
     )
-    assert customer_baseline["workflow_dependency_counts"] == expected_dependencies
+    assert {
+        "selected_industry": selected_industry,
+        "final_name_fallback_used": name_fallback,
+    } == industry_case["expected_result"]["previous_industry_case"]
+    fallback_industry, fallback_used = select_industry(
+        None, industry_case["synthetic_input"]["name_fallback_candidates"]
+    )
+    assert {
+        "selected_industry": fallback_industry,
+        "final_name_fallback_used": fallback_used,
+        "notification_required": customer_policy["processing"][
+            "industry_selection"
+        ]["final_name_order_fallback_notification_required"],
+    } == industry_case["expected_result"]["name_fallback_case"]
+    industry_policy = customer_policy["processing"]["industry_selection"]
+    assert [item["key"] for item in industry_policy["source_fallback_order"]] == [
+        "grouped_signed_current_performance_F",
+        "grouped_signed_current_executed_J",
+        "matches_previous_reporting_period_industry",
+        "industry_name",
+    ]
+
+    detail_sort_case = customer_scenarios["detail_sorting_contract"]
+    assert sort_customer_detail(detail_sort_case["synthetic_input"]["rows"]) == detail_sort_case[
+        "expected_result"
+    ]
+    assert customer_policy["processing"]["detail_sorting"][
+        "runtime_sort_key_inference_allowed"
+    ] is False
+
+    unmatched_case = customer_scenarios[
+        "unmatched_advertiser_notification_payload"
+    ]["expected_result"]
+    notification_contract = customer_policy["processing"]["advertiser_mapping"][
+        "unmatched_advertiser_notification"
+    ]
+    assert notification_contract["payload_fields"] == unmatched_case["payload_fields"]
+    assert "raw_order_rows" in notification_contract["prohibited_payload"]
+    assert notification_contract["persistence_scope"] == unmatched_case[
+        "persistence_scope"
+    ]
+
+    template_case = customer_scenarios["quarter_template_eligibility"]
+    template_input = template_case["synthetic_input"]
+    assert {
+        "matching_template": "available"
+        if template_is_eligible(template_input["matching_template"], template_input["context"])
+        else "unavailable",
+        "wrong_quarter_template": "available"
+        if template_is_eligible(template_input["wrong_quarter_template"], template_input["context"])
+        else "unavailable",
+        "prior_quarter_fields_inherited": False,
+    } == template_case["expected_result"]
+    template_contract = customer_local_inputs["quarter_template_eligibility_contract"]
+    assert template_contract["unavailable_behavior"]["prohibited_inheritance_fields"] == [
+        "C",
+        "D",
+        "O",
+        "P",
+    ]
+    assert template_contract["filename_parsing_for_eligibility_allowed"] is False
+    assert customer_policy["processing"]["top20"]["existing_template_membership"][
+        "eligibility_prerequisite"
+    ].startswith("quarter_template_eligibility equals available")
+
+    metadata_case = customer_scenarios["previous_output_metadata_contract"][
+        "expected_result"
+    ]
+    metadata_contract = customer_local_inputs[
+        "previous_reporting_period_output_metadata_contract"
+    ]
+    assert list(metadata_contract["required_metadata_fields"]) == metadata_case[
+        "required_metadata_fields"
+    ]
+    assert metadata_contract["filename_parsing_for_history_selection_allowed"] is False
+
+    frozen_case = customer_scenarios[
+        "frozen_weekly_rule_and_customer_adapter"
+    ]["expected_result"]
+    assert technical_rule["applicable_workflow_ids"] == frozen_case["weekly_workflows"]
+    assert technical_rule["applicability"]["report_modes"] == frozen_case[
+        "weekly_report_modes"
+    ]
+    assert customer_technical_adapter["applicability"]["report_modes"] == frozen_case[
+        "customer_report_modes"
+    ]
+    assert customer_technical_adapter["governance"][
+        "frozen_weekly_asset_is_runtime_dependency"
+    ] is frozen_case["weekly_rule_is_customer_runtime_dependency"]
+
+    tolerance_case = customer_scenarios["formula_mirror_numeric_tolerance"]
+    tolerance_contract = customer_policy["output_boundary"][
+        "formula_mirror_numeric_comparison"
+    ]
+    output_tolerance_contract = customer_output["workbook_layout"]["sheets"][0][
+        "formula_policy"
+    ]["numeric_comparison"]
+    assert output_tolerance_contract["relative_tolerance"] == tolerance_contract[
+        "relative_tolerance"
+    ]
+    assert output_tolerance_contract["absolute_tolerance"] == tolerance_contract[
+        "absolute_tolerance"
+    ]
+    comparison_passed = math.isclose(
+        tolerance_case["synthetic_input"]["calculation_engine_value"],
+        tolerance_case["synthetic_input"]["excel_value"],
+        rel_tol=tolerance_contract["relative_tolerance"],
+        abs_tol=tolerance_contract["absolute_tolerance"],
+    )
+    assert {
+        "comparison_passed": comparison_passed,
+        "calculation_engine_remains_authoritative": tolerance_contract[
+            "comparison_pass_may_change_authoritative_result"
+        ]
+        is False,
+    } == tolerance_case["expected_result"]
 
     print(
         "Phase 1.5 final acceptance passed: "
