@@ -13,23 +13,28 @@ approval_status: approved_design_only
 effective_from: 2026-08-08
 purpose: Apply the confirmed Technical single-count eligibility semantics to Customer Revenue Detail without modifying or runtime-reusing the frozen Weekly rule asset.
 inputs:
-  required_context_fields: [target_fiscal_quarter, report_mode]
+  required_context_fields: [target_fiscal_quarter, prior_year_fiscal_quarter, report_mode]
   required_standard_fields: [business_line_level_1, fiscal_quarter, performance_revenue_amount, executed_revenue_amount]
   required_result_contract_ids: []
 applicability:
   report_modes: [regular_week, quarter_first_week]
-  data_roles: [current_quarter_qtd, prior_year_full_quarter, prior_year_comparable_qtd]
+  input_roles: [current_qtd, prior_year_full_quarter, prior_year_comparable]
 context_binding:
   context_id: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
   exact_field_bindings:
     target_fiscal_quarter: target_fiscal_quarter
+    prior_year_fiscal_quarter: prior_year_fiscal_quarter
     report_mode: report_mode
   missing_or_conflicting_binding_action: block_customer_workflow
   runtime_field_name_guessing_allowed: false
 conditions:
   include_when_all:
     - { field: business_line_level_1, operator: exact_equals, value: 硬广 }
-    - { field: fiscal_quarter, operator: exact_equals, context_value: target_fiscal_quarter }
+  role_specific_fiscal_quarter_binding:
+    current_qtd: { source_field: fiscal_quarter, context_field: target_fiscal_quarter }
+    prior_year_full_quarter: { source_field: fiscal_quarter, context_field: prior_year_fiscal_quarter }
+    prior_year_comparable: { source_field: fiscal_quarter, context_field: prior_year_fiscal_quarter }
+  historical_role_may_filter_on_target_fiscal_quarter: false
   fiscal_quarter_format: { pattern_semantics: 'YYYYQ[1-4]' }
 actions:
   on_match: [include_record_in_customer_technical_single_count_set, preserve_signed_amount_original_sign, preserve_executed_amount_original_sign]
@@ -42,6 +47,8 @@ validation:
   exact_business_line_match_required: true
   fuzzy_or_similarity_match_allowed: false
   fiscal_quarter_format_validation_required: true
+  input_role_must_be_one_of_canonical_roles: true
+  fiscal_quarter_must_match_role_specific_context_binding: true
   report_mode_must_be_explicitly_supported: true
   excluded_record_must_not_enter_metric_input: true
   owner_notification_required: true

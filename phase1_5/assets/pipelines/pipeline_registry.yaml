@@ -2202,7 +2202,7 @@ pipelines:
         run_input_manifest_required: true
         run_input_manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
         run_input_manifest_contract_section: customer_run_input_manifest_contract
-        run_input_role: current_qtd_snapshot
+        run_input_role: current_qtd
         period_context_source: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
         context_field_bindings:
           reporting_period_id: reporting_period_id
@@ -2210,40 +2210,56 @@ pipelines:
           target_fiscal_quarter: target_fiscal_quarter
           report_mode: report_mode
         runtime_context_inference_allowed: false
+        source_instance_selection:
+          exact_locked_context_and_input_role_required: true
+          scheduled_missing_behavior: notify_once_then_recheck_every_30_minutes_without_limit
+          scheduled_multiple_or_unreadable_behavior: block_customer_workflow
+          manual_or_backfill_missing_multiple_or_unreadable_behavior: block_customer_workflow
+          unconditional_latest_selection_allowed: false
 
     historical_input_dependencies:
       - dependency_type: Local historical revenue archive
         dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
-        input_role: prior_year_full_quarter_history_for_C
+        input_role: prior_year_full_quarter
         relationship_rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
         period_context_source: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
         context_field_bindings:
           prior_year_full_quarter_period_id: prior_year_full_quarter_period_id
-          target_fiscal_quarter: target_fiscal_quarter
+          prior_year_fiscal_quarter: prior_year_fiscal_quarter
         run_input_manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
-        run_input_role: prior_year_full_quarter_history_for_C
+        run_input_role: prior_year_full_quarter
+        run_input_manifest_required: true
         exact_single_readable_source_required: true
+        missing_multiple_or_unreadable_action: block_customer_workflow
+        wait_or_recheck_allowed: false
+        unconditional_latest_selection_allowed: false
       - dependency_type: Local historical revenue archive
         dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
-        input_role: prior_year_comparable_qtd_snapshot_for_K_L
+        input_role: prior_year_comparable
         relationship_rule_id: BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
         period_context_source: CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1
         context_field_bindings:
           prior_comparable_as_of_date: prior_comparable_as_of_date
-          target_fiscal_quarter: target_fiscal_quarter
+          prior_year_fiscal_quarter: prior_year_fiscal_quarter
         run_input_manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
-        run_input_role: prior_year_comparable_qtd_snapshot_for_K_L
+        run_input_role: prior_year_comparable
+        run_input_manifest_required: true
         exact_single_readable_source_required: true
+        missing_multiple_or_unreadable_action: block_customer_workflow
+        wait_or_recheck_allowed: false
+        unconditional_latest_selection_allowed: false
 
     local_input_dependencies:
       - input_role: quarter_baseline_and_template
         external_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
-        required: false_when_absent_at_quarter_start
+        required: conditional_on_candidate_presence
         fallback: Require the previous reporting period validated output for layout/customer list/industry; rebuild C and leave D/O/P blank.
         local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
         eligibility_contract_section: quarter_template_eligibility_contract
         eligibility_must_match_locked_context_fields: [current_year, quarter]
         confirmed_template_version_required_only_when_candidate_exists: true
+        candidate_absent_allows_previous_output_layout_fallback: true
+        candidate_present_but_invalid_action: block_customer_workflow
         filename_parsing_for_eligibility_allowed: false
       - input_role: immediately_preceding_approved_output
         producer_workflow_id: WF_CUSTOMER_REVENUE_DETAIL
@@ -2253,11 +2269,14 @@ pipelines:
         local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
         metadata_contract_section: previous_reporting_period_output_metadata_contract
         selection_contract:
-          reporting_period_must_equal_run_context_previous_reporting_period_id: true
+          cutoff_must_be_strictly_earlier_than_current_revenue_cutoff_date: true
+          selected_metadata_reporting_period_id_derives_previous_reporting_period_id: true
           validation_status_required: passed
+          history_consumption_status_required: consumable
           same_reporting_period_attempt_allowed: false
-          unique_highest_output_version_required: true
-          ambiguous_or_missing_action: block_customer_workflow
+          unique_latest_cutoff_and_highest_output_version_required: true
+          ambiguous_invalid_or_unresolvable_action: block_customer_workflow
+          missing_action: block_only_when_previous_output_is_required_for_values_or_layout
           filename_parsing_for_selection_allowed: false
         same_week_rerun:
           reuse_locked_previous_reporting_period_selection: true
@@ -2268,6 +2287,25 @@ pipelines:
         contract_section: effective_layout_source_contract
         bind_context_fields: [effective_layout_source, effective_layout_reference]
         runtime_alternate_selection_allowed: false
+      - input_role: advertiser_ownership_mapping
+        external_asset_id: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX
+        required: true
+        read_only: true
+        runtime_version_context_field: advertiser_mapping_version
+        exact_field_bindings:
+          source_advertiser_name: advertiser_name
+          canonical_raw_advertiser_name: raw_advertiser_name
+          mapping_key: raw_advertiser_name
+          mapping_value: mapped_customer_or_group_name
+          industry: industry_level_1
+        missing_or_ambiguous_asset_action: block_customer_workflow
+      - input_role: quarter_top20_membership_state
+        required: lookup_required_but_state_may_be_absent_before_first_freeze
+        local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
+        contract_section: quarter_top20_membership_state_contract
+        exact_context_key_fields: [current_year, quarter, membership_type]
+        bind_context_fields: [selected_prior_year_top20_membership_reference, selected_forecast_top20_membership_reference]
+        duplicate_or_previous_quarter_state_action: block_customer_workflow
 
     execution:
       execution_mode: sequential
@@ -2281,11 +2319,15 @@ pipelines:
         - prior_year
         - quarter
         - target_fiscal_quarter
+        - prior_year_fiscal_quarter
         - report_mode
         - reporting_period_id
         - previous_reporting_period_id
         - prior_comparable_as_of_date
         - prior_year_full_quarter_period_id
+        - selected_previous_output_current_revenue_cutoff_date
+        - selected_previous_output_target_fiscal_quarter
+        - prior_week_comparable_as_of_date
         - quarter_template_availability
         - forecast_D_availability
         - confirmed_template_version
@@ -2293,6 +2335,8 @@ pipelines:
         - advertiser_mapping_version
         - effective_layout_source
         - effective_layout_reference
+        - selected_prior_year_top20_membership_reference
+        - selected_forecast_top20_membership_reference
       target_fiscal_quarter_derivation_binding:
         source_field_ids: [current_year, quarter]
         target_field_id: target_fiscal_quarter
@@ -2306,18 +2350,23 @@ pipelines:
       schedule: { day_of_week: Thursday, start_time: "17:40", timezone: Asia/Shanghai }
       source_wait_policy_id: POLICY_CUSTOMER_REVENUE_DETAIL_V1
       manual_trigger_allowed: true
-      manual_trigger_required_parameters: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter, ReportingPeriodId]
+      manual_trigger_required_parameters: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter]
       manual_parameter_to_context_bindings:
         WorkflowExecutionDate: workflow_execution_date
         CurrentRevenueCutoffDate: current_revenue_cutoff_date
         CurrentYear: current_year
         Quarter: quarter
-        ReportingPeriodId: reporting_period_id
         automatic_alias_or_value_inference_allowed: false
       stages: [DATA_COLLECTION, DATA_STANDARDIZATION, BUSINESS_RULE_PROCESSING, METRIC_CALCULATION, VALIDATION]
       mapping_profile_ids:
         - MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
-        - MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+      customer_standard_field_bindings:
+        advertiser_name: raw_advertiser_name
+        MAP_ADVERTISER_NAME_OWNERSHIP_INDEX.raw_advertiser_name: raw_advertiser_name
+        MAP_ADVERTISER_NAME_OWNERSHIP_INDEX.mapped_customer_or_group_name: mapped_customer_or_group_name
+        industry_level_1: industry_level_1
+        MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1.customer_name_is_customer_identity_authority: false
+        customer_name: mapped_customer_or_group_name_or_unmatched_raw_advertiser_fallback
       ordered_rule_set_ids:
         - BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1
         - BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1
@@ -2357,8 +2406,11 @@ pipelines:
       restart_from_pipeline_start: true
       restart_must_be_idempotent: true
       stage_checkpoint_persistence_required: false
-      source_missing_recheck_interval_minutes: 30
-      source_missing_maximum_rechecks: unlimited
+      source_recovery_by_scope:
+        scheduled_current_qtd: { notify_once: true, recheck_interval_minutes: 30, maximum_rechecks: unlimited, auto_resume_on_arrival: true }
+        scheduled_historical_roles: { action: block_customer_workflow, recheck_allowed: false }
+        manual_or_backfill_all_roles: { action: block_customer_workflow, recheck_allowed: false }
+        rerun_locked_roles: { action: block_customer_workflow, recheck_allowed: false }
       downstream_impact_rule: no impact outside WF_CUSTOMER_REVENUE_DETAIL
 
     governance:
@@ -2398,7 +2450,7 @@ constraints:
       禁止根据当前日期自动推断业务周期。
   workflow_specific_manual_trigger_requirements:
     WF_CUSTOMER_REVENUE_DETAIL:
-      required_inputs: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter, ReportingPeriodId]
+      required_inputs: [WorkflowExecutionDate, CurrentRevenueCutoffDate, CurrentYear, Quarter]
       missing_input_action: block_customer_workflow_only
   regular_inventory_pipeline_history_strategy:
     applies_to: All regular inventory Pipelines

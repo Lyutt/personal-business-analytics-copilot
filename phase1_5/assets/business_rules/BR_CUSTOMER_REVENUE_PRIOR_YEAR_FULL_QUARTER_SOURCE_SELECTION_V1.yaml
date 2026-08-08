@@ -13,11 +13,12 @@ approval_status: approved_design_only
 effective_from: 2026-08-08
 purpose: Select the prior-year full-quarter Technical revenue history used only to supplement detail column C and prior-year Top20 ranking.
 inputs:
-  required_context_fields: [current_year, prior_year, quarter, prior_year_full_quarter_period_id, target_fiscal_quarter]
-  required_standard_fields: [business_line_level_1, fiscal_quarter, advertiser_name, performance_revenue_amount]
+  required_context_fields: [current_year, prior_year, quarter, prior_year_full_quarter_period_id, prior_year_fiscal_quarter]
+  required_standard_fields: [business_line_level_1, fiscal_quarter, raw_advertiser_name, mapped_customer_or_group_name, industry_level_1, performance_revenue_amount]
   required_result_contract_ids: []
 conditions:
-  source_role: prior_year_full_quarter_history
+  input_role: prior_year_full_quarter
+  required_fiscal_quarter_context_field: prior_year_fiscal_quarter
   required_period: PriorYear and Quarter full-quarter final history
   exact_single_readable_source_required: true
   technical_eligibility_rule_id: BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1
@@ -31,6 +32,8 @@ actions:
 validation:
   deterministic: true
   exact_full_quarter_period_required: true
+  historical_record_fiscal_quarter_must_equal_prior_year_fiscal_quarter: true
+  historical_record_target_fiscal_quarter_filter_allowed: false
   source_role_must_not_equal_comparable_snapshot: true
   reconciliation_absolute_tolerance_CNY: 1
 governance:
@@ -49,5 +52,5 @@ context_binding:
     prior_year: prior_year
     quarter: quarter
     prior_year_full_quarter_period_id: prior_year_full_quarter_period_id
-    target_fiscal_quarter: target_fiscal_quarter
+    prior_year_fiscal_quarter: prior_year_fiscal_quarter
   missing_or_conflicting_binding_action: block_customer_workflow

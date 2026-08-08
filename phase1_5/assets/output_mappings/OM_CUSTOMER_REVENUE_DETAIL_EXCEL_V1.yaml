@@ -11,6 +11,7 @@ output_target:
   storage_scope: local_only
   storage_location: ${CUSTOMER_REVENUE_OUTPUT_DIR_LOCAL_ONLY}
   filename_pattern: '{YY}年Q{Quarter}硬广预算盘点-收入截止{YYYYMMDD}.xlsx'
+  filename_date_binding: { token: YYYYMMDD, context_field: current_revenue_cutoff_date }
   collision_policy:
     overwrite_allowed: false
     next_available_suffix: v2_v3_and_so_on
@@ -22,18 +23,23 @@ output_target:
       suffix_mapping: { 1: no_suffix, 2: v2, 3: v3, n_greater_than_3: vN }
       next_version_source: highest unique passed local metadata output_version plus one
       filename_parsing_allowed: false
+      filesystem_and_metadata_consistency_required: true
+      orphan_file_metadata_failure_or_duplicate_version_action: block_and_notify
   source_template_reference: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
+  source_template_reference_used_only_when: effective_layout_source equals current_quarter_template
   source_template_version_binding:
     asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY
     reference_contract_version: 1.0.0
     runtime_version_reference: '${TEMPLATE_CUSTOMER_REVENUE_DETAIL_VERSION_LOCAL_ONLY}'
     runtime_version_context_field_id: confirmed_template_version
-    runtime_version_verification_required: true
+    runtime_version_verification_required_when: effective_layout_source equals current_quarter_template
+    runtime_version_verification_required_when_previous_output_layout_only: false
   source_template_eligibility_contract:
     local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
     contract_section: quarter_template_eligibility_contract
     exact_current_year_quarter_and_version_match_required: true
-    mismatch_result: unavailable
+    no_candidate_result: unavailable_with_previous_output_layout_fallback
+    candidate_present_mismatch_action: block_customer_workflow
     filename_parsing_allowed: false
   effective_layout_source_contract:
     local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
@@ -49,6 +55,7 @@ output_target:
     local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
     contract_section: local_output_metadata_write_contract
     write_after_successful_validation_only: true
+    workbook_is_consumable_history_only_after_metadata_write_succeeds: true
   weekly_report_attachment: false
   weekly_report_file_dependency: false
 
@@ -137,10 +144,10 @@ workbook_layout:
           template_header_pattern: '{CurrentYear}年Q{Quarter}截止{AsOfDate}执行'
           semantic_role: current_qtd_executed_as_of_date
         - column: K
-          template_header_pattern: '{PriorYear}年Q{Quarter}截止{AsOfDate}业绩'
+          template_header_pattern: '{PriorYear}年Q{Quarter}截止{PriorComparableAsOfDate}业绩'
           semantic_role: prior_year_qtd_performance_as_of_date
         - column: L
-          template_header_pattern: '{PriorYear}年Q{Quarter}截止{AsOfDate}执行'
+          template_header_pattern: '{PriorYear}年Q{Quarter}截止{PriorComparableAsOfDate}执行'
           semantic_role: prior_year_qtd_executed_as_of_date
         - column: M
           template_header_pattern: '{CurrentYear}年Q{Quarter}截止{PriorWeekAsOfDate}业绩'
@@ -155,10 +162,10 @@ workbook_layout:
           template_header: 预算变动原因
           semantic_role: budget_change_reason
         - column: Q
-          template_header_pattern: '{PriorYear}年Q{Quarter}截止{PriorComparableAsOfDate}业绩'
+          template_header_pattern: '{PriorYear}年Q{Quarter}截止{PriorWeekComparableAsOfDate}业绩'
           semantic_role: prior_year_comparable_performance_as_of_date
         - column: R
-          template_header_pattern: '{PriorYear}年Q{Quarter}截止{PriorComparableAsOfDate}执行'
+          template_header_pattern: '{PriorYear}年Q{Quarter}截止{PriorWeekComparableAsOfDate}执行'
           semantic_role: prior_year_comparable_executed_as_of_date
       formula_policy:
         formula_cells_are_display_and_audit_mirrors_only: true
@@ -253,6 +260,7 @@ parameterization:
     - AsOfDate
     - PriorWeekAsOfDate
     - PriorComparableAsOfDate
+    - PriorWeekComparableAsOfDate
   prior_year_date_rule:
     workflow_year_2026: current cutoff minus one year plus one day
     workflow_year_2027_or_later: block_for_owner_reconfirmation
@@ -263,7 +271,10 @@ parameterization:
     CurrentYear: current_year
     Quarter: quarter
     PriorYear: prior_year
+    AsOfDate: current_revenue_cutoff_date
+    PriorWeekAsOfDate: selected_previous_output_current_revenue_cutoff_date
     PriorComparableAsOfDate: prior_comparable_as_of_date
+    PriorWeekComparableAsOfDate: prior_week_comparable_as_of_date
     TargetFiscalQuarter: target_fiscal_quarter
   runtime_parameter_alias_or_value_guessing_allowed: false
   date_and_period_header_generation: Use the approved template pattern and validated Workflow parameters.
@@ -318,7 +329,8 @@ failure_and_warning_policy:
     - unmatched_advertiser
     - negative_money_value
     - negative_weekly_incremental_performance
-    - absolute_rate_at_least_100_percent
+    - absolute_yoy_rate_at_least_100_percent
+  completion_rate_above_100_percent_warning_allowed: false
   warning_source: Validated Pipeline notification records
   notification_delivery: Codex task result and local-only exception/run record
   outlook_or_external_message_allowed: false

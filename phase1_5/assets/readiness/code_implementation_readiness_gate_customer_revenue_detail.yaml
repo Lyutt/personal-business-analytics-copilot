@@ -29,11 +29,17 @@ implementation_readiness_checks:
   customer_run_context_locked_before_data_collection: pass
   canonical_context_bindings_and_no_runtime_guessing: pass
   deterministic_context_initialization_before_data_collection: pass
+  four_parameter_manual_and_backfill_without_calendar_dependency: pass
+  role_specific_current_and_prior_year_fiscal_quarter_filtering: pass
   conditional_template_version_requirement: pass
   workflow_scoped_customer_run_input_manifest: pass
+  manifest_exact_role_cardinality_and_weekly_zero_regression: pass
+  scoped_source_wait_and_direct_block_contract: pass
   local_input_template_and_previous_output_metadata_contracts: pass
   effective_layout_source_and_layout_only_fallback_contract: pass
   local_output_metadata_write_and_integer_version_contract: pass
+  output_date_lineage_and_metadata_filesystem_consistency: pass
+  top20_cross_run_freeze_contract: pass
   frozen_weekly_rule_restored_and_customer_adapter_bound: pass
   frozen_weekly_comparable_rule_restored: pass
   quarter_first_week_template_order_tie_break: pass

@@ -50,8 +50,8 @@ scenarios:
       reporting_period_id: SYNTH-P2
       previous_reporting_period_id: SYNTH-P1
       outputs:
-        - { workflow_run_id: SYNTH-RUN-P1, result_id: PREV-V1, reporting_period_id: SYNTH-P1, output_version: 1, output_file_reference: SYNTH-LOCAL-REF-P1, validation_status: passed, completed_at: '2026-08-01T18:00:00+08:00' }
-        - { workflow_run_id: SYNTH-RUN-P2, result_id: SAME-WEEK, reporting_period_id: SYNTH-P2, output_version: 2, output_file_reference: SYNTH-LOCAL-REF-P2, validation_status: passed, completed_at: '2026-08-08T18:00:00+08:00' }
+        - { workflow_run_id: SYNTH-RUN-P1, result_id: PREV-V1, reporting_period_id: SYNTH-P1, output_version: 1, output_file_reference: SYNTH-LOCAL-REF-P1, validation_status: passed, completed_at: '2026-08-01T18:00:00+08:00', current_revenue_cutoff_date: '2026-07-30', prior_comparable_as_of_date: '2025-07-31', target_fiscal_quarter: 2026Q3, history_consumption_status: consumable }
+        - { workflow_run_id: SYNTH-RUN-P2, result_id: SAME-WEEK, reporting_period_id: SYNTH-P2, output_version: 2, output_file_reference: SYNTH-LOCAL-REF-P2, validation_status: passed, completed_at: '2026-08-08T18:00:00+08:00', current_revenue_cutoff_date: '2026-08-06', prior_comparable_as_of_date: '2025-08-07', target_fiscal_quarter: 2026Q3, history_consumption_status: consumable }
     expected_result: { selected_previous_result_id: PREV-V1, same_week_attempt_used: false }
   - scenario_id: customer_run_context_lock
     synthetic_input:
@@ -112,10 +112,10 @@ scenarios:
       context: { current_year: 2026, quarter: 3, confirmed_template_version: SYNTH-V1 }
       matching_template: { template_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY, template_version: SYNTH-V1, template_current_year: 2026, template_quarter: 3, template_file_reference: SYNTH-TEMPLATE-REF-Q3, structure_validation_status: passed }
       wrong_quarter_template: { template_asset_id: TEMPLATE_CUSTOMER_REVENUE_DETAIL_LATEST_LOCAL_ONLY, template_version: SYNTH-V1, template_current_year: 2026, template_quarter: 2, template_file_reference: SYNTH-TEMPLATE-REF-Q2, structure_validation_status: passed }
-    expected_result: { matching_template: available, wrong_quarter_template: unavailable, prior_quarter_fields_inherited: false }
+    expected_result: { matching_template: available, wrong_quarter_template: blocked_invalid_candidate, prior_quarter_fields_inherited: false }
   - scenario_id: previous_output_metadata_contract
     expected_result:
-      required_metadata_fields: [workflow_run_id, result_id, reporting_period_id, output_version, output_file_reference, validation_status, completed_at]
+      required_metadata_fields: [workflow_run_id, result_id, reporting_period_id, output_version, output_file_reference, validation_status, completed_at, current_revenue_cutoff_date, prior_comparable_as_of_date, target_fiscal_quarter, history_consumption_status]
       filename_parsing_used: false
   - scenario_id: frozen_weekly_rule_and_customer_adapter
     expected_result:
@@ -127,10 +127,10 @@ scenarios:
     synthetic_input: { calculation_engine_value: 0.3333333333333333, excel_value: 0.33333333333333337 }
     expected_result: { comparison_passed: true, calculation_engine_remains_authoritative: true }
   - scenario_id: deterministic_context_initialization
-    synthetic_input: { current_year: 2026, quarter: 3, reporting_period_id: SYNTH-2026Q3-P1, reporting_period_position: first, current_revenue_cutoff_date: '2026-07-09', template_candidate_exists: false }
-    expected_result: { prior_year: 2025, target_fiscal_quarter: 2026Q3, report_mode: quarter_first_week, prior_year_full_quarter_period_id: 2025Q3, prior_comparable_as_of_date: '2025-07-10', confirmed_template_version: null, locked_before_data_collection: true }
+    synthetic_input: { current_year: 2026, quarter: 3, has_same_quarter_previous_output: false, current_revenue_cutoff_date: '2026-07-09', template_candidate_exists: false }
+    expected_result: { prior_year: 2025, target_fiscal_quarter: 2026Q3, prior_year_fiscal_quarter: 2025Q3, reporting_period_id: 'CUSTOMER:2026Q3:2026-07-09', report_mode: quarter_first_week, prior_year_full_quarter_period_id: 2025Q3, prior_comparable_as_of_date: '2025-07-10', confirmed_template_version: null, locked_before_data_collection: true }
   - scenario_id: customer_run_input_manifest_scope
-    synthetic_input: { run_type: backfill, input_roles: [current_qtd_snapshot, prior_year_full_quarter_history_for_C, prior_year_comparable_qtd_snapshot_for_K_L] }
+    synthetic_input: { run_type: backfill, input_roles: [current_qtd, prior_year_full_quarter, prior_year_comparable] }
     expected_result: { workflow_scope: WF_CUSTOMER_REVENUE_DETAIL, manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1, weekly_contract_reused: false, filename_or_latest_guessing: false }
   - scenario_id: effective_layout_source_selection
     synthetic_input: { eligible_template: false, validated_previous_output: true }
@@ -152,3 +152,35 @@ scenarios:
         - phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml
         - phase1_5/assets/business_rules/BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1.yaml
         - phase1_5/assets/readiness/implementation_baseline.yaml
+        - phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+  - scenario_id: fiscal_quarter_role_binding
+    synthetic_input: { current_year: 2026, prior_year: 2025, quarter: 3, records: [{ role: current_qtd, fiscal_quarter: 2026Q3 }, { role: prior_year_full_quarter, fiscal_quarter: 2025Q3 }, { role: prior_year_comparable, fiscal_quarter: 2025Q3 }] }
+    expected_result: { current_qtd_context_field: target_fiscal_quarter, historical_context_field: prior_year_fiscal_quarter, historical_current_quarter_filter_allowed: false }
+  - scenario_id: four_parameter_manual_run
+    synthetic_input: { WorkflowExecutionDate: '2026-08-08', CurrentRevenueCutoffDate: '2026-08-06', CurrentYear: 2026, Quarter: 3 }
+    expected_result: { required_parameter_count: 4, reporting_period_id: 'CUSTOMER:2026Q3:2026-08-06', reporting_period_owner_input: false, external_calendar_dependency: false }
+  - scenario_id: weekly_manifest_selection_zero_regression
+    expected_result: { weekly_manifest_id: RUN_INPUT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1, weekly_multiple_email_selection_unchanged: true, customer_latest_rule_scoped_only: true }
+  - scenario_id: source_wait_scope
+    expected_result: { scheduled_current_qtd: unlimited_30_minute_recheck_after_notify_once, scheduled_current_multiple_or_unreadable: direct_block, scheduled_historical: direct_block, manual_or_backfill_all_roles: direct_block, unconditional_latest_allowed: false }
+  - scenario_id: customer_mapping_dependency_and_fields
+    expected_result: { mapping_profiles: [MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1], external_asset_id: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX, field_chain: [advertiser_name, raw_advertiser_name, mapped_customer_or_group_name], industry_field: industry_level_1 }
+  - scenario_id: template_absent_vs_invalid
+    expected_result: { absent_with_valid_previous_output: previous_period_output_layout_only, present_invalid_metadata_version_or_structure: blocked, invalid_may_be_treated_as_absent: false }
+  - scenario_id: output_date_lineage
+    expected_result: { AsOfDate: current_revenue_cutoff_date, K_L: prior_comparable_as_of_date, M_N: selected_previous_output_current_revenue_cutoff_date, Q_R: prior_week_comparable_as_of_date, filename_YYYYMMDD: current_revenue_cutoff_date }
+  - scenario_id: top20_cross_run_freeze
+    expected_result: { priority: [validated_current_quarter_frozen_state, eligible_current_quarter_template_membership, first_confirmed_ranking], subsequent_rerank_allowed: false, previous_quarter_reuse_allowed: false, forecast_freeze_requires_D_available: true, ordinary_layout_inheritance: false }
+  - scenario_id: no_template_industry_inheritance
+    expected_result: { existing_customer_nonblank_previous_A: inherit_directly, new_or_blank_previous_A: apply_confirmed_fallback }
+  - scenario_id: yoy_warning_scope
+    synthetic_input: { performance_completion_rate: 1.5, forecast_yoy: 1.2 }
+    expected_result: { completion_rate_warning: false, forecast_yoy_warning: true, warning_scope: yoy_only }
+  - scenario_id: manifest_role_cardinality_and_customer_identity
+    synthetic_input:
+      valid_roles: [current_qtd, prior_year_full_quarter, prior_year_comparable]
+      duplicate_roles: [current_qtd, current_qtd, prior_year_full_quarter, prior_year_comparable]
+      missing_roles: [current_qtd, prior_year_full_quarter]
+    expected_result: { business_key: [workflow_run_id, input_role], required_roles: [current_qtd, prior_year_full_quarter, prior_year_comparable], exactly_one_each: true, valid_roles_accepted: true, duplicate_roles_blocked: true, missing_roles_blocked: true, duplicate_or_missing_action: block_customer_workflow, customer_name_statuses: [valid_value] }
+  - scenario_id: metadata_failure_and_collision_consistency
+    expected_result: { metadata_failure_consumable_history: false, overwrite_allowed: false, orphan_file_action: [block_output, notify_owner], duplicate_version_action: [block_output, notify_owner], filesystem_metadata_version_match_required: true }

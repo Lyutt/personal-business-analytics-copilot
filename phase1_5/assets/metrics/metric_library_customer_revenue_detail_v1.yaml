@@ -57,7 +57,9 @@ metric_variants:
     business_context: Customer Revenue Detail
     calculation_method: Use populated quarter baseline C; otherwise aggregate the separately selected prior-year full-quarter history by mapped customer and default a missing customer to zero.
     business_rule_dependencies: [BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1]
-    prohibited_source_role: prior_year_comparable_qtd_snapshot
+    required_input_role: prior_year_full_quarter
+    prohibited_input_role: prior_year_comparable
+    fiscal_quarter_context_field: prior_year_fiscal_quarter
     period_type: Prior-year full fiscal quarter
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -83,6 +85,8 @@ metric_variants:
     business_context: Customer Revenue Detail
     calculation_method: Aggregate eligible Technical records by exact mapped customer/group; after building the union, zero-fill a retained customer absent from the validated current snapshot.
     missing_current_customer_value: 0
+    required_input_role: current_qtd
+    fiscal_quarter_context_field: target_fiscal_quarter
     period_type: Current fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -94,6 +98,8 @@ metric_variants:
     business_context: Customer Revenue Detail
     calculation_method: Aggregate eligible Technical records by exact mapped customer/group; after building the union, zero-fill a retained customer absent from the validated current snapshot.
     missing_current_customer_value: 0
+    required_input_role: current_qtd
+    fiscal_quarter_context_field: target_fiscal_quarter
     period_type: Current fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -105,7 +111,9 @@ metric_variants:
     business_context: Customer Revenue Detail
     calculation_method: Aggregate the Customer-specific exact prior-year comparable QTD snapshot with the same eligibility and mapping rules; signed, zero and negative values remain valid.
     business_rule_dependencies: [BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1]
-    prohibited_source_role: prior_year_full_quarter_history
+    required_input_role: prior_year_comparable
+    prohibited_input_role: prior_year_full_quarter
+    fiscal_quarter_context_field: prior_year_fiscal_quarter
     period_type: Prior-year comparable fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision
@@ -117,7 +125,9 @@ metric_variants:
     business_context: Customer Revenue Detail
     calculation_method: Aggregate the Customer-specific exact prior-year comparable QTD snapshot with the same eligibility and mapping rules; signed, zero and negative values remain valid.
     business_rule_dependencies: [BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1]
-    prohibited_source_role: prior_year_full_quarter_history
+    required_input_role: prior_year_comparable
+    prohibited_input_role: prior_year_full_quarter
+    fiscal_quarter_context_field: prior_year_fiscal_quarter
     period_type: Prior-year comparable fiscal-quarter-to-date
     base_unit: CNY yuan
     result_precision: Preserve full precision

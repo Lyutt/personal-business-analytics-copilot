@@ -14,6 +14,13 @@ producer:
 
 contract_shape: record_set
 contract_fields: []
+date_lineage_contract:
+  F_J_and_output_AsOfDate: current_revenue_cutoff_date
+  K_L: prior_comparable_as_of_date
+  M_N: selected_previous_output_current_revenue_cutoff_date
+  Q_R: prior_week_comparable_as_of_date
+  filename_YYYYMMDD: current_revenue_cutoff_date
+  previous_output_metadata_context_fields_required: [current_revenue_cutoff_date, prior_comparable_as_of_date, target_fiscal_quarter]
 record_sets:
   - record_set_id: customer_detail
     record_grain: [customer_name]
@@ -23,7 +30,7 @@ record_sets:
       - &text_policy
         field_id: industry
         field_name: Industry
-        business_definition: Quarter-baseline industry or the confirmed deterministic source-industry fallback.
+        business_definition: Eligible current-quarter template industry; when layout falls back to the previous output, existing customers inherit its nonblank A directly; only new customers or blank historical A use the deterministic source-industry fallback.
         source_type: policy_derived_field
         source_policy_id: POLICY_CUSTOMER_REVENUE_DETAIL_V1
         data_type: string
@@ -41,9 +48,9 @@ record_sets:
         data_type: string
         base_unit: text
         nullable: false
-        value_status_allowed: [valid_value, missing, pending_confirmation]
+        value_status_allowed: [valid_value]
         applicable_report_modes: [regular_week, quarter_first_week]
-        validation_requirement: Exactly one output row per customer/group; duplicate rows block the Workflow.
+        validation_requirement: Exactly one nonblank valid_value identity per customer/group; missing or pending identity and duplicate rows block the Workflow.
         lineage_required: true
       - &money_required
         field_id: prior_year_quarter_revenue
@@ -110,7 +117,7 @@ record_sets:
         nullable: true
         value_status_allowed: [valid_value, missing, calculation_failed]
         applicable_report_modes: [regular_week, quarter_first_week]
-        validation_requirement: Unavailable forecast D or an invalid denominator produces blank; absolute value at least 100 percent warns only.
+        validation_requirement: Unavailable forecast D or an invalid denominator produces blank; completion rate never triggers the absolute-100-percent YoY warning.
         lineage_required: true
       - field_id: performance_yoy
         field_name: Performance YoY

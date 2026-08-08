@@ -7,8 +7,7 @@ gate_result: passed
 scope:
   reused_mapping_profiles:
     - MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
-    - MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
-  reused_local_external_mapping: BR_ADVERTISER_OWNERSHIP_MAPPING
+  reused_local_external_mapping: MAP_ADVERTISER_NAME_OWNERSHIP_INDEX
 coverage:
   advertiser_industry_performance_executed_business_line: complete
   customer_group_exact_mapping: complete_by_existing_local_asset_contract
@@ -20,6 +19,10 @@ consistency_checks:
   unmatched_notification_payload_is_grouped_and_local_only: pass
   raw_order_rows_not_logged: pass
   advertiser_mapping_version_bound_before_data_collection: pass
+  canonical_advertiser_field_chain: pass
+  industry_level_1_explicit_binding: pass
+  business_line_delta_mapping_not_customer_dependency: pass
+  shared_profile_customer_name_alias_not_customer_identity_authority: pass
 gate_decision: pass
 constraints:
   mapping_contents_local_only: true

@@ -2608,9 +2608,14 @@ def validate_phase1_5_final_closure(
         runtime_input_contract.get("applies_by_workflow_scope") is not True
         or runtime_input_contract.get("unscoped_runtime_contract_fallback_allowed") is not False
         or weekly_scope.get("contract_source") != "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
+        or weekly_scope.get("run_input_manifest_id") != "RUN_INPUT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1"
+        or weekly_scope.get("existing_multiple_email_selection_semantics_unchanged") is not True
         or customer_scope.get("run_input_manifest_id") != "CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1"
         or customer_scope.get("context_id") != "CUSTOMER_REVENUE_DETAIL_RUN_CONTEXT_V1"
         or customer_scope.get("weekly_runtime_contract_reuse_allowed") is not False
+        or customer_scope.get("rolling_deck_roles") != ["current_qtd", "prior_year_full_quarter", "prior_year_comparable"]
+        or customer_scope.get("unconditional_latest_file_selection_allowed") is not False
+        or "unconditional_latest_file_selection_allowed" in runtime_input_contract
         or runtime_input_contract.get("workflow_run_context_required") is not True
         or runtime_input_contract.get("run_input_manifest_required") is not True
         or runtime_input_contract.get("actual_execution_date_business_date_inference_allowed") is not False

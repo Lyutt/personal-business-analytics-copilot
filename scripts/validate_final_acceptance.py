@@ -75,6 +75,10 @@ def select_previous_period_output(
         "output_file_reference",
         "validation_status",
         "completed_at",
+        "current_revenue_cutoff_date",
+        "prior_comparable_as_of_date",
+        "target_fiscal_quarter",
+        "history_consumption_status",
     }
     assert all(
         required_metadata.issubset(item) for item in outputs
@@ -84,6 +88,7 @@ def select_previous_period_output(
         for item in outputs
         if item.get("reporting_period_id") == previous_reporting_period_id
         and item.get("validation_status") == "passed"
+        and item.get("history_consumption_status") == "consumable"
     ]
     assert candidates, "previous reporting period validated output is required"
     highest_version = max(item["output_version"] for item in candidates)
@@ -327,7 +332,12 @@ def main() -> int:
     assert customer_suite.get("contains_real_business_data") is False
     assert customer_suite.get("external_side_effects_allowed") is False
     assert customer_suite.get("suite_id") == "CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1"
-    assert len(customer_scenarios) == 28
+    assert len(customer_scenarios) == 40
+    customer_pipeline = next(
+        pipeline
+        for pipeline in pipeline_registry["pipelines"]
+        if pipeline.get("pipeline_id") == "PL_CUSTOMER_REVENUE_DETAIL_WEEKLY"
+    )
     gate_check_contract = {
         "business_rule": (
             customer_business_rule_gate["gate_checks"],
@@ -341,6 +351,11 @@ def main() -> int:
                 "frozen_weekly_comparable_rule_unchanged",
                 "quarter_first_week_template_order_tie_break",
                 "effective_layout_source_no_business_value_inheritance",
+                "canonical_input_role_ids_and_role_specific_fiscal_quarters",
+                "no_template_existing_customer_industry_inheritance",
+                "cross_run_top20_membership_state_priority_and_no_rerank",
+                "forecast_top20_first_freeze_requires_D_available",
+                "absolute_100_percent_warning_limited_to_yoy_fields",
             },
         ),
         "pipeline": (
@@ -357,6 +372,14 @@ def main() -> int:
                 "effective_layout_source_and_layout_only_fallback",
                 "local_output_metadata_write_and_integer_version_contract",
                 "frozen_weekly_comparable_rule_zero_change",
+                "four_owner_parameter_manual_and_backfill_contract",
+                "technical_period_identity_without_calendar_dependency",
+                "role_specific_current_and_prior_year_fiscal_quarter_binding",
+                "manifest_role_cardinality_and_business_key",
+                "weekly_manifest_and_selection_zero_regression",
+                "source_wait_policy_scoped_by_run_type_and_role",
+                "local_output_metadata_failure_and_filesystem_collision_consistency",
+                "top20_cross_run_quarter_state_freeze",
             },
         ),
         "field_mapping": (
@@ -364,6 +387,10 @@ def main() -> int:
             {
                 "unmatched_notification_payload_is_grouped_and_local_only",
                 "advertiser_mapping_version_bound_before_data_collection",
+                "canonical_advertiser_field_chain",
+                "industry_level_1_explicit_binding",
+                "business_line_delta_mapping_not_customer_dependency",
+                "shared_profile_customer_name_alias_not_customer_identity_authority",
             },
         ),
         "result_contract": (
@@ -371,6 +398,8 @@ def main() -> int:
             {
                 "missing_field_status_renders_blank_in_output_mapping",
                 "calculation_failed_and_pending_confirmation_output_prohibited",
+                "customer_name_valid_value_only",
+                "explicit_FJ_KL_MN_QR_and_filename_date_lineage",
             },
         ),
         "output_mapping": (
@@ -384,6 +413,10 @@ def main() -> int:
                 "effective_layout_source_current_template_or_layout_only_previous_output",
                 "no_template_previous_output_business_value_and_top20_inheritance_prohibited",
                 "local_output_metadata_write_with_integer_version_mapping",
+                "absent_template_fallback_but_invalid_present_template_blocks",
+                "local_output_metadata_failure_and_collision_consistency",
+                "explicit_date_header_and_filename_lineage",
+                "completion_rate_above_100_percent_not_warning",
             },
         ),
     }
@@ -812,7 +845,7 @@ def main() -> int:
         else "unavailable",
         "wrong_quarter_template": "available"
         if template_is_eligible(template_input["wrong_quarter_template"], template_input["context"])
-        else "unavailable",
+        else "blocked_invalid_candidate",
         "prior_quarter_fields_inherited": False,
     } == template_case["expected_result"]
     template_contract = customer_local_inputs["quarter_template_eligibility_contract"]
@@ -859,13 +892,15 @@ def main() -> int:
     assert {
         "prior_year": init_input["current_year"] - 1,
         "target_fiscal_quarter": f"{init_input['current_year']}Q{init_input['quarter']}",
-        "report_mode": "quarter_first_week" if init_input["reporting_period_position"] == "first" else "regular_week",
+        "prior_year_fiscal_quarter": f"{init_input['current_year'] - 1}Q{init_input['quarter']}",
+        "reporting_period_id": f"CUSTOMER:{init_input['current_year']}Q{init_input['quarter']}:{init_input['current_revenue_cutoff_date']}",
+        "report_mode": "regular_week" if init_input["has_same_quarter_previous_output"] else "quarter_first_week",
         "prior_year_full_quarter_period_id": f"{init_input['current_year'] - 1}Q{init_input['quarter']}",
         "prior_comparable_as_of_date": prior_comparable.isoformat(),
         "confirmed_template_version": None,
         "locked_before_data_collection": customer_context["lock_policy"]["lock_before_stage"] == "DATA_COLLECTION",
     } == context_init["expected_result"]
-    assert customer_context["required_fields"]["confirmed_template_version"]["required_when"] == "quarter_template_availability equals available"
+    assert customer_context["required_fields"]["confirmed_template_version"]["required_when"] == "quarter_template_candidate_presence equals present"
     assert set(customer_context["required_fields"]["run_type"]["allowed_values"]) == {"scheduled", "manual", "backfill", "rerun"}
     assert customer_context["deterministic_initialization_contract"]["all_required_and_conditionally_required_fields_resolved_before_lock"] is True
 
@@ -876,7 +911,7 @@ def main() -> int:
         "workflow_scope": manifest["workflow_scope"],
         "manifest_id": manifest["manifest_id"],
         "weekly_contract_reused": customer_scope["weekly_runtime_contract_reuse_allowed"],
-        "filename_or_latest_guessing": manifest["filename_latest_file_or_execution_date_selection_allowed"],
+        "filename_or_latest_guessing": manifest["filename_latest_file_or_execution_date_selection_allowed_for_WF_CUSTOMER_REVENUE_DETAIL"],
     } == manifest_case
     assert dataset_inventory["runtime_input_contract"]["applies_by_workflow_scope"] is True
     assert dataset_inventory["runtime_input_contract"]["unscoped_runtime_contract_fallback_allowed"] is False
@@ -923,6 +958,141 @@ def main() -> int:
             cwd=ROOT,
         )
         assert baseline_bytes == (ROOT / frozen_path).read_bytes(), f"{frozen_path}: frozen Weekly asset changed"
+
+    fiscal_case = customer_scenarios["fiscal_quarter_role_binding"]["expected_result"]
+    role_quarters = customer_technical_adapter["conditions"]["role_specific_fiscal_quarter_binding"]
+    assert {
+        "current_qtd_context_field": role_quarters["current_qtd"]["context_field"],
+        "historical_context_field": role_quarters["prior_year_full_quarter"]["context_field"],
+        "historical_current_quarter_filter_allowed": customer_technical_adapter["conditions"]["historical_role_may_filter_on_target_fiscal_quarter"],
+    } == fiscal_case
+    assert role_quarters["prior_year_comparable"]["context_field"] == "prior_year_fiscal_quarter"
+    assert full_quarter_rule["conditions"]["input_role"] == "prior_year_full_quarter"
+    assert comparable_rule["conditions"]["input_role"] == "prior_year_comparable"
+
+    manual_case = customer_scenarios["four_parameter_manual_run"]
+    manual_inputs = customer_pipeline["execution"]["manual_trigger_required_parameters"]
+    manual_values = manual_case["synthetic_input"]
+    manual_reporting_id = f"CUSTOMER:{manual_values['CurrentYear']}Q{manual_values['Quarter']}:{manual_values['CurrentRevenueCutoffDate']}"
+    assert {
+        "required_parameter_count": len(manual_inputs),
+        "reporting_period_id": manual_reporting_id,
+        "reporting_period_owner_input": "ReportingPeriodId" in manual_inputs,
+        "external_calendar_dependency": customer_policy["trigger"]["run_context"]["technical_period_identity"]["external_calendar_dependency_allowed"],
+    } == manual_case["expected_result"]
+    assert manual_inputs == ["WorkflowExecutionDate", "CurrentRevenueCutoffDate", "CurrentYear", "Quarter"]
+
+    weekly_case = customer_scenarios["weekly_manifest_selection_zero_regression"]["expected_result"]
+    runtime_scopes = dataset_inventory["runtime_input_contract"]["workflow_scopes"]
+    assert {
+        "weekly_manifest_id": runtime_scopes["WF_WEEKLY_BUSINESS_REPORT"]["run_input_manifest_id"],
+        "weekly_multiple_email_selection_unchanged": runtime_scopes["WF_WEEKLY_BUSINESS_REPORT"]["existing_multiple_email_selection_semantics_unchanged"],
+        "customer_latest_rule_scoped_only": "unconditional_latest_file_selection_allowed" in runtime_scopes["WF_CUSTOMER_REVENUE_DETAIL"] and "unconditional_latest_file_selection_allowed" not in dataset_inventory["runtime_input_contract"],
+    } == weekly_case
+    assert runtime["run_input_manifest"]["manifest_id"] == weekly_case["weekly_manifest_id"]
+    rolling_deck_dataset = next(item for item in dataset_inventory["datasets"] if item.get("dataset_id") == "DS_REVENUE_SALES_ROLLING_DECK_QTD")
+    weekly_multiple_selection = rolling_deck_dataset["acquisition"]["source_object_or_attachment_rule"]["executable_version_selection_rule"]["multiple_match_selection_rule"]
+    assert weekly_multiple_selection["sort_by"] == "email_sent_at"
+    assert weekly_multiple_selection["sort_order"] == "descending"
+    assert weekly_multiple_selection["select"] == "first"
+
+    wait_case = customer_scenarios["source_wait_scope"]["expected_result"]
+    wait_policy = customer_policy["trigger"]["source_wait_policy"]
+    assert {
+        "scheduled_current_qtd": "unlimited_30_minute_recheck_after_notify_once"
+        if all((wait_policy["scheduled_current_qtd"]["initial_missing_action"] == "notify_once", wait_policy["scheduled_current_qtd"]["recheck_interval_minutes"] == 30, wait_policy["scheduled_current_qtd"]["maximum_rechecks"] == "unlimited", wait_policy["scheduled_current_qtd"]["auto_resume_on_arrival"] is True, wait_policy["scheduled_current_qtd"]["multiple_or_unreadable_action"] == "block_customer_workflow"))
+        else "invalid",
+        "scheduled_current_multiple_or_unreadable": "direct_block" if wait_policy["scheduled_current_qtd"]["multiple_or_unreadable_action"] == "block_customer_workflow" else "invalid",
+        "scheduled_historical": "direct_block" if wait_policy["scheduled_historical_C_and_K_L"]["wait_or_recheck_allowed"] is False else "wait",
+        "manual_or_backfill_all_roles": "direct_block" if wait_policy["manual_or_backfill_all_roles"]["wait_or_recheck_allowed"] is False else "wait",
+        "unconditional_latest_allowed": customer_pipeline["dataset_dependencies"][0]["source_instance_selection"]["unconditional_latest_selection_allowed"],
+    } == wait_case
+
+    mapping_case = customer_scenarios["customer_mapping_dependency_and_fields"]["expected_result"]
+    mapping_dependency = next(item for item in customer_pipeline["local_input_dependencies"] if item.get("input_role") == "advertiser_ownership_mapping")
+    field_chain = customer_policy["processing"]["advertiser_mapping"]["explicit_field_chain"]
+    assert {
+        "mapping_profiles": customer_pipeline["execution"]["mapping_profile_ids"],
+        "external_asset_id": mapping_dependency["external_asset_id"],
+        "field_chain": [field_chain["standardized_source_field"], field_chain["canonical_raw_field"], field_chain["mapped_output_field"]],
+        "industry_field": customer_policy["processing"]["advertiser_mapping"]["industry_source_field"],
+    } == mapping_case
+    assert customer_pipeline["execution"]["customer_standard_field_bindings"]["MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1.customer_name_is_customer_identity_authority"] is False
+
+    template_branch_case = customer_scenarios["template_absent_vs_invalid"]["expected_result"]
+    layout_contract = customer_local_inputs["effective_layout_source_contract"]
+    assert {
+        "absent_with_valid_previous_output": layout_contract["deterministic_priority"][1]["value"],
+        "present_invalid_metadata_version_or_structure": "blocked" if layout_contract["candidate_present_but_invalid_action"] == "block_customer_workflow" else "not_blocked",
+        "invalid_may_be_treated_as_absent": customer_policy["processing"]["effective_layout_source"]["invalid_current_quarter_candidate_may_be_treated_as_absent"],
+    } == template_branch_case
+
+    date_case = customer_scenarios["output_date_lineage"]["expected_result"]
+    date_lineage = customer_result_contract["date_lineage_contract"]
+    assert {
+        "AsOfDate": date_lineage["F_J_and_output_AsOfDate"],
+        "K_L": date_lineage["K_L"],
+        "M_N": date_lineage["M_N"],
+        "Q_R": date_lineage["Q_R"],
+        "filename_YYYYMMDD": date_lineage["filename_YYYYMMDD"],
+    } == date_case
+    output_bindings = customer_output["parameterization"]["explicit_run_context_bindings"]
+    assert output_bindings["PriorWeekComparableAsOfDate"] == "prior_week_comparable_as_of_date"
+
+    top20_case = customer_scenarios["top20_cross_run_freeze"]["expected_result"]
+    top20_state = customer_policy["processing"]["top20"]["cross_run_membership_state"]
+    assert {
+        "priority": top20_state["selection_priority"],
+        "subsequent_rerank_allowed": top20_state["subsequent_week_or_rerun_reranking_allowed"],
+        "previous_quarter_reuse_allowed": top20_state["previous_quarter_membership_reuse_allowed"],
+        "forecast_freeze_requires_D_available": customer_policy["processing"]["top20"]["forecast_availability"]["first_freeze_only_after_D_available"],
+        "ordinary_layout_inheritance": top20_state["top20_is_ordinary_layout_inheritance"],
+    } == top20_case
+
+    industry_inherit_case = customer_scenarios["no_template_industry_inheritance"]["expected_result"]
+    no_template_industry = customer_policy["processing"]["industry_selection"]
+    assert {
+        "existing_customer_nonblank_previous_A": "inherit_directly" if "inherit A directly" in no_template_industry["no_template_previous_output_choice"]["action"] else "fallback",
+        "new_or_blank_previous_A": "apply_confirmed_fallback" if len(no_template_industry["fallback_applies_only_when"]) == 2 else "invalid",
+    } == industry_inherit_case
+
+    warning_case = customer_scenarios["yoy_warning_scope"]
+    warning_scope = customer_policy["failure_handling"]["warning_field_scope"]
+    assert {
+        "completion_rate_warning": warning_scope["performance_completion_rate_triggers_absolute_100_percent_warning"],
+        "forecast_yoy_warning": abs(warning_case["synthetic_input"]["forecast_yoy"]) >= 1,
+        "warning_scope": "yoy_only" if "absolute_yoy_rate_at_least_100_percent" in warning_scope else "invalid",
+    } == warning_case["expected_result"]
+
+    manifest_identity_scenario = customer_scenarios["manifest_role_cardinality_and_customer_identity"]
+    manifest_identity_case = manifest_identity_scenario["expected_result"]
+    role_inputs = manifest_identity_scenario["synthetic_input"]
+    required_roles = manifest["required_input_roles"]
+    def exact_roles_once(roles: list[str]) -> bool:
+        return Counter(roles) == Counter(required_roles)
+    customer_fields = customer_result_contract["record_sets"][0]["record_fields"]
+    customer_name_field = next(field for field in customer_fields if field["field_id"] == "customer_name")
+    assert {
+        "business_key": manifest["entry_business_key"],
+        "required_roles": manifest["required_input_roles"],
+        "exactly_one_each": manifest["exactly_one_entry_per_required_input_role"],
+        "valid_roles_accepted": exact_roles_once(role_inputs["valid_roles"]),
+        "duplicate_roles_blocked": not exact_roles_once(role_inputs["duplicate_roles"]),
+        "missing_roles_blocked": not exact_roles_once(role_inputs["missing_roles"]),
+        "duplicate_or_missing_action": manifest["duplicate_or_missing_required_role_action"],
+        "customer_name_statuses": customer_name_field["value_status_allowed"],
+    } == manifest_identity_case
+
+    metadata_failure_case = customer_scenarios["metadata_failure_and_collision_consistency"]["expected_result"]
+    transaction = write_contract["transactional_success_contract"]
+    consistency = write_contract["filesystem_metadata_consistency"]
+    assert {
+        "metadata_failure_consumable_history": transaction["workbook_may_be_reported_as_next_period_history_when_metadata_write_fails"],
+        "overwrite_allowed": consistency["existing_physical_file_overwrite_allowed"],
+        "orphan_file_action": consistency["orphan_physical_file_without_metadata_action"],
+        "duplicate_version_action": consistency["duplicate_output_version_action"],
+        "filesystem_metadata_version_match_required": consistency["physical_file_and_metadata_output_version_must_match"],
+    } == metadata_failure_case
 
     tolerance_case = customer_scenarios["formula_mirror_numeric_tolerance"]
     tolerance_contract = customer_policy["output_boundary"][

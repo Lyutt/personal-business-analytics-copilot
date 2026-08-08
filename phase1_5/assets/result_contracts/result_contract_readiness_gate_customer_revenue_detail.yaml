@@ -11,6 +11,7 @@ scope:
 gate_checks:
   exactly_one_producer: pass
   one_detail_row_per_customer_group: pass
+  customer_name_valid_value_only: pass
   top20_static_result_sets: pass
   template_existing_top20_membership_preservation: pass
   generated_top20_rank_and_tie_break_semantics: pass
@@ -21,6 +22,7 @@ gate_checks:
   current_missing_customer_F_J_zero_fill: pass
   metric_variant_output_bindings: pass
   local_only_lineage_boundary: pass
+  explicit_FJ_KL_MN_QR_and_filename_date_lineage: pass
 owner_confirmations_applied:
   calculation_engine_authoritative: true
   excel_formula_cells_are_audit_mirrors: true

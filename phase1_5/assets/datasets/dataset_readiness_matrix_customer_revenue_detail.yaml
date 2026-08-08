@@ -17,6 +17,11 @@ dataset_readiness:
 constraints:
   dataset_runtime_input_contract_is_workflow_scoped: true
   customer_run_input_manifest_required_for_all_rolling_deck_roles_and_run_types: true
+  canonical_input_roles: [current_qtd, prior_year_full_quarter, prior_year_comparable]
+  current_and_prior_year_fiscal_quarter_bindings_are_distinct: true
+  scheduled_current_qtd_wait_policy_is_role_and_run_type_scoped: true
+  historical_and_manual_or_backfill_missing_inputs_block_immediately: true
+  weekly_manifest_and_multiple_email_selection_semantics_unchanged: true
   weekly_runtime_contract_reuse_allowed: false
   filename_or_latest_file_selection_allowed: false
   local_quarter_baseline_and_prior_output_are_not_shared_datasets: true
