@@ -1,6 +1,6 @@
 config_type: synthetic_final_acceptance_scenarios
 suite_id: PHASE1_5_FINAL_ACCEPTANCE_V1
-suite_version: 1.0.0
+suite_version: 1.0.1
 contains_real_business_data: false
 external_side_effects_allowed: false
 
@@ -128,6 +128,48 @@ scenarios:
       operations: [filter, group_by, sum, period_compare, sort, rank, topN]
     expected_result:
       matched_dcp_id: DCP_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_V1
+      plan_type: Temporary Execution Plan
+      creates_formal_workflow: false
+      creates_new_business_metric_formula: false
+
+  - scenario_id: natural_language_revenue_brief_to_plan
+    synthetic_input:
+      generated_request_id: ARC_SYNTH_REVENUE_001
+      brief: 分析2026-01-01至2026-01-07技术线收入表现，输出表格。
+    expected_result:
+      arc:
+        request_id: ARC_SYNTH_REVENUE_001
+        domain: Revenue
+        intent: revenue_performance
+        capability_scope_id: revenue_technical
+        period: { start_date: "2026-01-01", end_date: "2026-01-07" }
+        comparison: { mode: none }
+        dimensions: [reporting_period]
+        metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue, weekly_incremental_executed_revenue, weekly_incremental_executed_revenue_wow, weekly_incremental_executed_revenue_yoy]
+        filters: []
+        output: { format: table, audience: WORKFLOW_OWNER }
+      matched_dcp_id: DCP_REVENUE_TECHNICAL_V1
+      plan_type: Temporary Execution Plan
+      creates_formal_workflow: false
+      creates_new_business_metric_formula: false
+
+  - scenario_id: natural_language_inventory_brief_to_plan
+    synthetic_input:
+      generated_request_id: ARC_SYNTH_INVENTORY_001
+      brief: 分析2026-01-01至2026-01-07全站库存情况，输出表格。
+    expected_result:
+      arc:
+        request_id: ARC_SYNTH_INVENTORY_001
+        domain: Inventory
+        intent: inventory_availability
+        capability_scope_id: inventory_full_site
+        period: { start_date: "2026-01-01", end_date: "2026-01-07" }
+        comparison: { mode: none }
+        dimensions: [reporting_period]
+        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+        filters: []
+        output: { format: table, audience: WORKFLOW_OWNER }
+      matched_dcp_id: DCP_INVENTORY_FULL_SITE_V1
       plan_type: Temporary Execution Plan
       creates_formal_workflow: false
       creates_new_business_metric_formula: false

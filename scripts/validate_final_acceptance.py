@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -73,11 +74,51 @@ def exact_dcp_match(registry: dict[str, Any], request: dict[str, Any]) -> list[s
         if (
             metadata.get("domain") == request.get("domain")
             and request.get("intent") in metadata.get("intents", [])
+            and (
+                request.get("capability_scope_id") is None
+                or metadata.get("capability_scope_id") == request.get("capability_scope_id")
+            )
             and metadata.get("dimensions") == request.get("dimensions")
             and metadata.get("metrics") == request.get("metrics")
         ):
             matches.append(profile["dcp_id"])
     return matches
+
+
+def natural_language_brief_to_arc(
+    registry: dict[str, Any], request_id: str, brief: str
+) -> dict[str, Any]:
+    """Resolve a synthetic Brief through explicit catalog terms, never similarity."""
+    catalog = registry.get("brief_canonicalization_catalog", {})
+    matches = [
+        entry
+        for entry in catalog.get("entries", [])
+        if any(term in brief for term in entry.get("registered_brief_terms", []))
+    ]
+    assert len(matches) == 1, "Brief requires one explicitly registered canonical concept"
+    arc = dict(matches[0]["arc_metadata"])
+    arc["request_id"] = request_id
+    period = re.search(r"(\d{4}-\d{2}-\d{2})至(\d{4}-\d{2}-\d{2})", brief)
+    assert period, "Brief period must be directly parseable"
+    arc["period"] = {"start_date": period.group(1), "end_date": period.group(2)}
+    arc["comparison"] = {"mode": "none"}
+    arc["filters"] = []
+    if "输出表格" in brief:
+        arc["output"] = {"format": "table", "audience": "WORKFLOW_OWNER"}
+    else:
+        raise AssertionError("Synthetic Brief output must be directly expressed")
+    assert not any(
+        key in arc
+        for key in (
+            "dataset_ids",
+            "query_asset_ids",
+            "mapping_profile_ids",
+            "business_rule_dependencies",
+            "metric_variant_ids",
+            "result_contract_ids",
+        )
+    ), "Brief understanding cannot select business assets"
+    return arc
 
 
 def main() -> int:
@@ -154,6 +195,25 @@ def main() -> int:
     assert adhoc["expected_result"]["plan_type"] == "Temporary Execution Plan"
     assert adhoc["expected_result"]["creates_formal_workflow"] is False
     assert adhoc["expected_result"]["creates_new_business_metric_formula"] is False
+
+    for scenario_id in (
+        "natural_language_revenue_brief_to_plan",
+        "natural_language_inventory_brief_to_plan",
+    ):
+        scenario = scenarios[scenario_id]
+        synthetic_input = scenario["synthetic_input"]
+        arc = natural_language_brief_to_arc(
+            dcp,
+            synthetic_input["generated_request_id"],
+            synthetic_input["brief"],
+        )
+        expected = scenario["expected_result"]
+        assert arc == expected["arc"]
+        matches = exact_dcp_match(dcp, arc)
+        assert matches == [expected["matched_dcp_id"]]
+        assert expected["plan_type"] == "Temporary Execution Plan"
+        assert expected["creates_formal_workflow"] is False
+        assert expected["creates_new_business_metric_formula"] is False
 
     print(f"Phase 1.5 final acceptance passed: {len(scenarios)} synthetic scenarios; no real business data or external side effects.")
     return 0

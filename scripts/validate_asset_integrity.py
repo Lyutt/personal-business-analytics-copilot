@@ -409,6 +409,7 @@ def reference_kind(key: str) -> str | None:
         "source_id": "source",
         "original_source_id": "source",
         "dataset_id": "dataset",
+        "dataset_ids": "dataset",
         "dataset_dependencies": "dataset",
         "output_dataset_id": "dataset",
         "fallback_dataset_id": "dataset",
@@ -416,6 +417,7 @@ def reference_kind(key: str) -> str | None:
         "out_of_scope_dataset_id": "dataset",
         "affected_dataset_ids": "dataset",
         "query_asset_id": "query_asset",
+        "query_asset_ids": "query_asset",
         "mapping_profile_id": "mapping_profile",
         "mapping_profile_ids": "mapping_profile",
         "additional_mapping_profile_ids": "mapping_profile",
@@ -2341,6 +2343,7 @@ def validate_customer_analysis_narrative_mapping(
         "development_complexity_reduction": True,
         "code_implementation_owner_approved": False,
         "baseline_version_increment_required": False,
+        "final_acceptance_synthetic_scenario_count": 14,
     }
     for key, expected in expected_impact_review.items():
         actual = impact_review.get(key)
@@ -2358,9 +2361,12 @@ def validate_customer_analysis_narrative_mapping(
     final_acceptance_review = change_control.get(
         "final_acceptance_behavior_change_review", {}
     )
+    adhoc_patch_review = change_control.get(
+        "final_adhoc_capability_patch_review", {}
+    )
     if str(baseline_document.get("freeze_date")) != "2026-08-08" or baseline_document.get(
         "freeze_revision_status"
-    ) != "refrozen_after_final_acceptance_closure" or change_control.get(
+    ) != "refrozen_after_final_adhoc_capability_patch" or change_control.get(
         "baseline_is_logically_frozen"
     ) is not True or change_control.get("repository_commit_binding_status") != "tracked_on_draft_pr_5_head" or pre_freeze_review.get(
         "behavior_or_output_change"
@@ -2372,7 +2378,15 @@ def validate_customer_analysis_narrative_mapping(
         "code_implementation_started"
     ) is not False or final_acceptance_review.get(
         "owner_code_implementation_approval_granted"
-    ) is not False:
+    ) is not False or adhoc_patch_review.get(
+        "weekly_mvp_behavior_or_output_change"
+    ) is not False or adhoc_patch_review.get(
+        "business_asset_selection_remains_exact_registry_id_only"
+    ) is not True or adhoc_patch_review.get(
+        "new_metric_rule_result_contract_pipeline_or_workflow_created"
+    ) is not False or adhoc_patch_review.get(
+        "incorporated_before_current_freeze"
+    ) is not True:
         errors.append(f"{baseline_file}: frozen state and version-impact history are inconsistent")
 
     baseline_sequence = baseline_constraints.get("implementation_sequence", [])
@@ -2484,6 +2498,7 @@ def validate_phase1_5_final_closure(
     arc_file = "phase1_5/templates/analysis_request_contract.template.yaml"
     scenarios_file = "phase1_5/tests/final_acceptance_scenarios.yaml"
     gate_file = "phase1_5/assets/readiness/code_implementation_readiness_gate.yaml"
+    baseline_file = "phase1_5/assets/readiness/implementation_baseline.yaml"
 
     runtime = documents.get(runtime_file, {})
     context = runtime.get("workflow_run_context", {})
@@ -2789,7 +2804,26 @@ def validate_phase1_5_final_closure(
         "metrics",
         "filters",
         "output",
-    } or arc.get("brief_conversion", {}).get("name_similarity_inference_allowed") is not False:
+    } or arc.get("brief_conversion", {}).get("natural_language_brief_supported") is not True or arc.get(
+        "brief_conversion", {}
+    ).get("user_must_supply_metric_id") is not False or arc.get(
+        "brief_conversion", {}
+    ).get("user_must_supply_complete_dimensions_list") is not False or arc.get(
+        "brief_conversion", {}
+    ).get("business_asset_name_similarity_selection_allowed") is not False or arc.get(
+        "brief_conversion", {}
+    ).get("conversion_stages", [{}])[0].get(
+        "may_select_dataset_query_mapping_rule_metric_or_contract"
+    ) is not False or arc.get("optional_fields", {}).get("capability_scope_id", {}).get(
+        "role"
+    ) != "Canonical DCP capability selector resolved during Brief understanding; not a business asset ID." or arc.get(
+        "brief_conversion", {}
+    ).get("required_field_completion") != {
+        "request_id": "generated_by_request_intake",
+        "comparison_when_not_expressed": {"mode": "none"},
+        "filters_when_not_expressed": [],
+        "output_audience_when_not_expressed": "WORKFLOW_OWNER",
+    }:
         errors.append(f"{arc_file}: Analysis Request Contract template is incomplete")
     dcp = documents.get(dcp_file, {})
     required_operations = {
@@ -2805,10 +2839,95 @@ def validate_phase1_5_final_closure(
         "share",
         "dimension_decomposition",
     }
+    profiles = {
+        item.get("dcp_id"): item
+        for item in dcp.get("capability_profiles", [])
+        if isinstance(item, dict)
+    }
+    required_revenue_profiles = {
+        "DCP_REVENUE_TECHNICAL_V1",
+        "DCP_REVENUE_CTV_V1",
+        "DCP_REVENUE_SMART_SPEAKER_V1",
+        "DCP_REVENUE_FAST_VERSION_V1",
+    }
+    required_inventory_profiles = {
+        "DCP_INVENTORY_FULL_SITE_V1",
+        "DCP_INVENTORY_PATCH_V1",
+        "DCP_INVENTORY_NON_PATCH_PRODUCT_V1",
+        "DCP_INVENTORY_PRODUCT_ANALYSIS_V1",
+    }
+    expected_dcp_pipeline_bindings = {
+        "DCP_REVENUE_TECHNICAL_V1": "PL_REVENUE_TECHNICAL_WEEKLY",
+        "DCP_REVENUE_CTV_V1": "PL_REVENUE_CTV_WEEKLY",
+        "DCP_REVENUE_SMART_SPEAKER_V1": "PL_REVENUE_SMART_SPEAKER_WEEKLY",
+        "DCP_REVENUE_FAST_VERSION_V1": "PL_REVENUE_FAST_VERSION_WEEKLY",
+        "DCP_INVENTORY_FULL_SITE_V1": "PL_INVENTORY_FULL_SITE_WEEKLY",
+        "DCP_INVENTORY_PATCH_V1": "PL_INVENTORY_PATCH_WEEKLY",
+        "DCP_INVENTORY_NON_PATCH_PRODUCT_V1": "PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY",
+    }
+    pipeline_index = {
+        item.get("pipeline_id"): item
+        for item in pipelines
+        if isinstance(item, dict)
+    }
+    for dcp_id, pipeline_id in expected_dcp_pipeline_bindings.items():
+        profile = profiles.get(dcp_id, {})
+        pipeline = pipeline_index.get(pipeline_id, {})
+        pipeline_dependencies = pipeline.get("dataset_dependencies", [])
+        expected_datasets = {
+            item.get("dataset_id") for item in pipeline_dependencies if isinstance(item, dict)
+        }
+        expected_queries = {
+            item.get("query_asset_id")
+            for item in pipeline_dependencies
+            if isinstance(item, dict) and item.get("query_asset_id")
+        }
+        execution = pipeline.get("execution", {})
+        if (
+            set(profile.get("dataset_ids", [])) != expected_datasets
+            or set(profile.get("query_asset_ids", [])) != expected_queries
+            or set(profile.get("mapping_profile_ids", []))
+            != set(execution.get("mapping_profile_ids", []))
+            or set(profile.get("business_rule_dependencies", []))
+            != set(execution.get("ordered_rule_set_ids", []))
+            or set(profile.get("metric_variant_ids", []))
+            != set(execution.get("metric_variant_ids", []))
+            or set(profile.get("result_contract_ids", []))
+            != set(pipeline.get("outputs", {}).get("result_contract_ids", []))
+        ):
+            errors.append(
+                f"{dcp_file}:{dcp_id}: capability index does not exactly match {pipeline_id}"
+            )
+    catalog = dcp.get("brief_canonicalization_catalog", {})
+    catalog_entries = catalog.get("entries", [])
+    catalog_concept_ids = [
+        item.get("canonical_concept_id") for item in catalog_entries if isinstance(item, dict)
+    ]
+    brief_conversion = arc.get("brief_conversion", {})
     if (
         set(dcp.get("allowed_standard_analysis_operations", [])) != required_operations
-        or dcp.get("matching_policy", {}).get("match_method") != "exact_metadata_match"
+        or dcp.get("matching_policy", {}).get("match_method") != "exact_canonical_metadata_match"
+        or dcp.get("matching_policy", {}).get(
+            "brief_semantic_parsing_is_separate_from_asset_selection"
+        )
+        is not True
+        or dcp.get("matching_policy", {}).get("brief_parser_may_emit_business_asset_ids")
+        is not False
         or dcp.get("matching_policy", {}).get("name_similarity_inference_allowed") is not False
+        or catalog.get("match_method") != "explicitly_registered_term_or_canonical_id"
+        or catalog.get("semantic_similarity_fallback_allowed") is not False
+        or len(catalog_entries) != 7
+        or len(catalog_concept_ids) != len(set(catalog_concept_ids))
+        or set(brief_conversion.get("owner_confirmation_required_only_when", []))
+        != {
+            "no_unique_registered_canonical_match",
+            "business_definition_or_metric_semantics_are_ambiguous",
+            "requested_analysis_requires_a_new_business_definition",
+        }
+        or not required_revenue_profiles.issubset(profiles)
+        or not required_inventory_profiles.issubset(profiles)
+        or any(item.get("formula_copy") != "prohibited" for item in profiles.values())
+        or any(not item.get("metadata", {}).get("capability_scope_id") for item in profiles.values())
         or dcp.get("operation_boundary", {}).get("may_create_new_business_metric_formula") is not False
         or dcp.get("operation_boundary", {}).get("one_time_request_creates_formal_workflow") is not False
     ):
@@ -2830,6 +2949,8 @@ def validate_phase1_5_final_closure(
         "sqlite_idempotency_and_conflict",
         "partial_draft",
         "adhoc_brief_exact_dcp_match",
+        "natural_language_revenue_brief_to_plan",
+        "natural_language_inventory_brief_to_plan",
     }
     if (
         scenario_ids != required_scenarios
@@ -2840,6 +2961,22 @@ def validate_phase1_5_final_closure(
     ci_text = (REPOSITORY_ROOT / ".github/workflows/validate-assets.yml").read_text(encoding="utf-8")
     if "python scripts/validate_final_acceptance.py" not in ci_text:
         errors.append(".github/workflows/validate-assets.yml: final acceptance suite is not in CI")
+    checked += 1
+
+    frozen_versions = documents.get(baseline_file, {}).get("frozen_asset_versions", {})
+    if (
+        frozen_versions.get("analysis_request_contract_template_version")
+        != documents.get(arc_file, {}).get("template_version")
+        or frozen_versions.get("dcp_registry_version")
+        != documents.get(dcp_file, {}).get("registry_version")
+        or frozen_versions.get("synthetic_final_acceptance_suite_version")
+        != scenarios.get("suite_version")
+        or frozen_versions.get("synthetic_final_acceptance_scenario_count")
+        != len(scenario_ids)
+    ):
+        errors.append(
+            f"{baseline_file}: frozen ARC, DCP, or synthetic acceptance version does not match its asset"
+        )
     checked += 1
 
     gate = documents.get(gate_file, {})

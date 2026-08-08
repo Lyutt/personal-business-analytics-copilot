@@ -4,7 +4,7 @@ baseline_version: 1.0.0
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 freeze_date: 2026-08-08
 status: frozen_awaiting_explicit_owner_code_implementation_approval
-freeze_revision_status: refrozen_after_final_acceptance_closure
+freeze_revision_status: refrozen_after_final_adhoc_capability_patch
 owner: WORKFLOW_OWNER
 source_main_commit_sha: 7a6c6d007fd0e84a3d65193c1c9e60b9c3d7ddd2
 source_branch: main
@@ -55,10 +55,10 @@ frozen_asset_versions:
   weekly_output_mapping_version: 1.0.0
   outlook_draft_mapping_version: 1.0.0
   workflow_runtime_contract_bundle_version: 1.0.0
-  analysis_request_contract_template_version: 1.0.0
-  dcp_registry_version: 1.0.0
-  synthetic_final_acceptance_suite_version: 1.0.0
-  synthetic_final_acceptance_scenario_count: 12
+  analysis_request_contract_template_version: 1.0.1
+  dcp_registry_version: 1.0.1
+  synthetic_final_acceptance_suite_version: 1.0.1
+  synthetic_final_acceptance_scenario_count: 14
 
 frozen_gate_results:
   - { gate_id: GATE_DATASET_READINESS_WF_WEEKLY_BUSINESS_REPORT_V1, status: passed }
@@ -138,7 +138,7 @@ change_control:
     - Owner review before Code Implementation approval
   latest_baseline_version_impact_review:
     review_date: 2026-08-08
-    change_class: final_acceptance_closure_after_pre_freeze_behavior_review
+    change_class: final_adhoc_capability_index_patch
     behavior_or_output_change: false
     customer_analysis_output_strategy: fixed_narrative_template_rendering
     customer_analysis_initial_mvp_status: included
@@ -149,9 +149,22 @@ change_control:
     code_implementation_owner_approved: false
     baseline_version_increment_required: false
     baseline_freeze_action: refreeze_same_version_after_final_acceptance_validation
-    final_acceptance_synthetic_scenario_count: 12
+    final_acceptance_synthetic_scenario_count: 14
     final_acceptance_result: passed
-    rationale: The current review records the validated final asset state after the behavior changes below were incorporated before code implementation; it does not authorize implementation or alter the fixed narrative, 10.0pp threshold, materiality threshold, product Mapping values, or output order.
+    rationale: The current review adds only DCP indexes for existing Revenue and Inventory capabilities plus natural-language-to-ARC canonicalization and two synthetic tests. It creates no Metric, Result Contract, Pipeline, Workflow, formula, or Weekly MVP behavior and grants no implementation authority.
+  final_adhoc_capability_patch_review:
+    review_date: 2026-08-08
+    change_class: adhoc_index_and_arc_resolution_only
+    weekly_mvp_behavior_or_output_change: false
+    revenue_dcp_profiles_added: 4
+    inventory_dcp_index_gaps_closed: [full_site, patch, non_patch_product]
+    natural_language_brief_to_arc_supported: true
+    business_asset_selection_remains_exact_registry_id_only: true
+    new_metric_rule_result_contract_pipeline_or_workflow_created: false
+    code_implementation_started: false
+    owner_code_implementation_approval_granted: false
+    baseline_version_increment_required: false
+    incorporated_before_current_freeze: true
   final_acceptance_behavior_change_review:
     review_date: 2026-08-08
     change_class: pre_implementation_runtime_contract_closure

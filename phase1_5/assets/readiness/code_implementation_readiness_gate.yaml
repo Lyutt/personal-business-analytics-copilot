@@ -102,13 +102,17 @@ implementation_readiness_checks:
   revenue_excel_recalculate_data_only_reread: pass
   analysis_request_contract_and_dcp_registry: pass
   ad_hoc_standard_operations_boundary: pass
+  revenue_dcp_registered_capability_coverage: pass
+  inventory_dcp_registered_capability_coverage: pass
+  natural_language_brief_to_canonical_arc: pass
+  brief_understanding_separated_from_exact_asset_selection: pass
   synthetic_final_acceptance_in_ci: pass
 
 final_acceptance_transition:
   corrections_pending_status_used_during_edit_and_pre_gate_validation: final_acceptance_corrections_pending
   repository_safety_validation: passed
   asset_integrity_validation_before_final_status_restore: passed_except_expected_pending_gate_status_mismatch
-  synthetic_acceptance_scenario_count: 12
+  synthetic_acceptance_scenario_count: 14
   synthetic_acceptance_result: passed
   final_status_after_all_contract_checks: ready_awaiting_explicit_owner_approval
   explicit_owner_code_implementation_approval_received: false

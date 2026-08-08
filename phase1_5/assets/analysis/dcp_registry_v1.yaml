@@ -1,16 +1,81 @@
 config_type: data_capability_profile_registry
 dcp_registry_id: DCP_REGISTRY_PHASE1_5_V1
-registry_version: 1.0.0
+registry_version: 1.0.1
 status: confirmed_for_final_acceptance
 owner: WORKFLOW_OWNER
 
 matching_policy:
-  match_method: exact_metadata_match
-  required_request_metadata: [domain, intent, period, comparison, dimensions, metrics, filters, output]
+  match_method: exact_canonical_metadata_match
+  required_capability_selection_metadata: [domain, intent, capability_scope_id, dimensions, metrics]
+  brief_semantic_parsing_is_separate_from_asset_selection: true
+  brief_parser_may_emit_business_asset_ids: false
+  final_asset_selection_uses_registered_ids_only: true
   name_similarity_inference_allowed: false
   no_match_action: request_owner_confirmation
   multiple_match_action: request_owner_confirmation
   automatic_first_match_selection_allowed: false
+
+brief_canonicalization_catalog:
+  catalog_role: Convert understood Brief concepts into canonical ARC metadata; never select business assets directly.
+  match_method: explicitly_registered_term_or_canonical_id
+  semantic_similarity_fallback_allowed: false
+  entries:
+    - canonical_concept_id: revenue_technical_performance
+      registered_brief_terms: [技术线收入表现, technical revenue performance]
+      arc_metadata:
+        domain: Revenue
+        intent: revenue_performance
+        capability_scope_id: revenue_technical
+        dimensions: [reporting_period]
+        metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue, weekly_incremental_executed_revenue, weekly_incremental_executed_revenue_wow, weekly_incremental_executed_revenue_yoy]
+    - canonical_concept_id: revenue_ctv_performance
+      registered_brief_terms: [CTV收入表现, CTV revenue performance]
+      arc_metadata:
+        domain: Revenue
+        intent: revenue_performance
+        capability_scope_id: revenue_ctv
+        dimensions: [reporting_period]
+        metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue]
+    - canonical_concept_id: revenue_smart_speaker_performance
+      registered_brief_terms: [智能音箱收入表现, smart speaker revenue performance]
+      arc_metadata:
+        domain: Revenue
+        intent: revenue_performance
+        capability_scope_id: revenue_smart_speaker
+        dimensions: [reporting_period]
+        metrics: [qtd_executed_revenue, weekly_executed_revenue, weekly_executed_revenue_wow]
+    - canonical_concept_id: revenue_fast_version_performance
+      registered_brief_terms: [极速版收入表现, fast version revenue performance]
+      arc_metadata:
+        domain: Revenue
+        intent: revenue_performance
+        capability_scope_id: revenue_fast_version
+        dimensions: [reporting_period]
+        metrics: [qtd_executed_revenue, weekly_executed_revenue, weekly_executed_revenue_wow]
+    - canonical_concept_id: inventory_full_site_availability
+      registered_brief_terms: [全站库存情况, full-site inventory availability]
+      arc_metadata:
+        domain: Inventory
+        intent: inventory_availability
+        capability_scope_id: inventory_full_site
+        dimensions: [reporting_period]
+        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+    - canonical_concept_id: inventory_patch_availability
+      registered_brief_terms: [贴片库存情况, patch inventory availability]
+      arc_metadata:
+        domain: Inventory
+        intent: inventory_availability
+        capability_scope_id: inventory_patch
+        dimensions: [reporting_period]
+        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+    - canonical_concept_id: inventory_non_patch_product_availability
+      registered_brief_terms: [非贴片产品库存情况, non-patch product inventory availability]
+      arc_metadata:
+        domain: Inventory
+        intent: inventory_availability
+        capability_scope_id: inventory_non_patch_product
+        dimensions: [target_ad_product_name, reporting_period]
+        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow, brand_moment_available_inventory_count]
 
 allowed_standard_analysis_operations:
   - filter
@@ -33,10 +98,166 @@ operation_boundary:
   one_time_request_creates_formal_workflow: false
 
 capability_profiles:
+  - dcp_id: DCP_REVENUE_TECHNICAL_V1
+    metadata:
+      domain: Revenue
+      intents: [revenue_performance]
+      capability_scope_id: revenue_technical
+      dimensions: [reporting_period]
+      metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue, weekly_incremental_executed_revenue, weekly_incremental_executed_revenue_wow, weekly_incremental_executed_revenue_yoy]
+    dataset_ids: [DS_REVENUE_SALES_ROLLING_DECK_QTD]
+    query_asset_ids: []
+    mapping_profile_ids: [MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1]
+    business_rule_dependencies:
+      - BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1
+      - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+      - BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+      - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+      - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
+    metric_variant_ids:
+      - MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1
+      - MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_YOY_V1
+      - MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1
+      - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+      - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_WOW_V1
+      - MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_YOY_V1
+    result_contract_ids: [RC_REVENUE_TECHNICAL_WEEKLY]
+    formula_copy: prohibited
+
+  - dcp_id: DCP_REVENUE_CTV_V1
+    metadata:
+      domain: Revenue
+      intents: [revenue_performance]
+      capability_scope_id: revenue_ctv
+      dimensions: [reporting_period]
+      metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue]
+    dataset_ids: [DS_REVENUE_CTV_EXCL_PLACEMENT_QTD]
+    query_asset_ids: []
+    mapping_profile_ids: [MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1]
+    business_rule_dependencies:
+      - BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1
+      - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+      - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+      - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
+    metric_variant_ids:
+      - MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+      - MV_REVENUE_CTV_QTD_PERFORMANCE_YOY_V1
+      - MV_REVENUE_CTV_QTD_EXECUTED_V1
+    result_contract_ids: [RC_REVENUE_CTV_WEEKLY]
+    formula_copy: prohibited
+
+  - dcp_id: DCP_REVENUE_SMART_SPEAKER_V1
+    metadata:
+      domain: Revenue
+      intents: [revenue_performance]
+      capability_scope_id: revenue_smart_speaker
+      dimensions: [reporting_period]
+      metrics: [qtd_executed_revenue, weekly_executed_revenue, weekly_executed_revenue_wow]
+    dataset_ids: [DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY]
+    query_asset_ids: [QRY_APOLLO_QISHENG_EXECUTION_REVENUE]
+    mapping_profile_ids: [MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1]
+    business_rule_dependencies:
+      - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+      - BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1
+    metric_variant_ids:
+      - MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_V1
+      - MV_REVENUE_SMART_SPEAKER_QTD_EXECUTED_V1
+      - MV_REVENUE_SMART_SPEAKER_WEEKLY_EXECUTED_WOW_V1
+    result_contract_ids: [RC_REVENUE_SMART_SPEAKER_WEEKLY]
+    formula_copy: prohibited
+
+  - dcp_id: DCP_REVENUE_FAST_VERSION_V1
+    metadata:
+      domain: Revenue
+      intents: [revenue_performance]
+      capability_scope_id: revenue_fast_version
+      dimensions: [reporting_period]
+      metrics: [qtd_executed_revenue, weekly_executed_revenue, weekly_executed_revenue_wow]
+    dataset_ids: [DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY]
+    query_asset_ids: [QRY_APOLLO_QISHENG_EXECUTION_REVENUE]
+    mapping_profile_ids: [MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1]
+    business_rule_dependencies:
+      - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
+      - BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1
+    metric_variant_ids:
+      - MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_V1
+      - MV_REVENUE_FAST_VERSION_QTD_EXECUTED_V1
+      - MV_REVENUE_FAST_VERSION_WEEKLY_EXECUTED_WOW_V1
+    result_contract_ids: [RC_REVENUE_FAST_VERSION_WEEKLY]
+    formula_copy: prohibited
+
+  - dcp_id: DCP_INVENTORY_FULL_SITE_V1
+    metadata:
+      domain: Inventory
+      intents: [inventory_availability]
+      capability_scope_id: inventory_full_site
+      dimensions: [reporting_period]
+      metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+    dataset_ids: [DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY]
+    query_asset_ids: [QRY_APOLLO_INVENTORY_WEEKLY_FULL_SITE_STOCK]
+    mapping_profile_ids: [MAP_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY_V1]
+    business_rule_dependencies: []
+    metric_variant_ids:
+      - MV_INVENTORY_FULL_SITE_GROSS_VOLUME_V1
+      - MV_INVENTORY_FULL_SITE_DISABLED_VOLUME_V1
+      - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1
+      - MV_INVENTORY_FULL_SITE_BRAND_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_FULL_SITE_PERFORMANCE_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_FULL_SITE_COMMERCIAL_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_WOW_V1
+    result_contract_ids: [RC_INVENTORY_FULL_SITE_WEEKLY]
+    formula_copy: prohibited
+
+  - dcp_id: DCP_INVENTORY_PATCH_V1
+    metadata:
+      domain: Inventory
+      intents: [inventory_availability]
+      capability_scope_id: inventory_patch
+      dimensions: [reporting_period]
+      metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+    dataset_ids: [DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY]
+    query_asset_ids: [QRY_APOLLO_INVENTORY_PATCH_STOCK]
+    mapping_profile_ids: [MAP_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY_V1]
+    business_rule_dependencies: []
+    metric_variant_ids:
+      - MV_INVENTORY_PATCH_GROSS_VOLUME_V1
+      - MV_INVENTORY_PATCH_DISABLED_VOLUME_V1
+      - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_V1
+      - MV_INVENTORY_PATCH_BRAND_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_PATCH_PERFORMANCE_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_PATCH_COMMERCIAL_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_PATCH_AVAILABLE_VOLUME_WOW_V1
+    result_contract_ids: [RC_INVENTORY_PATCH_WEEKLY]
+    formula_copy: prohibited
+
+  - dcp_id: DCP_INVENTORY_NON_PATCH_PRODUCT_V1
+    metadata:
+      domain: Inventory
+      intents: [inventory_availability]
+      capability_scope_id: inventory_non_patch_product
+      dimensions: [target_ad_product_name, reporting_period]
+      metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow, brand_moment_available_inventory_count]
+    dataset_ids: [DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY]
+    query_asset_ids: [QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK]
+    mapping_profile_ids: [MAP_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY_V1]
+    business_rule_dependencies: []
+    metric_variant_ids:
+      - MV_INVENTORY_NON_PATCH_PRODUCT_GROSS_VOLUME_V1
+      - MV_INVENTORY_NON_PATCH_PRODUCT_DISABLED_VOLUME_V1
+      - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1
+      - MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_NON_PATCH_PRODUCT_PERFORMANCE_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_NON_PATCH_PRODUCT_COMMERCIAL_DELIVERY_VOLUME_V1
+      - MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_WOW_V1
+      - MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1
+    result_contract_ids: [RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY]
+    formula_copy: prohibited
+
   - dcp_id: DCP_INVENTORY_PRODUCT_ANALYSIS_V1
     metadata:
       domain: Inventory
       intents: [product_performance, sell_through_change]
+      capability_scope_id: inventory_product_sell_through
       dimensions: [target_ad_product_name, reporting_period]
       metrics: [available_inventory_count, sell_through_rate, sell_through_wow_change_pp]
     dataset_ids:
@@ -57,6 +278,7 @@ capability_profiles:
     metadata:
       domain: Advertising
       intents: [customer_delivery_change, product_customer_analysis]
+      capability_scope_id: advertising_product_customer_change
       dimensions: [target_ad_product_name, customer_id, customer_name, reporting_period]
       metrics: [impression_count, impression_change_count, customer_rank]
     dataset_ids:
@@ -75,6 +297,7 @@ capability_profiles:
     metadata:
       domain: User Analytics
       intents: [daily_active_users, weekly_average_dau]
+      capability_scope_id: user_analytics_full_platform_dau
       dimensions: [activity_date, platform_scope, reporting_period]
       metrics: [dau_count, weekly_average_dau, weekly_average_dau_wow]
     dataset_ids: [DS_NOVABI_PLATFORM_DAU]
