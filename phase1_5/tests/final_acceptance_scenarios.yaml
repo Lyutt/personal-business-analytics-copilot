@@ -4,6 +4,77 @@ suite_version: 1.0.1
 contains_real_business_data: false
 external_side_effects_allowed: false
 
+dcp_semantic_test_cases:
+  - case_id: comparison_none_excludes_comparison_metrics
+    synthetic_input:
+      generated_request_id: ARC_SYNTH_NONE_001
+      brief: 分析2026-01-01至2026-01-07技术线收入表现，输出表格。
+    expected_result:
+      comparison: { mode: none }
+      metrics: [qtd_performance_revenue, qtd_executed_revenue, weekly_incremental_executed_revenue]
+      excluded_metrics: [qtd_performance_revenue_yoy, weekly_incremental_executed_revenue_wow, weekly_incremental_executed_revenue_yoy]
+      matched_dcp_id: DCP_REVENUE_TECHNICAL_V1
+
+  - case_id: requested_metric_subset_matches_capability
+    synthetic_input:
+      request:
+        domain: Inventory
+        intent: inventory_availability
+        capability_scope_id: inventory_non_patch_product
+        period: { semantics: explicit_date_range, start_date: "2026-01-01", end_date: "2026-01-07" }
+        comparison: { mode: none }
+        dimensions: [reporting_period]
+        metrics: [available_inventory_count]
+    expected_result:
+      matched_dcp_id: DCP_INVENTORY_NON_PATCH_PRODUCT_V1
+      whole_dcp_metric_list_required: false
+
+  - case_id: unsupported_period_is_rejected
+    synthetic_input:
+      request:
+        domain: Inventory
+        intent: inventory_availability
+        capability_scope_id: inventory_full_site
+        period: { semantics: calendar_month, start_date: "2026-01-01", end_date: "2026-01-31" }
+        comparison: { mode: none }
+        dimensions: [reporting_period]
+        metrics: [available_inventory_count]
+    expected_result:
+      matched_dcp_ids: []
+      action: request_owner_confirmation
+
+  - case_id: unsupported_comparison_is_rejected
+    synthetic_input:
+      request:
+        domain: Revenue
+        intent: revenue_performance
+        capability_scope_id: revenue_ctv
+        period: { semantics: explicit_date_range, start_date: "2026-01-01", end_date: "2026-01-07" }
+        comparison: { mode: week_over_week }
+        dimensions: [reporting_period]
+        metrics: [qtd_executed_revenue]
+    expected_result:
+      matched_dcp_ids: []
+      action: request_owner_confirmation
+
+  - case_id: explicit_comparison_adds_registered_metrics
+    synthetic_input:
+      week_over_week:
+        generated_request_id: ARC_SYNTH_WOW_001
+        brief: 分析2026-01-01至2026-01-07技术线收入表现环比，输出表格。
+      year_over_year:
+        generated_request_id: ARC_SYNTH_YOY_001
+        brief: 分析2026-01-01至2026-01-07技术线收入表现同比，输出表格。
+    expected_result:
+      week_over_week:
+        comparison: { mode: week_over_week }
+        added_metrics: [weekly_incremental_executed_revenue_wow]
+        excluded_metrics: [qtd_performance_revenue_yoy, weekly_incremental_executed_revenue_yoy]
+      year_over_year:
+        comparison: { mode: year_over_year }
+        added_metrics: [qtd_performance_revenue_yoy, weekly_incremental_executed_revenue_yoy]
+        excluded_metrics: [weekly_incremental_executed_revenue_wow]
+
 scenarios:
   - scenario_id: normal_week
     synthetic_input:
@@ -123,6 +194,9 @@ scenarios:
       request:
         domain: Advertising
         intent: customer_delivery_change
+        capability_scope_id: advertising_product_customer_change
+        period: { semantics: explicit_date_range, start_date: "2026-01-01", end_date: "2026-01-07" }
+        comparison: { mode: week_over_week }
         dimensions: [target_ad_product_name, customer_id, customer_name, reporting_period]
         metrics: [impression_count, impression_change_count, customer_rank]
       operations: [filter, group_by, sum, period_compare, sort, rank, topN]
@@ -142,10 +216,10 @@ scenarios:
         domain: Revenue
         intent: revenue_performance
         capability_scope_id: revenue_technical
-        period: { start_date: "2026-01-01", end_date: "2026-01-07" }
+        period: { semantics: explicit_date_range, start_date: "2026-01-01", end_date: "2026-01-07" }
         comparison: { mode: none }
         dimensions: [reporting_period]
-        metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue, weekly_incremental_executed_revenue, weekly_incremental_executed_revenue_wow, weekly_incremental_executed_revenue_yoy]
+        metrics: [qtd_performance_revenue, qtd_executed_revenue, weekly_incremental_executed_revenue]
         filters: []
         output: { format: table, audience: WORKFLOW_OWNER }
       matched_dcp_id: DCP_REVENUE_TECHNICAL_V1
@@ -163,10 +237,10 @@ scenarios:
         domain: Inventory
         intent: inventory_availability
         capability_scope_id: inventory_full_site
-        period: { start_date: "2026-01-01", end_date: "2026-01-07" }
+        period: { semantics: explicit_date_range, start_date: "2026-01-01", end_date: "2026-01-07" }
         comparison: { mode: none }
         dimensions: [reporting_period]
-        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count]
         filters: []
         output: { format: table, audience: WORKFLOW_OWNER }
       matched_dcp_id: DCP_INVENTORY_FULL_SITE_V1

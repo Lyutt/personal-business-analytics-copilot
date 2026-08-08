@@ -34,6 +34,15 @@ def scenario_map(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {item["scenario_id"]: item for item in scenarios}
 
 
+def semantic_case_map(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    cases = document.get("dcp_semantic_test_cases", [])
+    ids = [item.get("case_id") for item in cases]
+    assert len(ids) == len(set(ids)), "duplicate DCP semantic case_id"
+    for item in cases:
+        assert item.get("expected_result"), f"{item.get('case_id')}: Expected Result is required"
+    return {item["case_id"]: item for item in cases}
+
+
 def select_latest_instances(instances: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
     by_product: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for item in instances:
@@ -69,17 +78,28 @@ def filter_customer_rows(rows: list[dict[str, Any]]) -> tuple[list[str], list[st
 
 def exact_dcp_match(registry: dict[str, Any], request: dict[str, Any]) -> list[str]:
     matches: list[str] = []
+    requested_dimensions = set(request.get("dimensions", []))
+    requested_metrics = set(request.get("metrics", []))
+    period_semantics = request.get("period", {}).get("semantics")
+    comparison_mode = request.get("comparison", {}).get("mode")
+    if not requested_metrics or not period_semantics or not comparison_mode:
+        return matches
     for profile in registry.get("capability_profiles", []):
         metadata = profile.get("metadata", {})
+        compatibility = profile.get("period_comparison_contract", {})
+        dependencies = compatibility.get("metric_comparison_dependencies", {})
         if (
             metadata.get("domain") == request.get("domain")
             and request.get("intent") in metadata.get("intents", [])
-            and (
-                request.get("capability_scope_id") is None
-                or metadata.get("capability_scope_id") == request.get("capability_scope_id")
+            and metadata.get("capability_scope_id") == request.get("capability_scope_id")
+            and requested_dimensions.issubset(set(metadata.get("supported_dimensions", [])))
+            and requested_metrics.issubset(set(metadata.get("supported_metrics", [])))
+            and period_semantics in compatibility.get("supported_period_semantics", [])
+            and comparison_mode in compatibility.get("supported_comparison_modes", [])
+            and all(
+                dependencies.get(metric) in (None, comparison_mode)
+                for metric in requested_metrics
             )
-            and metadata.get("dimensions") == request.get("dimensions")
-            and metadata.get("metrics") == request.get("metrics")
         ):
             matches.append(profile["dcp_id"])
     return matches
@@ -96,12 +116,26 @@ def natural_language_brief_to_arc(
         if any(term in brief for term in entry.get("registered_brief_terms", []))
     ]
     assert len(matches) == 1, "Brief requires one explicitly registered canonical concept"
-    arc = dict(matches[0]["arc_metadata"])
+    matched_entry = matches[0]
+    arc = dict(matched_entry["arc_metadata"])
+    arc["dimensions"] = list(arc.get("dimensions", []))
+    arc["metrics"] = list(arc.get("metrics", []))
     arc["request_id"] = request_id
     period = re.search(r"(\d{4}-\d{2}-\d{2})至(\d{4}-\d{2}-\d{2})", brief)
     assert period, "Brief period must be directly parseable"
-    arc["period"] = {"start_date": period.group(1), "end_date": period.group(2)}
-    arc["comparison"] = {"mode": "none"}
+    arc["period"] = {
+        "semantics": "explicit_date_range",
+        "start_date": period.group(1),
+        "end_date": period.group(2),
+    }
+    asks_wow = "环比" in brief
+    asks_yoy = "同比" in brief
+    assert not (asks_wow and asks_yoy), "Brief comparison is ambiguous and requires Owner confirmation"
+    comparison_mode = "week_over_week" if asks_wow else "year_over_year" if asks_yoy else "none"
+    arc["comparison"] = {"mode": comparison_mode}
+    arc["metrics"].extend(
+        matched_entry.get("comparison_metric_additions", {}).get(comparison_mode, [])
+    )
     arc["filters"] = []
     if "输出表格" in brief:
         arc["output"] = {"format": "table", "audience": "WORKFLOW_OWNER"}
@@ -127,6 +161,7 @@ def main() -> int:
     dcp = load(DCP)
     store = load(STORE)
     scenarios = scenario_map(suite)
+    semantic_cases = semantic_case_map(suite)
 
     assert suite.get("contains_real_business_data") is False
     assert suite.get("external_side_effects_allowed") is False
@@ -215,7 +250,53 @@ def main() -> int:
         assert expected["creates_formal_workflow"] is False
         assert expected["creates_new_business_metric_formula"] is False
 
-    print(f"Phase 1.5 final acceptance passed: {len(scenarios)} synthetic scenarios; no real business data or external side effects.")
+    none_case = semantic_cases["comparison_none_excludes_comparison_metrics"]
+    none_input = none_case["synthetic_input"]
+    none_arc = natural_language_brief_to_arc(
+        dcp, none_input["generated_request_id"], none_input["brief"]
+    )
+    none_expected = none_case["expected_result"]
+    assert none_arc["comparison"] == none_expected["comparison"]
+    assert none_arc["metrics"] == none_expected["metrics"]
+    assert set(none_expected["excluded_metrics"]).isdisjoint(none_arc["metrics"])
+    assert exact_dcp_match(dcp, none_arc) == [none_expected["matched_dcp_id"]]
+
+    subset_case = semantic_cases["requested_metric_subset_matches_capability"]
+    subset_expected = subset_case["expected_result"]
+    assert exact_dcp_match(dcp, subset_case["synthetic_input"]["request"]) == [
+        subset_expected["matched_dcp_id"]
+    ]
+    assert subset_expected["whole_dcp_metric_list_required"] is False
+
+    for case_id in ("unsupported_period_is_rejected", "unsupported_comparison_is_rejected"):
+        case = semantic_cases[case_id]
+        expected = case["expected_result"]
+        assert exact_dcp_match(dcp, case["synthetic_input"]["request"]) == expected[
+            "matched_dcp_ids"
+        ]
+        assert expected["action"] == "request_owner_confirmation"
+
+    explicit_case = semantic_cases["explicit_comparison_adds_registered_metrics"]
+    for comparison_key in ("week_over_week", "year_over_year"):
+        comparison_input = explicit_case["synthetic_input"][comparison_key]
+        comparison_expected = explicit_case["expected_result"][comparison_key]
+        comparison_arc = natural_language_brief_to_arc(
+            dcp,
+            comparison_input["generated_request_id"],
+            comparison_input["brief"],
+        )
+        assert comparison_arc["comparison"] == comparison_expected["comparison"]
+        assert set(comparison_expected["added_metrics"]).issubset(comparison_arc["metrics"])
+        assert set(comparison_expected["excluded_metrics"]).isdisjoint(
+            comparison_arc["metrics"]
+        )
+        assert exact_dcp_match(dcp, comparison_arc) == ["DCP_REVENUE_TECHNICAL_V1"]
+
+    print(
+        "Phase 1.5 final acceptance passed: "
+        f"{len(scenarios)} synthetic scenarios and {len(semantic_cases)} DCP semantic cases; "
+        "no real business data or external side effects."
+    )
     return 0
 
 

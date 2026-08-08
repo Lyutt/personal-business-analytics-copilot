@@ -5,8 +5,14 @@ status: confirmed_for_final_acceptance
 owner: WORKFLOW_OWNER
 
 matching_policy:
-  match_method: exact_canonical_metadata_match
-  required_capability_selection_metadata: [domain, intent, capability_scope_id, dimensions, metrics]
+  match_method: exact_identity_with_capability_inclusion
+  required_capability_selection_metadata: [domain, intent, capability_scope_id, period, comparison, dimensions, metrics]
+  exact_identity_fields: [domain, intent, capability_scope_id]
+  capability_inclusion_rules:
+    dimensions: requested_dimensions_subset_of_supported_dimensions
+    metrics: requested_metrics_subset_of_supported_metrics
+  period_comparison_compatibility_required: true
+  incompatible_period_or_comparison_action: request_owner_confirmation
   brief_semantic_parsing_is_separate_from_asset_selection: true
   brief_parser_may_emit_business_asset_ids: false
   final_asset_selection_uses_registered_ids_only: true
@@ -27,7 +33,10 @@ brief_canonicalization_catalog:
         intent: revenue_performance
         capability_scope_id: revenue_technical
         dimensions: [reporting_period]
-        metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue, weekly_incremental_executed_revenue, weekly_incremental_executed_revenue_wow, weekly_incremental_executed_revenue_yoy]
+        metrics: [qtd_performance_revenue, qtd_executed_revenue, weekly_incremental_executed_revenue]
+      comparison_metric_additions:
+        week_over_week: [weekly_incremental_executed_revenue_wow]
+        year_over_year: [qtd_performance_revenue_yoy, weekly_incremental_executed_revenue_yoy]
     - canonical_concept_id: revenue_ctv_performance
       registered_brief_terms: [CTV收入表现, CTV revenue performance]
       arc_metadata:
@@ -35,7 +44,9 @@ brief_canonicalization_catalog:
         intent: revenue_performance
         capability_scope_id: revenue_ctv
         dimensions: [reporting_period]
-        metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue]
+        metrics: [qtd_performance_revenue, qtd_executed_revenue]
+      comparison_metric_additions:
+        year_over_year: [qtd_performance_revenue_yoy]
     - canonical_concept_id: revenue_smart_speaker_performance
       registered_brief_terms: [智能音箱收入表现, smart speaker revenue performance]
       arc_metadata:
@@ -43,7 +54,9 @@ brief_canonicalization_catalog:
         intent: revenue_performance
         capability_scope_id: revenue_smart_speaker
         dimensions: [reporting_period]
-        metrics: [qtd_executed_revenue, weekly_executed_revenue, weekly_executed_revenue_wow]
+        metrics: [qtd_executed_revenue, weekly_executed_revenue]
+      comparison_metric_additions:
+        week_over_week: [weekly_executed_revenue_wow]
     - canonical_concept_id: revenue_fast_version_performance
       registered_brief_terms: [极速版收入表现, fast version revenue performance]
       arc_metadata:
@@ -51,7 +64,9 @@ brief_canonicalization_catalog:
         intent: revenue_performance
         capability_scope_id: revenue_fast_version
         dimensions: [reporting_period]
-        metrics: [qtd_executed_revenue, weekly_executed_revenue, weekly_executed_revenue_wow]
+        metrics: [qtd_executed_revenue, weekly_executed_revenue]
+      comparison_metric_additions:
+        week_over_week: [weekly_executed_revenue_wow]
     - canonical_concept_id: inventory_full_site_availability
       registered_brief_terms: [全站库存情况, full-site inventory availability]
       arc_metadata:
@@ -59,7 +74,9 @@ brief_canonicalization_catalog:
         intent: inventory_availability
         capability_scope_id: inventory_full_site
         dimensions: [reporting_period]
-        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count]
+      comparison_metric_additions:
+        week_over_week: [available_inventory_wow]
     - canonical_concept_id: inventory_patch_availability
       registered_brief_terms: [贴片库存情况, patch inventory availability]
       arc_metadata:
@@ -67,7 +84,9 @@ brief_canonicalization_catalog:
         intent: inventory_availability
         capability_scope_id: inventory_patch
         dimensions: [reporting_period]
-        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count]
+      comparison_metric_additions:
+        week_over_week: [available_inventory_wow]
     - canonical_concept_id: inventory_non_patch_product_availability
       registered_brief_terms: [非贴片产品库存情况, non-patch product inventory availability]
       arc_metadata:
@@ -75,7 +94,9 @@ brief_canonicalization_catalog:
         intent: inventory_availability
         capability_scope_id: inventory_non_patch_product
         dimensions: [target_ad_product_name, reporting_period]
-        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow, brand_moment_available_inventory_count]
+        metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, brand_moment_available_inventory_count]
+      comparison_metric_additions:
+        week_over_week: [available_inventory_wow]
 
 allowed_standard_analysis_operations:
   - filter
@@ -103,8 +124,16 @@ capability_profiles:
       domain: Revenue
       intents: [revenue_performance]
       capability_scope_id: revenue_technical
-      dimensions: [reporting_period]
-      metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue, weekly_incremental_executed_revenue, weekly_incremental_executed_revenue_wow, weekly_incremental_executed_revenue_yoy]
+      supported_dimensions: [reporting_period]
+      supported_metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue, weekly_incremental_executed_revenue, weekly_incremental_executed_revenue_wow, weekly_incremental_executed_revenue_yoy]
+    period_comparison_contract:
+      supported_period_semantics: [explicit_date_range, workflow_reporting_period, quarter_to_date_as_of_period_end]
+      supported_comparison_modes: [none, week_over_week, year_over_year]
+      metric_comparison_dependencies:
+        qtd_performance_revenue_yoy: year_over_year
+        weekly_incremental_executed_revenue_wow: week_over_week
+        weekly_incremental_executed_revenue_yoy: year_over_year
+      incompatible_request_action: request_owner_confirmation
     dataset_ids: [DS_REVENUE_SALES_ROLLING_DECK_QTD]
     query_asset_ids: []
     mapping_profile_ids: [MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1]
@@ -129,8 +158,14 @@ capability_profiles:
       domain: Revenue
       intents: [revenue_performance]
       capability_scope_id: revenue_ctv
-      dimensions: [reporting_period]
-      metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue]
+      supported_dimensions: [reporting_period]
+      supported_metrics: [qtd_performance_revenue, qtd_performance_revenue_yoy, qtd_executed_revenue]
+    period_comparison_contract:
+      supported_period_semantics: [explicit_date_range, workflow_reporting_period, quarter_to_date_as_of_period_end]
+      supported_comparison_modes: [none, year_over_year]
+      metric_comparison_dependencies:
+        qtd_performance_revenue_yoy: year_over_year
+      incompatible_request_action: request_owner_confirmation
     dataset_ids: [DS_REVENUE_CTV_EXCL_PLACEMENT_QTD]
     query_asset_ids: []
     mapping_profile_ids: [MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1]
@@ -151,8 +186,14 @@ capability_profiles:
       domain: Revenue
       intents: [revenue_performance]
       capability_scope_id: revenue_smart_speaker
-      dimensions: [reporting_period]
-      metrics: [qtd_executed_revenue, weekly_executed_revenue, weekly_executed_revenue_wow]
+      supported_dimensions: [reporting_period]
+      supported_metrics: [qtd_executed_revenue, weekly_executed_revenue, weekly_executed_revenue_wow]
+    period_comparison_contract:
+      supported_period_semantics: [explicit_date_range, workflow_reporting_period, quarter_to_date_as_of_period_end]
+      supported_comparison_modes: [none, week_over_week]
+      metric_comparison_dependencies:
+        weekly_executed_revenue_wow: week_over_week
+      incompatible_request_action: request_owner_confirmation
     dataset_ids: [DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY]
     query_asset_ids: [QRY_APOLLO_QISHENG_EXECUTION_REVENUE]
     mapping_profile_ids: [MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1]
@@ -171,8 +212,14 @@ capability_profiles:
       domain: Revenue
       intents: [revenue_performance]
       capability_scope_id: revenue_fast_version
-      dimensions: [reporting_period]
-      metrics: [qtd_executed_revenue, weekly_executed_revenue, weekly_executed_revenue_wow]
+      supported_dimensions: [reporting_period]
+      supported_metrics: [qtd_executed_revenue, weekly_executed_revenue, weekly_executed_revenue_wow]
+    period_comparison_contract:
+      supported_period_semantics: [explicit_date_range, workflow_reporting_period, quarter_to_date_as_of_period_end]
+      supported_comparison_modes: [none, week_over_week]
+      metric_comparison_dependencies:
+        weekly_executed_revenue_wow: week_over_week
+      incompatible_request_action: request_owner_confirmation
     dataset_ids: [DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY]
     query_asset_ids: [QRY_APOLLO_QISHENG_EXECUTION_REVENUE]
     mapping_profile_ids: [MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1]
@@ -191,8 +238,14 @@ capability_profiles:
       domain: Inventory
       intents: [inventory_availability]
       capability_scope_id: inventory_full_site
-      dimensions: [reporting_period]
-      metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+      supported_dimensions: [reporting_period]
+      supported_metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+    period_comparison_contract:
+      supported_period_semantics: [explicit_date_range, workflow_reporting_period]
+      supported_comparison_modes: [none, week_over_week]
+      metric_comparison_dependencies:
+        available_inventory_wow: week_over_week
+      incompatible_request_action: request_owner_confirmation
     dataset_ids: [DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY]
     query_asset_ids: [QRY_APOLLO_INVENTORY_WEEKLY_FULL_SITE_STOCK]
     mapping_profile_ids: [MAP_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY_V1]
@@ -213,8 +266,14 @@ capability_profiles:
       domain: Inventory
       intents: [inventory_availability]
       capability_scope_id: inventory_patch
-      dimensions: [reporting_period]
-      metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+      supported_dimensions: [reporting_period]
+      supported_metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow]
+    period_comparison_contract:
+      supported_period_semantics: [explicit_date_range, workflow_reporting_period]
+      supported_comparison_modes: [none, week_over_week]
+      metric_comparison_dependencies:
+        available_inventory_wow: week_over_week
+      incompatible_request_action: request_owner_confirmation
     dataset_ids: [DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY]
     query_asset_ids: [QRY_APOLLO_INVENTORY_PATCH_STOCK]
     mapping_profile_ids: [MAP_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY_V1]
@@ -235,8 +294,14 @@ capability_profiles:
       domain: Inventory
       intents: [inventory_availability]
       capability_scope_id: inventory_non_patch_product
-      dimensions: [target_ad_product_name, reporting_period]
-      metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow, brand_moment_available_inventory_count]
+      supported_dimensions: [target_ad_product_name, reporting_period]
+      supported_metrics: [gross_inventory_count, disabled_inventory_count, available_inventory_count, brand_delivery_inventory_count, performance_delivery_inventory_count, commercial_delivery_inventory_count, available_inventory_wow, brand_moment_available_inventory_count]
+    period_comparison_contract:
+      supported_period_semantics: [explicit_date_range, workflow_reporting_period]
+      supported_comparison_modes: [none, week_over_week]
+      metric_comparison_dependencies:
+        available_inventory_wow: week_over_week
+      incompatible_request_action: request_owner_confirmation
     dataset_ids: [DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY]
     query_asset_ids: [QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK]
     mapping_profile_ids: [MAP_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY_V1]
@@ -258,8 +323,14 @@ capability_profiles:
       domain: Inventory
       intents: [product_performance, sell_through_change]
       capability_scope_id: inventory_product_sell_through
-      dimensions: [target_ad_product_name, reporting_period]
-      metrics: [available_inventory_count, sell_through_rate, sell_through_wow_change_pp]
+      supported_dimensions: [target_ad_product_name, reporting_period]
+      supported_metrics: [available_inventory_count, sell_through_rate, sell_through_wow_change_pp]
+    period_comparison_contract:
+      supported_period_semantics: [explicit_date_range, workflow_reporting_period]
+      supported_comparison_modes: [none, week_over_week]
+      metric_comparison_dependencies:
+        sell_through_wow_change_pp: week_over_week
+      incompatible_request_action: request_owner_confirmation
     dataset_ids:
       - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
     query_asset_ids:
@@ -279,8 +350,15 @@ capability_profiles:
       domain: Advertising
       intents: [customer_delivery_change, product_customer_analysis]
       capability_scope_id: advertising_product_customer_change
-      dimensions: [target_ad_product_name, customer_id, customer_name, reporting_period]
-      metrics: [impression_count, impression_change_count, customer_rank]
+      supported_dimensions: [target_ad_product_name, customer_id, customer_name, reporting_period]
+      supported_metrics: [impression_count, impression_change_count, customer_rank]
+    period_comparison_contract:
+      supported_period_semantics: [explicit_date_range, workflow_reporting_period]
+      supported_comparison_modes: [week_over_week]
+      metric_comparison_dependencies:
+        impression_change_count: week_over_week
+        customer_rank: week_over_week
+      incompatible_request_action: request_owner_confirmation
     dataset_ids:
       - DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
     query_asset_ids:
@@ -298,8 +376,14 @@ capability_profiles:
       domain: User Analytics
       intents: [daily_active_users, weekly_average_dau]
       capability_scope_id: user_analytics_full_platform_dau
-      dimensions: [activity_date, platform_scope, reporting_period]
-      metrics: [dau_count, weekly_average_dau, weekly_average_dau_wow]
+      supported_dimensions: [activity_date, platform_scope, reporting_period]
+      supported_metrics: [dau_count, weekly_average_dau, weekly_average_dau_wow]
+    period_comparison_contract:
+      supported_period_semantics: [explicit_date_range, workflow_reporting_period]
+      supported_comparison_modes: [none, week_over_week]
+      metric_comparison_dependencies:
+        weekly_average_dau_wow: week_over_week
+      incompatible_request_action: request_owner_confirmation
     dataset_ids: [DS_NOVABI_PLATFORM_DAU]
     query_asset_ids: [QRY_NOVABI_DAU_QUERY]
     mapping_profile_ids: [MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1]
@@ -314,7 +398,11 @@ temporary_execution_plan_contract:
   required_fields:
     request_id: string
     matched_dcp_id: string
-    exact_metadata_evidence: object
+    exact_metadata_evidence:
+      data_type: object
+      semantics: exact_identity_fields_only
+    capability_inclusion_evidence: object
+    period_comparison_compatibility_evidence: object
     selected_capability_ids: object
     ordered_operations: array
     output_contract: object

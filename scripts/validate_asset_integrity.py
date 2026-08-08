@@ -2794,36 +2794,63 @@ def validate_phase1_5_final_closure(
     checked += 1
 
     arc = documents.get(arc_file, {}).get("analysis_request_contract", {})
-    if set(arc.get("required_fields", {})) != {
-        "request_id",
-        "domain",
-        "intent",
-        "period",
-        "comparison",
-        "dimensions",
-        "metrics",
-        "filters",
-        "output",
-    } or arc.get("brief_conversion", {}).get("natural_language_brief_supported") is not True or arc.get(
-        "brief_conversion", {}
-    ).get("user_must_supply_metric_id") is not False or arc.get(
-        "brief_conversion", {}
-    ).get("user_must_supply_complete_dimensions_list") is not False or arc.get(
-        "brief_conversion", {}
-    ).get("business_asset_name_similarity_selection_allowed") is not False or arc.get(
-        "brief_conversion", {}
-    ).get("conversion_stages", [{}])[0].get(
-        "may_select_dataset_query_mapping_rule_metric_or_contract"
-    ) is not False or arc.get("optional_fields", {}).get("capability_scope_id", {}).get(
-        "role"
-    ) != "Canonical DCP capability selector resolved during Brief understanding; not a business asset ID." or arc.get(
-        "brief_conversion", {}
-    ).get("required_field_completion") != {
-        "request_id": "generated_by_request_intake",
-        "comparison_when_not_expressed": {"mode": "none"},
-        "filters_when_not_expressed": [],
-        "output_audience_when_not_expressed": "WORKFLOW_OWNER",
-    }:
+    brief_conversion = arc.get("brief_conversion", {})
+    metric_resolution = brief_conversion.get("metric_resolution_policy", {})
+    selection_contract = brief_conversion.get("dcp_selection_contract", {})
+    conversion_stages = brief_conversion.get("conversion_stages", [])
+    if (
+        set(arc.get("required_fields", {}))
+        != {
+            "request_id",
+            "domain",
+            "intent",
+            "period",
+            "comparison",
+            "dimensions",
+            "metrics",
+            "filters",
+            "output",
+        }
+        or set(
+            arc.get("required_fields", {}).get("period", {}).get("required_fields", [])
+        )
+        != {"semantics", "start_date", "end_date"}
+        or brief_conversion.get("natural_language_brief_supported") is not True
+        or brief_conversion.get("user_must_supply_metric_id") is not False
+        or brief_conversion.get("user_must_supply_complete_dimensions_list") is not False
+        or brief_conversion.get("business_asset_name_similarity_selection_allowed") is not False
+        or len(conversion_stages) != 2
+        or conversion_stages[0].get(
+            "may_select_dataset_query_mapping_rule_metric_or_contract"
+        )
+        is not False
+        or conversion_stages[1].get("selection_method")
+        != "Exact registered domain, intent, and capability_scope_id plus requested capability inclusion and period/comparison compatibility."
+        or arc.get("optional_fields", {}).get("capability_scope_id", {}).get("role")
+        != "Canonical DCP capability selector resolved during Brief understanding; not a business asset ID."
+        or brief_conversion.get("required_field_completion")
+        != {
+            "request_id": "generated_by_request_intake",
+            "comparison_when_not_expressed": {"mode": "none"},
+            "filters_when_not_expressed": [],
+            "output_audience_when_not_expressed": "WORKFLOW_OWNER",
+        }
+        or metric_resolution.get("user_requested_metric_subset_allowed") is not True
+        or metric_resolution.get("whole_dcp_metric_list_required") is not False
+        or metric_resolution.get("metric_without_registered_canonical_id_allowed") is not False
+        or selection_contract.get("exact_identity_fields")
+        != ["domain", "intent", "capability_scope_id"]
+        or selection_contract.get(
+            "requested_dimensions_must_be_subset_of_supported_dimensions"
+        )
+        is not True
+        or selection_contract.get("requested_metrics_must_be_subset_of_supported_metrics")
+        is not True
+        or selection_contract.get("period_and_comparison_must_be_supported") is not True
+        or selection_contract.get("incompatible_period_or_comparison_action")
+        != "request_owner_confirmation"
+        or selection_contract.get("automatic_first_match_selection_allowed") is not False
+    ):
         errors.append(f"{arc_file}: Analysis Request Contract template is incomplete")
     dcp = documents.get(dcp_file, {})
     required_operations = {
@@ -2844,6 +2871,28 @@ def validate_phase1_5_final_closure(
         for item in dcp.get("capability_profiles", [])
         if isinstance(item, dict)
     }
+    for dcp_id, profile in profiles.items():
+        metadata = profile.get("metadata", {})
+        period_contract = profile.get("period_comparison_contract", {})
+        supported_metrics = set(metadata.get("supported_metrics", []))
+        supported_comparisons = set(period_contract.get("supported_comparison_modes", []))
+        metric_dependencies = period_contract.get("metric_comparison_dependencies", {})
+        if (
+            not metadata.get("domain")
+            or not metadata.get("intents")
+            or not metadata.get("capability_scope_id")
+            or not metadata.get("supported_dimensions")
+            or not supported_metrics
+            or not period_contract.get("supported_period_semantics")
+            or not supported_comparisons
+            or period_contract.get("incompatible_request_action")
+            != "request_owner_confirmation"
+            or not set(metric_dependencies).issubset(supported_metrics)
+            or any(mode not in supported_comparisons for mode in metric_dependencies.values())
+        ):
+            errors.append(
+                f"{dcp_file}:{dcp_id}: supported capability or period/comparison contract is incomplete"
+            )
     required_revenue_profiles = {
         "DCP_REVENUE_TECHNICAL_V1",
         "DCP_REVENUE_CTV_V1",
@@ -2903,17 +2952,62 @@ def validate_phase1_5_final_closure(
     catalog_concept_ids = [
         item.get("canonical_concept_id") for item in catalog_entries if isinstance(item, dict)
     ]
-    brief_conversion = arc.get("brief_conversion", {})
+    for entry in catalog_entries:
+        arc_metadata = entry.get("arc_metadata", {}) if isinstance(entry, dict) else {}
+        scope_id = arc_metadata.get("capability_scope_id")
+        matching_profiles = [
+            profile
+            for profile in profiles.values()
+            if profile.get("metadata", {}).get("capability_scope_id") == scope_id
+        ]
+        if len(matching_profiles) != 1:
+            errors.append(
+                f"{dcp_file}:{entry.get('canonical_concept_id')}: catalog entry must resolve to exactly one capability scope"
+            )
+            continue
+        profile = matching_profiles[0]
+        supported_metrics = set(profile.get("metadata", {}).get("supported_metrics", []))
+        period_contract = profile.get("period_comparison_contract", {})
+        supported_comparisons = set(period_contract.get("supported_comparison_modes", []))
+        dependencies = period_contract.get("metric_comparison_dependencies", {})
+        default_metrics = set(arc_metadata.get("metrics", []))
+        comparison_additions = entry.get("comparison_metric_additions", {})
+        if (
+            not default_metrics.issubset(supported_metrics)
+            or any(metric in dependencies for metric in default_metrics)
+            or any(mode not in supported_comparisons for mode in comparison_additions)
+            or any(
+                metric not in supported_metrics or dependencies.get(metric) != mode
+                for mode, metrics in comparison_additions.items()
+                for metric in metrics
+            )
+        ):
+            errors.append(
+                f"{dcp_file}:{entry.get('canonical_concept_id')}: default or comparison Metric resolution is invalid"
+            )
+    matching_policy = dcp.get("matching_policy", {})
     if (
         set(dcp.get("allowed_standard_analysis_operations", [])) != required_operations
-        or dcp.get("matching_policy", {}).get("match_method") != "exact_canonical_metadata_match"
-        or dcp.get("matching_policy", {}).get(
+        or matching_policy.get("match_method") != "exact_identity_with_capability_inclusion"
+        or matching_policy.get("required_capability_selection_metadata")
+        != ["domain", "intent", "capability_scope_id", "period", "comparison", "dimensions", "metrics"]
+        or matching_policy.get("exact_identity_fields")
+        != ["domain", "intent", "capability_scope_id"]
+        or matching_policy.get("capability_inclusion_rules")
+        != {
+            "dimensions": "requested_dimensions_subset_of_supported_dimensions",
+            "metrics": "requested_metrics_subset_of_supported_metrics",
+        }
+        or matching_policy.get("period_comparison_compatibility_required") is not True
+        or matching_policy.get("incompatible_period_or_comparison_action")
+        != "request_owner_confirmation"
+        or matching_policy.get(
             "brief_semantic_parsing_is_separate_from_asset_selection"
         )
         is not True
-        or dcp.get("matching_policy", {}).get("brief_parser_may_emit_business_asset_ids")
-        is not False
-        or dcp.get("matching_policy", {}).get("name_similarity_inference_allowed") is not False
+        or matching_policy.get("brief_parser_may_emit_business_asset_ids") is not False
+        or matching_policy.get("name_similarity_inference_allowed") is not False
+        or matching_policy.get("automatic_first_match_selection_allowed") is not False
         or catalog.get("match_method") != "explicitly_registered_term_or_canonical_id"
         or catalog.get("semantic_similarity_fallback_allowed") is not False
         or len(catalog_entries) != 7
@@ -2923,6 +3017,7 @@ def validate_phase1_5_final_closure(
             "no_unique_registered_canonical_match",
             "business_definition_or_metric_semantics_are_ambiguous",
             "requested_analysis_requires_a_new_business_definition",
+            "period_or_comparison_not_supported_by_candidate_dcp",
         }
         or not required_revenue_profiles.issubset(profiles)
         or not required_inventory_profiles.issubset(profiles)
@@ -2932,6 +3027,16 @@ def validate_phase1_5_final_closure(
         or dcp.get("operation_boundary", {}).get("one_time_request_creates_formal_workflow") is not False
     ):
         errors.append(f"{dcp_file}: DCP matching or operation boundary is incomplete")
+    plan_fields = dcp.get("temporary_execution_plan_contract", {}).get(
+        "required_fields", {}
+    )
+    if (
+        plan_fields.get("exact_metadata_evidence", {}).get("semantics")
+        != "exact_identity_fields_only"
+        or plan_fields.get("capability_inclusion_evidence") != "object"
+        or plan_fields.get("period_comparison_compatibility_evidence") != "object"
+    ):
+        errors.append(f"{dcp_file}: Temporary Execution Plan match evidence is incomplete")
     checked += 1
 
     scenarios = documents.get(scenarios_file, {})
@@ -2958,6 +3063,20 @@ def validate_phase1_5_final_closure(
         or scenarios.get("contains_real_business_data") is not False
     ):
         errors.append(f"{scenarios_file}: synthetic final acceptance coverage is incomplete")
+    semantic_case_ids = {
+        item.get("case_id") for item in scenarios.get("dcp_semantic_test_cases", [])
+    }
+    if semantic_case_ids != {
+        "comparison_none_excludes_comparison_metrics",
+        "requested_metric_subset_matches_capability",
+        "unsupported_period_is_rejected",
+        "unsupported_comparison_is_rejected",
+        "explicit_comparison_adds_registered_metrics",
+    } or any(
+        not item.get("expected_result")
+        for item in scenarios.get("dcp_semantic_test_cases", [])
+    ):
+        errors.append(f"{scenarios_file}: DCP semantic acceptance coverage is incomplete")
     ci_text = (REPOSITORY_ROOT / ".github/workflows/validate-assets.yml").read_text(encoding="utf-8")
     if "python scripts/validate_final_acceptance.py" not in ci_text:
         errors.append(".github/workflows/validate-assets.yml: final acceptance suite is not in CI")
