@@ -28,7 +28,7 @@ frozen_asset_versions:
   explicit_output_field_binding_count: 32
   synthetic_acceptance_suite_id: CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1
   synthetic_acceptance_suite_version: 1.0.0
-  synthetic_acceptance_scenario_count: 40
+  synthetic_acceptance_scenario_count: 42
 workflow_dependency_counts:
   pipeline_count: 1
   dataset_dependency_count: 1
@@ -63,6 +63,13 @@ change_control:
   baseline_is_logically_frozen: true
   customer_asset_change_requires_baseline_version_review: true
   weekly_business_report_baseline_must_not_change: true
+  customer_reporting_period_selection_contract:
+    report_mode_source: actual first Thursday reporting cutoff on or after target quarter start
+    expected_previous_cutoff_derivation: locked current cutoff minus 7 calendar days
+    expected_previous_reporting_period_id_derivation: fiscal quarter containing expected_previous_cutoff plus exact cutoff
+    regular_week_requires_exact_immediately_preceding_validated_consumable_output: true
+    older_reporting_period_fallback_allowed: false
+    same_week_rerun_reuses_original_locked_selection: true
   weekly_frozen_asset_zero_diff_contract:
     comparison_base_commit_sha: 6ce72e1662383dcb771dc3959533725bbdf5fe5e
     exact_files:

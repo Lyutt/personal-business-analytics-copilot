@@ -15,6 +15,7 @@ gate_checks:
   industry_fallback_order: pass
   quarter_baseline_fallback: pass
   quarter_first_week_technical_applicability: pass
+  quarter_first_week_mode_independent_of_output_history: pass
   frozen_weekly_technical_rule_unchanged: pass
   frozen_weekly_comparable_rule_unchanged: pass
   canonical_context_field_ids_and_explicit_bindings: pass
@@ -26,6 +27,8 @@ gate_checks:
   current_missing_customer_F_J_zero_fill: pass
   forecast_D_blank_and_zero_availability_semantics: pass
   previous_reporting_period_and_same_week_rerun_semantics: pass
+  missing_immediate_previous_period_blocks_without_two_week_fallback: pass
+  quarter_first_week_blank_M_N_Q_R_and_I_equals_F: pass
   industry_selection_structured_contract: pass
   no_template_existing_customer_industry_inheritance: pass
   detail_sorting_structured_contract: pass

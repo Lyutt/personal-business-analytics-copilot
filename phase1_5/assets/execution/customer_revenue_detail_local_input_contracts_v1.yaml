@@ -64,13 +64,15 @@ previous_reporting_period_output_metadata_contract:
     target_fiscal_quarter: { data_type: string, nullable: false }
     history_consumption_status: { data_type: string, allowed_values: [consumable], nullable: false }
   selection_predicates:
-    current_revenue_cutoff_date: strictly earlier than locked current_revenue_cutoff_date
+    reporting_period_id: exactly equals locked expected_previous_reporting_period_id
+    current_revenue_cutoff_date: exactly equals locked expected_previous_cutoff
     validation_status: passed
     history_consumption_status: consumable
     same_reporting_period_as_current_run_allowed: false
-    select_latest_prior_cutoff_then_highest_output_version: true
-    selected_cutoff_and_version_must_each_be_unique: true
-    derive_previous_reporting_period_id_from_selected_metadata: true
+    select_highest_output_version_within_exact_expected_period: true
+    selected_highest_version_must_be_unique: true
+    derive_expected_period_or_cutoff_from_selected_metadata: false
+    older_reporting_period_fallback_allowed: false
   bind_selected_metadata_to_context:
     result_id: selected_previous_output_result_id
     output_version: selected_previous_output_version
@@ -79,10 +81,15 @@ previous_reporting_period_output_metadata_contract:
     prior_comparable_as_of_date: prior_week_comparable_as_of_date
     target_fiscal_quarter: selected_previous_output_target_fiscal_quarter
   filename_parsing_for_history_selection_allowed: false
-  no_earlier_output_result: previous_reporting_period_id and selected previous date fields are null
+  no_exact_expected_output_result:
+    regular_week: block_customer_workflow even when an older validated consumable output exists
+    quarter_first_week_with_eligible_current_quarter_template: selected previous metadata fields may be null; M_N_Q_R remain blank and I equals F
+    quarter_first_week_without_eligible_current_quarter_template: block unless the exact expected prior-quarter output is available for layout customer list and A fallback
+  quarter_first_week_exact_previous_output_usage_limit: [layout, customer_membership, detail_A_industry]
+  quarter_first_week_previous_output_business_value_usage_allowed: false
   missing_action_when_previous_output_is_required_for_values_or_layout: block_customer_workflow
   ambiguous_invalid_or_unresolvable_metadata_action: block_customer_workflow
-  same_cutoff_rerun_behavior: retain the originally locked earlier-cutoff selection
+  same_cutoff_rerun_behavior: retain the originally locked expected previous cutoff, expected previous reporting period ID, and exact selected output; never reselect an older period
 customer_run_input_manifest_contract:
   manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
   workflow_scope: WF_CUSTOMER_REVENUE_DETAIL

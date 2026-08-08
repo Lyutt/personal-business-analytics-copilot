@@ -15,6 +15,8 @@ checks:
   deterministic_context_initialization_for_all_run_types: pass
   four_owner_parameter_manual_and_backfill_contract: pass
   technical_period_identity_without_calendar_dependency: pass
+  report_mode_derived_from_actual_quarter_first_reporting_cutoff: pass
+  expected_previous_period_and_cutoff_independently_derived: pass
   role_specific_current_and_prior_year_fiscal_quarter_binding: pass
   conditional_confirmed_template_version_requirement: pass
   customer_run_input_manifest_and_workflow_scoped_dataset_contract: pass
@@ -24,6 +26,8 @@ checks:
   canonical_context_binding_and_target_fiscal_quarter_derivation: pass
   customer_specific_technical_adapter_without_weekly_asset_mutation: pass
   previous_reporting_period_output_and_same_week_rerun_selection: pass
+  regular_week_requires_exact_immediately_preceding_output_without_older_fallback: pass
+  quarter_first_week_previous_output_usage_limited_to_layout_customer_and_A: pass
   no_template_quarter_first_week_prior_output_dependency: pass
   effective_layout_source_and_layout_only_fallback: pass
   local_output_metadata_write_and_integer_version_contract: pass

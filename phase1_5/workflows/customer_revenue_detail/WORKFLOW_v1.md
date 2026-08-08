@@ -64,9 +64,15 @@ eligible; it is null when no such template is available. Current, historical,
 manual and backfill Rolling Deck inputs must each be recorded in
 `CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1` and exactly match the locked
 Context. `reporting_period_id` is the technical identity formed from the target
-fiscal quarter and current cutoff. The previous ID and report mode come from the
-unique earlier consumable output metadata, without an unregistered calendar or
-fifth Owner input. The Weekly manifest contract, filenames and "latest file" are never
+fiscal quarter and current cutoff. The reporting cadence is Thursday in
+`Asia/Shanghai`; `report_mode` is `quarter_first_week` only when the current
+cutoff is the first Thursday on or after the target quarter start date, and is
+`regular_week` otherwise. Output-history presence never influences that mode.
+The Context independently derives `expected_previous_cutoff` as seven calendar
+days before the current cutoff and forms
+`expected_previous_reporting_period_id` from that date and its fiscal quarter.
+`previous_reporting_period_id` is the exact alias of that expected identity,
+without an unregistered calendar or fifth Owner input. The Weekly manifest contract, filenames and "latest file" are never
 selection authorities for this Workflow.
 
 The Calculation Engine Result Contract is authoritative. Excel formula cells
@@ -100,6 +106,12 @@ do not grant Output Mapping authority to originate or change business values.
   prior-year comparable archive with identical filtering, mapping and grouping.
   M/N are the preceding output F/J; Q/R are its K/L. In quarter week one,
   M/N/Q/R are blank and I equals F.
+- A regular week may consume only the validated, consumable output whose
+  reporting period and cutoff exactly equal the locked expected immediately
+  preceding period. If that period is missing, block even when an output from
+  two or more weeks earlier exists; skipping a missing week is prohibited.
+  A same-week rerun reuses the original locked expected-period identity and
+  selected output.
 - Customer universe is the union of quarter baseline, prior output, current F/J
   and prior-year C/K/L. Retain existing quarter customers even when all values
   become zero. New customers default C=0 and O/P blank. D is zero only when the
@@ -152,6 +164,9 @@ do not grant Output Mapping authority to originate or change business values.
   the forecast Top20 header until D becomes available. If D remains absent all
   quarter, the empty forecast Top20 is non-blocking. If both the quarter template
   and previous-period validated output are unavailable, block the Workflow.
+  In the true quarter first week, the exact immediately preceding output is a
+  prior-quarter output and may be used only for layout, customer membership and
+  A fallback under these rules; it never supplies M/N/Q/R, C/D/O/P or Top20.
 - A quarter template is eligible only when its explicit metadata matches locked
   `current_year`, `quarter`, selected template version and passed structure
   validation. True candidate absence permits the validated previous-output

@@ -53,8 +53,14 @@ trigger:
       derive_before_lock: true
     technical_period_identity:
       reporting_period_id: derive from target_fiscal_quarter and current_revenue_cutoff_date
-      previous_reporting_period_id: derive from unique latest earlier consumable local output metadata
-      report_mode: derive from whether previous output belongs to target_fiscal_quarter
+      reporting_cadence: weekly Thursday in Asia/Shanghai
+      actual_quarter_first_reporting_cutoff: first Thursday on or after the calendar start date of target_fiscal_quarter
+      report_mode: quarter_first_week only when current_revenue_cutoff_date equals actual_quarter_first_reporting_cutoff; otherwise regular_week
+      report_mode_may_depend_on_available_output_history: false
+      expected_previous_cutoff: current_revenue_cutoff_date minus 7 calendar days
+      expected_previous_reporting_period_id: derive from expected_previous_cutoff and the fiscal quarter containing that date
+      previous_reporting_period_id: exact alias of expected_previous_reporting_period_id before metadata selection
+      older_successful_output_search_allowed: false
       external_calendar_dependency_allowed: false
     runtime_context_field_guessing_allowed: false
 
@@ -166,6 +172,11 @@ processing:
     template_available: optional
     template_unavailable: required_for_layout_customer_list_and_industry
     template_and_previous_output_both_unavailable: block_customer_workflow
+    permitted_previous_output_period: exact expected_previous_reporting_period_id in the immediately preceding quarter
+    permitted_previous_output_reuse: [layout, customer_membership, detail_A_industry]
+    M_N_Q_R: blank
+    I: F
+    prior_quarter_business_value_or_top20_reuse_allowed: false
   quarter_template_eligibility:
     local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
     exact_match_required: [template_asset_id, template_version, template_current_year, template_quarter, structure_validation_status]
@@ -181,12 +192,19 @@ processing:
     local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
     metadata_contract_section: previous_reporting_period_output_metadata_contract
     required_metadata_fields: [workflow_run_id, result_id, reporting_period_id, output_version, output_file_reference, validation_status, completed_at, current_revenue_cutoff_date, prior_comparable_as_of_date, target_fiscal_quarter, history_consumption_status]
-    required_cutoff_relation: current_revenue_cutoff_date strictly earlier than locked current cutoff
-    selected_reporting_period_id_derives_context_field: previous_reporting_period_id
+    required_reporting_period_id: locked expected_previous_reporting_period_id
+    required_cutoff: locked expected_previous_cutoff
+    context_period_identity_is_derived_before_metadata_selection: true
     validation_status: passed
     same_reporting_period_attempt_allowed: false
-    unique_latest_cutoff_and_highest_output_version_required: true
+    unique_highest_output_version_within_exact_expected_period_required: true
+    older_reporting_period_fallback_allowed: false
+    regular_week_missing_exact_expected_period_action: block_customer_workflow
+    quarter_first_week_missing_exact_expected_period_with_eligible_template_action: continue_with_blank_M_N_Q_R_and_I_equal_F
+    quarter_first_week_missing_exact_expected_period_without_eligible_template_action: block_customer_workflow
+    quarter_first_week_selected_output_usage_limit: [layout, customer_membership, detail_A_industry]
     same_week_rerun_reuses_locked_selection: true
+    same_week_rerun_reuses_locked_expected_period_identity: true
     same_week_rerun_must_not_shift_M_N_Q_R: true
     filename_parsing_for_period_or_version_allowed: false
   effective_layout_source:

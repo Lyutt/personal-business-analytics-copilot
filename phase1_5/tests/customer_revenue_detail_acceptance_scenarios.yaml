@@ -49,10 +49,12 @@ scenarios:
     synthetic_input:
       reporting_period_id: SYNTH-P2
       previous_reporting_period_id: SYNTH-P1
+      expected_previous_cutoff: '2026-07-30'
+      expected_previous_reporting_period_id: SYNTH-P1
       outputs:
         - { workflow_run_id: SYNTH-RUN-P1, result_id: PREV-V1, reporting_period_id: SYNTH-P1, output_version: 1, output_file_reference: SYNTH-LOCAL-REF-P1, validation_status: passed, completed_at: '2026-08-01T18:00:00+08:00', current_revenue_cutoff_date: '2026-07-30', prior_comparable_as_of_date: '2025-07-31', target_fiscal_quarter: 2026Q3, history_consumption_status: consumable }
         - { workflow_run_id: SYNTH-RUN-P2, result_id: SAME-WEEK, reporting_period_id: SYNTH-P2, output_version: 2, output_file_reference: SYNTH-LOCAL-REF-P2, validation_status: passed, completed_at: '2026-08-08T18:00:00+08:00', current_revenue_cutoff_date: '2026-08-06', prior_comparable_as_of_date: '2025-08-07', target_fiscal_quarter: 2026Q3, history_consumption_status: consumable }
-    expected_result: { selected_previous_result_id: PREV-V1, same_week_attempt_used: false }
+    expected_result: { selected_previous_result_id: PREV-V1, same_week_attempt_used: false, rerun_retains_expected_previous_cutoff: true, rerun_retains_expected_previous_reporting_period_id: true }
   - scenario_id: customer_run_context_lock
     synthetic_input:
       locked: { reporting_period_id: SYNTH-P2, current_revenue_cutoff_date: "2026-08-06", forecast_D_availability: unavailable }
@@ -127,8 +129,8 @@ scenarios:
     synthetic_input: { calculation_engine_value: 0.3333333333333333, excel_value: 0.33333333333333337 }
     expected_result: { comparison_passed: true, calculation_engine_remains_authoritative: true }
   - scenario_id: deterministic_context_initialization
-    synthetic_input: { current_year: 2026, quarter: 3, has_same_quarter_previous_output: false, current_revenue_cutoff_date: '2026-07-09', template_candidate_exists: false }
-    expected_result: { prior_year: 2025, target_fiscal_quarter: 2026Q3, prior_year_fiscal_quarter: 2025Q3, reporting_period_id: 'CUSTOMER:2026Q3:2026-07-09', report_mode: quarter_first_week, prior_year_full_quarter_period_id: 2025Q3, prior_comparable_as_of_date: '2025-07-10', confirmed_template_version: null, locked_before_data_collection: true }
+    synthetic_input: { current_year: 2026, quarter: 3, current_revenue_cutoff_date: '2026-07-02', output_history_available: false, template_candidate_exists: false }
+    expected_result: { prior_year: 2025, target_fiscal_quarter: 2026Q3, prior_year_fiscal_quarter: 2025Q3, reporting_period_id: 'CUSTOMER:2026Q3:2026-07-02', report_mode: quarter_first_week, expected_previous_cutoff: '2026-06-25', expected_previous_reporting_period_id: 'CUSTOMER:2026Q2:2026-06-25', previous_reporting_period_id: 'CUSTOMER:2026Q2:2026-06-25', prior_year_full_quarter_period_id: 2025Q3, prior_comparable_as_of_date: '2025-07-03', confirmed_template_version: null, locked_before_data_collection: true }
   - scenario_id: customer_run_input_manifest_scope
     synthetic_input: { run_type: backfill, input_roles: [current_qtd, prior_year_full_quarter, prior_year_comparable] }
     expected_result: { workflow_scope: WF_CUSTOMER_REVENUE_DETAIL, manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1, weekly_contract_reused: false, filename_or_latest_guessing: false }
@@ -184,3 +186,14 @@ scenarios:
     expected_result: { business_key: [workflow_run_id, input_role], required_roles: [current_qtd, prior_year_full_quarter, prior_year_comparable], exactly_one_each: true, valid_roles_accepted: true, duplicate_roles_blocked: true, missing_roles_blocked: true, duplicate_or_missing_action: block_customer_workflow, customer_name_statuses: [valid_value] }
   - scenario_id: metadata_failure_and_collision_consistency
     expected_result: { metadata_failure_consumable_history: false, overwrite_allowed: false, orphan_file_action: [block_output, notify_owner], duplicate_version_action: [block_output, notify_owner], filesystem_metadata_version_match_required: true }
+  - scenario_id: missing_immediate_previous_week_does_not_fallback
+    synthetic_input:
+      current_year: 2026
+      quarter: 3
+      current_revenue_cutoff_date: '2026-08-06'
+      available_outputs:
+        - { reporting_period_id: 'CUSTOMER:2026Q3:2026-07-23', current_revenue_cutoff_date: '2026-07-23', validation_status: passed, history_consumption_status: consumable }
+    expected_result: { report_mode: regular_week, expected_previous_cutoff: '2026-07-30', expected_previous_reporting_period_id: 'CUSTOMER:2026Q3:2026-07-30', blocked: true, older_output_selected: false }
+  - scenario_id: mid_quarter_without_history_is_regular_week_and_blocks
+    synthetic_input: { current_year: 2026, quarter: 3, current_revenue_cutoff_date: '2026-08-06', available_outputs: [] }
+    expected_result: { report_mode: regular_week, expected_previous_cutoff: '2026-07-30', expected_previous_reporting_period_id: 'CUSTOMER:2026Q3:2026-07-30', blocked: true, identified_as_quarter_first_week: false }

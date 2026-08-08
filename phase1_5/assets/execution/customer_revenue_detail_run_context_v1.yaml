@@ -22,7 +22,9 @@ required_fields:
   prior_year_fiscal_quarter: { data_type: string, pattern_semantics: 'YYYYQ[1-4]', nullable: false, derivation_only: true }
   report_mode: { data_type: string, allowed_values: [regular_week, quarter_first_week] }
   reporting_period_id: { data_type: string, nullable: false }
-  previous_reporting_period_id: { data_type: string, nullable: true }
+  expected_previous_cutoff: { data_type: date, nullable: false, derivation_only: true }
+  expected_previous_reporting_period_id: { data_type: string, nullable: false, derivation_only: true }
+  previous_reporting_period_id: { data_type: string, nullable: false, derivation_only: true }
   prior_comparable_as_of_date: { data_type: date, nullable: false }
   prior_year_full_quarter_period_id: { data_type: string, nullable: false }
   quarter_template_candidate_presence: { data_type: string, allowed_values: [present, absent] }
@@ -73,14 +75,23 @@ derived_field_bindings:
     identity_semantics: technical workflow period identity; not an Owner business input
     derive_before_context_lock: true
   report_mode:
-    source_field_ids: [target_fiscal_quarter, selected_previous_output_target_fiscal_quarter]
-    authoritative_reference: validated local output metadata history
-    deterministic_expression: quarter_first_week when selected_previous_output_target_fiscal_quarter is null or differs from target_fiscal_quarter; otherwise regular_week
+    source_field_ids: [current_year, quarter, current_revenue_cutoff_date]
+    authoritative_reference: Customer Thursday reporting cadence in Asia/Shanghai
+    deterministic_expression: quarter_first_week only when current_revenue_cutoff_date equals the first Thursday on or after the calendar start date of target_fiscal_quarter; otherwise regular_week
+    history_output_presence_or_target_quarter_membership_may_influence_mode: false
+    derive_before_context_lock: true
+  expected_previous_cutoff:
+    source_field_ids: [current_revenue_cutoff_date]
+    deterministic_expression: current_revenue_cutoff_date minus 7 calendar days under the locked Customer Thursday reporting cadence
+    derive_before_context_lock: true
+  expected_previous_reporting_period_id:
+    source_field_ids: [expected_previous_cutoff]
+    deterministic_expression: concatenate literal CUSTOMER, the fiscal quarter containing expected_previous_cutoff, and ISO expected_previous_cutoff with colon separators
     derive_before_context_lock: true
   previous_reporting_period_id:
-    source_field_ids: [current_revenue_cutoff_date]
-    authoritative_reference: validated consumable local output metadata
-    deterministic_expression: reporting_period_id of the unique successful output with greatest current_revenue_cutoff_date strictly before the current cutoff; null only when no earlier validated output exists
+    source_field_ids: [expected_previous_reporting_period_id]
+    deterministic_expression: exact alias of expected_previous_reporting_period_id used as the only permitted previous-output selection key
+    older_successful_output_search_or_fallback_allowed: false
     derive_before_context_lock: true
   prior_comparable_as_of_date:
     source_field_ids: [current_revenue_cutoff_date, current_year]
@@ -116,8 +127,10 @@ deterministic_initialization_contract:
     scheduled_source: configured scheduled Customer run parameters validated against the selected current_qtd source
     manual_or_backfill_source: explicit CurrentYear and Quarter Owner inputs
   prior_year: derived from current_year
-  report_mode: derived from validated local output metadata membership in target_fiscal_quarter
-  previous_reporting_period_id: derived from the unique latest earlier consumable output metadata record
+  report_mode: derived only from whether the locked current cutoff is the actual first Thursday reporting cutoff on or after the target quarter start date
+  expected_previous_cutoff: derived independently as current_revenue_cutoff_date minus 7 calendar days
+  expected_previous_reporting_period_id: derived independently from expected_previous_cutoff and the fiscal quarter containing that date
+  previous_reporting_period_id: exact alias of expected_previous_reporting_period_id; never inferred from available output history
   prior_comparable_as_of_date: derived by the Customer comparable-source rule binding
   prior_year_full_quarter_period_id: derived from prior_year and quarter
   quarter_template_availability:
@@ -142,8 +155,8 @@ deterministic_initialization_contract:
   runtime_code_may_guess_alias_period_file_or_latest_asset: false
 prelock_resolution_sequence:
   - bind exactly four manual or backfill Owner parameters, or resolve the scheduled or rerun equivalents
-  - derive prior_year, target_fiscal_quarter, prior_year_fiscal_quarter, reporting_period_id, prior_comparable_as_of_date, and prior_year_full_quarter_period_id
-  - resolve the unique earlier consumable output metadata and derive previous_reporting_period_id, report_mode, selected previous dates, and prior_week_comparable_as_of_date
+  - derive prior_year, target_fiscal_quarter, prior_year_fiscal_quarter, reporting_period_id, report_mode, expected_previous_cutoff, expected_previous_reporting_period_id, previous_reporting_period_id, prior_comparable_as_of_date, and prior_year_full_quarter_period_id without consulting output history
+  - resolve only the exact expected previous-period consumable output metadata when required and bind selected previous dates and prior_week_comparable_as_of_date
   - resolve conditional confirmed_template_version only when a current-quarter template candidate exists
   - validate quarter template metadata and bind eligible selected_template fields
   - validate and select previous reporting period output metadata when required
@@ -158,7 +171,7 @@ consumer_context_bindings:
   BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1: [target_fiscal_quarter, prior_year_fiscal_quarter, report_mode]
   BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1: [current_year, prior_year, quarter, prior_year_full_quarter_period_id, prior_year_fiscal_quarter]
   BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1: [current_revenue_cutoff_date, current_year, prior_year, quarter, prior_comparable_as_of_date, prior_year_fiscal_quarter]
-  POLICY_CUSTOMER_REVENUE_DETAIL_V1: [workflow_execution_date, current_revenue_cutoff_date, current_year, prior_year, quarter, target_fiscal_quarter, prior_year_fiscal_quarter, report_mode, reporting_period_id, previous_reporting_period_id, selected_previous_output_target_fiscal_quarter, quarter_template_candidate_presence, quarter_template_availability, forecast_D_availability, confirmed_template_version, advertiser_mapping_version, effective_layout_source, selected_prior_year_top20_membership_reference, selected_forecast_top20_membership_reference]
+  POLICY_CUSTOMER_REVENUE_DETAIL_V1: [workflow_execution_date, current_revenue_cutoff_date, current_year, prior_year, quarter, target_fiscal_quarter, prior_year_fiscal_quarter, report_mode, reporting_period_id, expected_previous_cutoff, expected_previous_reporting_period_id, previous_reporting_period_id, selected_previous_output_target_fiscal_quarter, quarter_template_candidate_presence, quarter_template_availability, forecast_D_availability, confirmed_template_version, advertiser_mapping_version, effective_layout_source, selected_prior_year_top20_membership_reference, selected_forecast_top20_membership_reference]
   CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1: [workflow_run_id, run_attempt, run_type, reporting_period_id, current_revenue_cutoff_date, target_fiscal_quarter, prior_year_fiscal_quarter, prior_comparable_as_of_date, prior_year_full_quarter_period_id, advertiser_mapping_version]
   OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1: [current_revenue_cutoff_date, prior_comparable_as_of_date, selected_previous_output_current_revenue_cutoff_date, prior_week_comparable_as_of_date, effective_layout_source, confirmed_template_version]
 manual_parameter_bindings:
@@ -169,8 +182,13 @@ manual_parameter_bindings:
   unmapped_parameter_inference_allowed: false
 selection_and_rerun_semantics:
   actual_execution_date_may_infer_business_period: false
-  previous_output_period_must_equal: previous_reporting_period_id
+  previous_output_period_must_equal: expected_previous_reporting_period_id
+  previous_output_cutoff_must_equal: expected_previous_cutoff
+  regular_week_missing_exact_previous_output_action: block_customer_workflow
+  older_reporting_period_fallback_allowed: false
   same_reporting_period_attempt_may_be_previous_output: false
+  same_week_rerun_retains_expected_previous_cutoff: true
+  same_week_rerun_retains_expected_previous_reporting_period_id: true
   same_week_rerun_retains_previous_reporting_period_id: true
   same_week_rerun_retains_selected_previous_output: true
   changed_mapping_requires_new_run_context_and_current_week_rerun_only: true

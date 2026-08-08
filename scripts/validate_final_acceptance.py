@@ -37,6 +37,7 @@ CUSTOMER_PIPELINE_GATE = ROOT / "phase1_5/assets/pipelines/pipeline_registry_rea
 CUSTOMER_FIELD_MAPPING_GATE = ROOT / "phase1_5/assets/field_mappings/field_mapping_readiness_gate_customer_revenue_detail.yaml"
 CUSTOMER_RESULT_GATE = ROOT / "phase1_5/assets/result_contracts/result_contract_readiness_gate_customer_revenue_detail.yaml"
 CUSTOMER_OUTPUT_GATE = ROOT / "phase1_5/assets/output_mappings/output_mapping_readiness_gate_customer_revenue_detail.yaml"
+CUSTOMER_CODE_GATE = ROOT / "phase1_5/assets/readiness/code_implementation_readiness_gate_customer_revenue_detail.yaml"
 DATASET_INVENTORY = ROOT / "phase1_5/assets/datasets/dataset_inventory.yaml"
 
 
@@ -95,6 +96,30 @@ def select_previous_period_output(
     selected = [item for item in candidates if item["output_version"] == highest_version]
     assert len(selected) == 1, "previous output highest version must be unique"
     return selected[0]["result_id"]
+
+
+def derive_customer_reporting_period_context(
+    current_year: int, quarter: int, current_cutoff_text: str
+) -> dict[str, str]:
+    cutoff = date.fromisoformat(current_cutoff_text)
+    quarter_start = date(current_year, (quarter - 1) * 3 + 1, 1)
+    first_thursday = quarter_start + timedelta(
+        days=(3 - quarter_start.weekday()) % 7
+    )
+    assert cutoff.weekday() == 3, "Customer reporting cutoff must follow Thursday cadence"
+    expected_previous_cutoff = cutoff - timedelta(days=7)
+    previous_quarter = (expected_previous_cutoff.month - 1) // 3 + 1
+    expected_previous_reporting_period_id = (
+        f"CUSTOMER:{expected_previous_cutoff.year}Q{previous_quarter}:"
+        f"{expected_previous_cutoff.isoformat()}"
+    )
+    return {
+        "report_mode": (
+            "quarter_first_week" if cutoff == first_thursday else "regular_week"
+        ),
+        "expected_previous_cutoff": expected_previous_cutoff.isoformat(),
+        "expected_previous_reporting_period_id": expected_previous_reporting_period_id,
+    }
 
 
 def excel_forecast_yoy(d_value: float | None, c_value: float | None) -> float | None:
@@ -322,6 +347,7 @@ def main() -> int:
     customer_field_mapping_gate = load(CUSTOMER_FIELD_MAPPING_GATE)
     customer_result_gate = load(CUSTOMER_RESULT_GATE)
     customer_output_gate = load(CUSTOMER_OUTPUT_GATE)
+    customer_code_gate = load(CUSTOMER_CODE_GATE)
     dataset_inventory = load(DATASET_INVENTORY)
     scenarios = scenario_map(suite)
     customer_scenarios = scenario_map(customer_suite)
@@ -332,7 +358,7 @@ def main() -> int:
     assert customer_suite.get("contains_real_business_data") is False
     assert customer_suite.get("external_side_effects_allowed") is False
     assert customer_suite.get("suite_id") == "CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1"
-    assert len(customer_scenarios) == 40
+    assert len(customer_scenarios) == 42
     customer_pipeline = next(
         pipeline
         for pipeline in pipeline_registry["pipelines"]
@@ -356,6 +382,9 @@ def main() -> int:
                 "cross_run_top20_membership_state_priority_and_no_rerank",
                 "forecast_top20_first_freeze_requires_D_available",
                 "absolute_100_percent_warning_limited_to_yoy_fields",
+                "quarter_first_week_mode_independent_of_output_history",
+                "missing_immediate_previous_period_blocks_without_two_week_fallback",
+                "quarter_first_week_blank_M_N_Q_R_and_I_equals_F",
             },
         ),
         "pipeline": (
@@ -380,6 +409,18 @@ def main() -> int:
                 "source_wait_policy_scoped_by_run_type_and_role",
                 "local_output_metadata_failure_and_filesystem_collision_consistency",
                 "top20_cross_run_quarter_state_freeze",
+                "report_mode_derived_from_actual_quarter_first_reporting_cutoff",
+                "expected_previous_period_and_cutoff_independently_derived",
+                "regular_week_requires_exact_immediately_preceding_output_without_older_fallback",
+                "quarter_first_week_previous_output_usage_limited_to_layout_customer_and_A",
+            },
+        ),
+        "code_implementation": (
+            customer_code_gate["implementation_readiness_checks"],
+            {
+                "actual_quarter_first_week_mode_and_independent_expected_previous_period_derivation",
+                "exact_immediately_preceding_output_required_without_history_gap_fallback",
+                "same_week_rerun_retains_locked_expected_previous_period_selection",
             },
         ),
         "field_mapping": (
@@ -597,6 +638,15 @@ def main() -> int:
     assert first_week_dependency["template_available"] == "optional"
     assert first_week_dependency["template_unavailable"] == "required_for_layout_customer_list_and_industry"
     assert first_week_dependency["template_and_previous_output_both_unavailable"] == "block_customer_workflow"
+    assert first_week_dependency["permitted_previous_output_reuse"] == [
+        "layout",
+        "customer_membership",
+        "detail_A_industry",
+    ]
+    assert first_week_dependency["M_N_Q_R"] == "blank"
+    assert first_week_dependency["I"] == "F"
+    assert customer_policy["processing"]["quarter_first_week_prior_output_fields"] == "blank_M_N_Q_R"
+    assert customer_policy["processing"]["quarter_first_week_incremental_performance"] == "I_equals_F"
 
     forecast = customer_scenarios["forecast_D_availability_blank_vs_zero"]
     forecast_input = forecast["synthetic_input"]
@@ -684,6 +734,50 @@ def main() -> int:
     previous_policy = customer_policy["processing"]["previous_output_selection"]
     assert previous_policy["same_reporting_period_attempt_allowed"] is False
     assert previous_policy["same_week_rerun_reuses_locked_selection"] is True
+    assert previous_policy["older_reporting_period_fallback_allowed"] is False
+    assert previous_policy["required_reporting_period_id"] == "locked expected_previous_reporting_period_id"
+    assert previous_policy["required_cutoff"] == "locked expected_previous_cutoff"
+    assert rerun["expected_result"]["rerun_retains_expected_previous_cutoff"] is customer_context["selection_and_rerun_semantics"]["same_week_rerun_retains_expected_previous_cutoff"]
+    assert rerun["expected_result"]["rerun_retains_expected_previous_reporting_period_id"] is customer_context["selection_and_rerun_semantics"]["same_week_rerun_retains_expected_previous_reporting_period_id"]
+
+    missing_previous = customer_scenarios[
+        "missing_immediate_previous_week_does_not_fallback"
+    ]
+    missing_context = derive_customer_reporting_period_context(
+        missing_previous["synthetic_input"]["current_year"],
+        missing_previous["synthetic_input"]["quarter"],
+        missing_previous["synthetic_input"]["current_revenue_cutoff_date"],
+    )
+    exact_matches = [
+        item
+        for item in missing_previous["synthetic_input"]["available_outputs"]
+        if item["reporting_period_id"]
+        == missing_context["expected_previous_reporting_period_id"]
+        and item["current_revenue_cutoff_date"]
+        == missing_context["expected_previous_cutoff"]
+        and item["validation_status"] == "passed"
+        and item["history_consumption_status"] == "consumable"
+    ]
+    assert {
+        **missing_context,
+        "blocked": not exact_matches,
+        "older_output_selected": False,
+    } == missing_previous["expected_result"]
+
+    mid_quarter = customer_scenarios[
+        "mid_quarter_without_history_is_regular_week_and_blocks"
+    ]
+    mid_context = derive_customer_reporting_period_context(
+        mid_quarter["synthetic_input"]["current_year"],
+        mid_quarter["synthetic_input"]["quarter"],
+        mid_quarter["synthetic_input"]["current_revenue_cutoff_date"],
+    )
+    assert {
+        **mid_context,
+        "blocked": not mid_quarter["synthetic_input"]["available_outputs"],
+        "identified_as_quarter_first_week": mid_context["report_mode"]
+        == "quarter_first_week",
+    } == mid_quarter["expected_result"]
 
     locked = customer_scenarios["customer_run_context_lock"]
     changed_locked_key = any(
@@ -870,6 +964,9 @@ def main() -> int:
         "required_metadata_fields"
     ]
     assert metadata_contract["filename_parsing_for_history_selection_allowed"] is False
+    assert metadata_contract["selection_predicates"]["reporting_period_id"] == "exactly equals locked expected_previous_reporting_period_id"
+    assert metadata_contract["selection_predicates"]["current_revenue_cutoff_date"] == "exactly equals locked expected_previous_cutoff"
+    assert metadata_contract["selection_predicates"]["older_reporting_period_fallback_allowed"] is False
 
     frozen_case = customer_scenarios[
         "frozen_weekly_rule_and_customer_adapter"
@@ -889,12 +986,18 @@ def main() -> int:
     init_input = context_init["synthetic_input"]
     cutoff = date.fromisoformat(init_input["current_revenue_cutoff_date"])
     prior_comparable = cutoff.replace(year=cutoff.year - 1) + timedelta(days=1)
+    period_context = derive_customer_reporting_period_context(
+        init_input["current_year"], init_input["quarter"], init_input["current_revenue_cutoff_date"]
+    )
     assert {
         "prior_year": init_input["current_year"] - 1,
         "target_fiscal_quarter": f"{init_input['current_year']}Q{init_input['quarter']}",
         "prior_year_fiscal_quarter": f"{init_input['current_year'] - 1}Q{init_input['quarter']}",
         "reporting_period_id": f"CUSTOMER:{init_input['current_year']}Q{init_input['quarter']}:{init_input['current_revenue_cutoff_date']}",
-        "report_mode": "regular_week" if init_input["has_same_quarter_previous_output"] else "quarter_first_week",
+        "report_mode": period_context["report_mode"],
+        "expected_previous_cutoff": period_context["expected_previous_cutoff"],
+        "expected_previous_reporting_period_id": period_context["expected_previous_reporting_period_id"],
+        "previous_reporting_period_id": period_context["expected_previous_reporting_period_id"],
         "prior_year_full_quarter_period_id": f"{init_input['current_year'] - 1}Q{init_input['quarter']}",
         "prior_comparable_as_of_date": prior_comparable.isoformat(),
         "confirmed_template_version": None,
@@ -903,6 +1006,7 @@ def main() -> int:
     assert customer_context["required_fields"]["confirmed_template_version"]["required_when"] == "quarter_template_candidate_presence equals present"
     assert set(customer_context["required_fields"]["run_type"]["allowed_values"]) == {"scheduled", "manual", "backfill", "rerun"}
     assert customer_context["deterministic_initialization_contract"]["all_required_and_conditionally_required_fields_resolved_before_lock"] is True
+    assert customer_context["derived_field_bindings"]["report_mode"]["history_output_presence_or_target_quarter_membership_may_influence_mode"] is False
 
     manifest_case = customer_scenarios["customer_run_input_manifest_scope"]["expected_result"]
     manifest = customer_local_inputs["customer_run_input_manifest_contract"]
