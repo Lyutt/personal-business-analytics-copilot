@@ -3608,23 +3608,9 @@ def validate_implementation_baseline(
     checked += 1
 
     base_sha = os.environ.get("ASSET_VALIDATION_BASE_SHA", "").strip()
-    base_sha_source = "ASSET_VALIDATION_BASE_SHA"
-    if not re.fullmatch(r"[0-9a-fA-F]{40}", base_sha):
+    explicit_validation_base = bool(re.fullmatch(r"[0-9a-fA-F]{40}", base_sha))
+    if not explicit_validation_base:
         base_sha = ""
-        for candidate in ("origin/main", "main", "HEAD^1"):
-            result = subprocess.run(
-                ["git", "rev-parse", "--verify", candidate],
-                cwd=REPOSITORY_ROOT,
-                check=False,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
-            resolved = result.stdout.strip()
-            if result.returncode == 0 and re.fullmatch(r"[0-9a-fA-F]{40}", resolved):
-                base_sha = resolved
-                base_sha_source = candidate
-                break
     changed_asset_paths: set[str] = set()
     if base_sha:
         changed_result = subprocess.run(
@@ -3660,31 +3646,38 @@ def validate_implementation_baseline(
         ) is not False:
             errors.append(f"{baseline_file}: latest design-contract-closure impact review is incomplete")
         checked += 7
-        if not base_sha:
-            errors.append(
-                f"{baseline_file}: cannot resolve validation Base SHA from the "
-                "Actions context or local Git refs"
-            )
+        lineage = baseline.get("git_lineage", {})
+        review_base_sha = lineage.get("review_base_main_sha", "")
+        if not re.fullmatch(r"[0-9a-fA-F]{40}", review_base_sha):
+            errors.append(f"{baseline_file}: git_lineage.review_base_main_sha is not a commit SHA")
         else:
-            lineage = baseline.get("git_lineage", {})
-            if lineage.get("review_base_main_sha") != base_sha:
+            lineage_validation_target = base_sha if explicit_validation_base else "HEAD"
+            historical_base = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", review_base_sha, lineage_validation_target],
+                cwd=REPOSITORY_ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            if historical_base.returncode != 0:
                 errors.append(
-                    f"{baseline_file}: git_lineage.review_base_main_sha does not "
-                    f"match Base SHA resolved from {base_sha_source}"
+                    f"{baseline_file}: freeze-time review Base SHA is not an ancestor "
+                    "of the current validation base or target"
                 )
-            if baseline.get("publication_state") != "freeze_lineage_recorded":
-                errors.append(f"{baseline_file}: publication state must use merge-neutral freeze lineage semantics")
-            if lineage.get("lineage_semantics") != "freeze_time_historical_review_record" or lineage.get(
-                "current_repository_merge_state_claimed"
-            ) is not False:
-                errors.append(f"{baseline_file}: freeze-time lineage must not assert current merge state")
-            if lineage.get("frozen_candidate_commit_sha", {}).get("value_source") != "validation_target_HEAD":
-                errors.append(f"{baseline_file}: frozen candidate commit SHA binding is missing")
-            if lineage.get("frozen_candidate_tree_sha", {}).get("value_source") != "validation_target_HEAD^{tree}":
-                errors.append(f"{baseline_file}: frozen candidate tree SHA binding is missing")
-            if lineage.get("review_base_and_candidate_sha_semantics_must_not_be_conflated") is not True:
-                errors.append(f"{baseline_file}: review Base and Candidate SHA semantics are conflated")
-            checked += 7
+        if baseline.get("publication_state") != "freeze_lineage_recorded":
+            errors.append(f"{baseline_file}: publication state must use merge-neutral freeze lineage semantics")
+        if lineage.get("lineage_semantics") != "freeze_time_historical_review_record" or lineage.get(
+            "current_repository_merge_state_claimed"
+        ) is not False:
+            errors.append(f"{baseline_file}: freeze-time lineage must not assert current merge state")
+        if lineage.get("frozen_candidate_commit_sha", {}).get("value_source") != "validation_target_HEAD":
+            errors.append(f"{baseline_file}: frozen candidate commit SHA binding is missing")
+        if lineage.get("frozen_candidate_tree_sha", {}).get("value_source") != "validation_target_HEAD^{tree}":
+            errors.append(f"{baseline_file}: frozen candidate tree SHA binding is missing")
+        if lineage.get("review_base_and_candidate_sha_semantics_must_not_be_conflated") is not True:
+            errors.append(f"{baseline_file}: review Base and Candidate SHA semantics are conflated")
+        checked += 7
         checked += 1
     return checked
 
