@@ -2,6 +2,7 @@ config_type: business_rule_readiness_gate
 gate_id: GATE_BUSINESS_RULE_WF_CUSTOMER_REVENUE_DETAIL_V1
 workflow_id: WF_CUSTOMER_REVENUE_DETAIL
 assessment_date: 2026-08-08
+last_semantic_sync_date: 2026-08-09
 status: completed_design_only
 gate_result: passed
 scope:
@@ -41,6 +42,7 @@ gate_checks:
   independent_frozen_top20_memberships: pass
   cross_run_top20_membership_state_priority_and_no_rerank: pass
   quarter_top20_membership_state_write_idempotency_conflict_and_failure_contract: pass
+  top20_identical_payload_different_proposed_reference_reuses_existing_reference_without_write: pass
   forecast_top20_first_freeze_requires_D_available: pass
   template_existing_top20_memberships_preserved: pass
   generated_top20_rank_order_and_D_availability: pass

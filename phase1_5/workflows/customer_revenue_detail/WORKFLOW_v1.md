@@ -166,9 +166,10 @@ do not grant Output Mapping authority to originate or change business values.
   the first time only after D becomes available. Top20 is not layout inheritance.
   A first freeze must atomically write the local-only quarter membership state
   after Result Contract validation and before the output becomes consumable.
-  A rerun with the same business key and membership reference reuses that state
-  idempotently without a second write. A conflicting reference, duplicate state,
-  write failure or unresolvable local reference blocks the Workflow, marks the
+  A rerun with the same business key and identical membership payload reuses the
+  existing state and its existing reference without a second write; if the proposed
+  reference differs, it is discarded after payload identity is confirmed. A
+  nonidentical or unverifiable payload, duplicate state, write failure or unresolvable local reference blocks the Workflow, marks the
   output non-consumable and notifies the Owner; customer rows never enter state
   metadata or Git.
   Otherwise, when D is available, prior-year

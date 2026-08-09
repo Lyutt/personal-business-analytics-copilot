@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 2026-08-09 设计资产收口以远端 `main` 的 `fb3a4b7` 为 review base；当前冻结候选位于未合并分支 `codex/design-assets-contract-closure`，候选 commit/tree 由 Validator 绑定当前验证目标，不能声明已合并。
+- 2026-08-09 设计资产收口以远端 `main` 的 `fb3a4b7` 为 review base；Baseline以 merge-neutral 的冻结时历史血缘记录候选分支及验证目标 commit/tree，不把当前是否已合并作为持续状态。
 - Active 占位项只允许分类为 `blocking`、`runtime-only`、`not-required-for-MVP` 或 `superseded`；未分类项阻断受影响范围，禁止推断业务值。
 - Weekly 与 Customer 可复用已登记输入资产，但彼此不产生文件、输出、Result Contract、Metric Store、Baseline 或 Gate 依赖。
 - 架构方向：已确认。

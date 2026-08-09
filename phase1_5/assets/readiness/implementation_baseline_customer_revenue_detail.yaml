@@ -3,16 +3,20 @@ baseline_id: IMPLEMENTATION_BASELINE_WF_CUSTOMER_REVENUE_DETAIL_V1
 baseline_version: 1.0.0
 workflow_id: WF_CUSTOMER_REVENUE_DETAIL
 freeze_date: 2026-08-08
+last_refreeze_date: 2026-08-09
 status: frozen_awaiting_explicit_owner_code_implementation_approval
+freeze_revision_status: refrozen_after_design_contract_closure
 owner: WORKFLOW_OWNER
-publication_state: unmerged_feature_branch_candidate
+publication_state: freeze_lineage_recorded
 git_lineage:
+  lineage_semantics: freeze_time_historical_review_record
   review_base_branch: main
   review_base_main_sha: fb3a4b7fd8a1b4396e001f8c89bbdb72cb643ff7
   frozen_candidate_branch: codex/design-assets-contract-closure
   frozen_candidate_commit_sha: { value_source: validation_target_HEAD, embedded_literal_required: false }
   frozen_candidate_tree_sha: { value_source: 'validation_target_HEAD^{tree}', embedded_literal_required: false }
   review_base_and_candidate_sha_semantics_must_not_be_conflated: true
+  current_repository_merge_state_claimed: false
 baseline_scope:
   phase: Phase 1.5
   workflow_scope: Customer Revenue Detail V1 design assets
@@ -66,6 +70,7 @@ implementation_authorization:
   approval_must_name_this_baseline_id_and_version: true
 change_control:
   baseline_is_logically_frozen: true
+  repository_commit_binding_status: freeze_candidate_reviewed
   customer_asset_change_requires_baseline_version_review: true
   weekly_business_report_baseline_must_not_change: true
   customer_reporting_period_selection_contract:
@@ -82,6 +87,22 @@ change_control:
     shared_registered_source_dataset_or_mapping_reuse_creates_workflow_dependency: false
     customer_specific_rule_and_context_authority_required: true
     repository_level_multi_workflow_validation_is_not_a_runtime_dependency: true
+  latest_baseline_version_impact_review:
+    review_date: 2026-08-09
+    change_class: phase1_5_design_contract_closure
+    behavior_or_output_change: true
+    changes_reviewed:
+      - Top20 identical payload with a different proposed reference must reuse the existing state and reference without a second write
+      - Baseline lineage uses merge-neutral freeze-time semantics
+    code_implementation_started: false
+    code_implementation_owner_approved: false
+    baseline_version_increment_required: false
+    baseline_freeze_action: refreeze_same_version_before_code_implementation
+    metric_variant_count_unchanged: 14
+    result_contract_count_unchanged: 1
+    record_set_count_unchanged: 3
+    explicit_output_field_binding_count_unchanged: 32
+    rationale: The review removes a write-contract ambiguity before runtime implementation and does not change Customer formulas or output field contracts.
   force_push_allowed: false
   auto_merge_allowed: false
 remaining_tbd_classification:

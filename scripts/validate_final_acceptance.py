@@ -46,6 +46,11 @@ DATASET_INVENTORY = ROOT / "phase1_5/assets/datasets/dataset_inventory.yaml"
 DATA_SOURCE_INVENTORY = ROOT / "phase1_5/assets/data_sources/data_source_inventory.yaml"
 ROLLING_DECK_MAPPING = ROOT / "phase1_5/assets/field_mappings/MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1.yaml"
 CTV_MAPPING = ROOT / "phase1_5/assets/field_mappings/MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1.yaml"
+PRIMARY_BUSINESS_LINE_MAPPING = ROOT / "phase1_5/assets/field_mappings/MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1.yaml"
+FALLBACK_BUSINESS_LINE_MAPPING = ROOT / "phase1_5/assets/field_mappings/MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1.yaml"
+REVENUE_MAPPING_DELTA_GATE = ROOT / "phase1_5/assets/field_mappings/field_mapping_readiness_gate_delta_revenue_business_line.yaml"
+WEEKLY_BUSINESS_RULE_GATE = ROOT / "phase1_5/assets/business_rules/business_rule_readiness_gate_revenue.yaml"
+WEEKLY_CODE_GATE = ROOT / "phase1_5/assets/readiness/code_implementation_readiness_gate.yaml"
 
 
 def load(path: Path) -> dict[str, Any]:
@@ -365,6 +370,11 @@ def main() -> int:
     data_source_inventory = load(DATA_SOURCE_INVENTORY)
     rolling_deck_mapping = load(ROLLING_DECK_MAPPING)
     ctv_mapping = load(CTV_MAPPING)
+    primary_business_line_mapping = load(PRIMARY_BUSINESS_LINE_MAPPING)
+    fallback_business_line_mapping = load(FALLBACK_BUSINESS_LINE_MAPPING)
+    revenue_mapping_delta_gate = load(REVENUE_MAPPING_DELTA_GATE)
+    weekly_business_rule_gate = load(WEEKLY_BUSINESS_RULE_GATE)
+    weekly_code_gate = load(WEEKLY_CODE_GATE)
     scenarios = scenario_map(suite)
     customer_scenarios = scenario_map(customer_suite)
     semantic_cases = semantic_case_map(suite)
@@ -375,10 +385,29 @@ def main() -> int:
     assert customer_suite.get("external_side_effects_allowed") is False
     assert customer_suite.get("suite_id") == "CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1"
     assert len(customer_scenarios) == 43
-    assert weekly_baseline["publication_state"] == customer_baseline["publication_state"] == "unmerged_feature_branch_candidate"
+    assert weekly_baseline["publication_state"] == customer_baseline["publication_state"] == "freeze_lineage_recorded"
     assert weekly_baseline["git_lineage"] == customer_baseline["git_lineage"]
     assert weekly_baseline["git_lineage"]["review_base_main_sha"] != "HEAD"
+    assert weekly_baseline["git_lineage"]["lineage_semantics"] == "freeze_time_historical_review_record"
+    assert weekly_baseline["git_lineage"]["current_repository_merge_state_claimed"] is False
+    for baseline in (weekly_baseline, customer_baseline):
+        assert str(baseline["last_refreeze_date"]) == "2026-08-09"
+        assert baseline["freeze_revision_status"] == "refrozen_after_design_contract_closure"
+        review = baseline["change_control"]["latest_baseline_version_impact_review"]
+        assert str(review["review_date"]) == "2026-08-09"
+        assert review["change_class"] == "phase1_5_design_contract_closure"
+        assert review["behavior_or_output_change"] is True
+        assert review["code_implementation_started"] is False
+        assert review["baseline_version_increment_required"] is False
     assert weekly_baseline["frozen_asset_versions"]["field_mapping_profile_count"] == 11
+    assert weekly_baseline["frozen_asset_versions"]["result_contract_count"] == 12
+    assert weekly_baseline["frozen_asset_versions"]["metric_variant_count"] == 48
+    assert weekly_baseline["mvp_development_constraints"]["mvp_execution_mode"] == "sequential"
+    assert customer_baseline["frozen_asset_versions"]["metric_variant_count"] == 14
+    assert customer_baseline["frozen_asset_versions"]["result_contract_count"] == 1
+    assert customer_baseline["frozen_asset_versions"]["explicit_output_field_binding_count"] == 32
+    assert len(customer_result_contract["record_sets"]) == 3
+    assert runtime["governance"]["auto_send"] is False
     assert "weekly_frozen_asset_zero_diff_contract" not in customer_baseline["change_control"]
     for active_document in (data_source_inventory, dataset_inventory, rolling_deck_mapping, ctv_mapping):
         classification = active_document["remaining_tbd_classification"]
@@ -407,6 +436,7 @@ def main() -> int:
                 "no_template_existing_customer_industry_inheritance",
                 "cross_run_top20_membership_state_priority_and_no_rerank",
                 "quarter_top20_membership_state_write_idempotency_conflict_and_failure_contract",
+                "top20_identical_payload_different_proposed_reference_reuses_existing_reference_without_write",
                 "forecast_top20_first_freeze_requires_D_available",
                 "absolute_100_percent_warning_limited_to_yoy_fields",
                 "quarter_first_week_mode_independent_of_output_history",
@@ -438,6 +468,7 @@ def main() -> int:
                 "local_output_metadata_failure_and_filesystem_collision_consistency",
                 "top20_cross_run_quarter_state_freeze",
                 "top20_membership_state_write_contract",
+                "top20_identical_payload_reuses_existing_state_and_reference_without_write",
                 "report_mode_derived_from_actual_quarter_first_reporting_date",
                 "expected_previous_period_and_reporting_date_independently_derived",
                 "actual_revenue_cutoff_separate_from_thursday_and_source_report_date",
@@ -455,7 +486,9 @@ def main() -> int:
                 "exact_immediately_preceding_output_required_without_history_gap_fallback",
                 "same_week_rerun_retains_locked_expected_previous_period_selection",
                 "active_placeholder_classification_complete",
-                "baseline_review_base_and_unmerged_candidate_lineage_distinct",
+                "top20_identical_payload_reuses_existing_state_and_reference_without_write",
+                "baseline_review_base_and_freeze_candidate_lineage_distinct",
+                "baseline_2026_08_09_design_contract_review_and_refreeze",
                 "no_cross_workflow_file_dependency",
             },
         ),
@@ -523,14 +556,87 @@ def main() -> int:
     for rule_id, rule in weekly_active_rules.items():
         assert set(canonical_bindings[rule_id]) == set(rule["inputs"]["required_context_fields"])
         assert all(binding["lock"] for binding in canonical_bindings[rule_id].values())
-    expected_business_line_fields = [
+    expected_primary_fields = [
         "revenue_business_line",
-        "fiscal_quarter_or_source_period_range",
+        "fiscal_quarter",
         "performance_revenue_amount",
         "executed_revenue_amount",
     ]
-    assert weekly_previous_quarter_rule["inputs"]["required_standard_fields"] == expected_business_line_fields
-    assert weekly_comparable_rule["inputs"]["required_standard_fields"] == expected_business_line_fields
+    expected_fallback_fields = [
+        "source_period_range",
+        "period_start_date",
+        "period_end_date",
+        "revenue_business_line",
+        "performance_revenue_amount",
+        "executed_revenue_amount",
+    ]
+    primary_mapped_fields = {item["standard_field_id"] for item in primary_business_line_mapping["field_mappings"]}
+    fallback_mapped_fields = {item["standard_field_id"] for item in fallback_business_line_mapping["field_mappings"]}
+    assert weekly_comparable_rule["inputs"]["required_standard_fields"] == expected_primary_fields
+    assert weekly_comparable_rule["inputs"]["required_mapping_profile_id"] == primary_business_line_mapping["mapping_profile_id"]
+    source_role_fields = weekly_previous_quarter_rule["inputs"]["required_standard_fields_by_source_role"]
+    assert source_role_fields["primary"]["fields"] == expected_primary_fields
+    assert source_role_fields["fallback"]["fields"] == expected_fallback_fields
+    assert set(expected_primary_fields).issubset(primary_mapped_fields)
+    assert set(expected_fallback_fields).issubset(fallback_mapped_fields)
+    assert "fiscal_quarter_or_source_period_range" not in primary_mapped_fields | fallback_mapped_fields
+    assert revenue_mapping_delta_gate["coverage"]["required_standard_fields_by_profile"] == {
+        primary_business_line_mapping["mapping_profile_id"]: expected_primary_fields,
+        fallback_business_line_mapping["mapping_profile_id"]: expected_fallback_fields,
+    }
+
+    pipeline_by_id = {item["pipeline_id"]: item for item in pipeline_registry["pipelines"]}
+    expected_pipeline_business_lines = {
+        "PL_REVENUE_TECHNICAL_WEEKLY": ("Technical", {weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}),
+        "PL_REVENUE_CTV_WEEKLY": ("CTV", {weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}),
+        "PL_REVENUE_SMART_SPEAKER_WEEKLY": ("Smart Speaker", {weekly_qtd_history_rule["rule_id"]}),
+        "PL_REVENUE_FAST_VERSION_WEEKLY": ("Fast Version", {weekly_qtd_history_rule["rule_id"]}),
+    }
+    assert "target_business_line" not in context["required_fields"]
+    scoped_runtime_bindings = runtime["pipeline_scoped_rule_context_bindings"]
+    assert set(scoped_runtime_bindings) - {"validation"} == set(expected_pipeline_business_lines)
+    for pipeline_id, (expected_value, expected_rule_ids) in expected_pipeline_business_lines.items():
+        pipeline = pipeline_by_id[pipeline_id]
+        registry_binding = pipeline["pipeline_rule_context_bindings"]["target_business_line"]
+        runtime_binding = scoped_runtime_bindings[pipeline_id]["target_business_line"]
+        assert registry_binding["scope"] == "pipeline"
+        assert registry_binding["value"] == runtime_binding["value"] == expected_value
+        assert set(registry_binding["applicable_rule_ids"]) == set(runtime_binding["applies_to_rule_ids"]) == expected_rule_ids
+        assert registry_binding["display_name_inference_allowed"] is False
+        if pipeline_id in {"PL_REVENUE_SMART_SPEAKER_WEEKLY", "PL_REVENUE_FAST_VERSION_WEEKLY"}:
+            assert registry_binding["value_source"] == "exact_registered_pipeline_business_line"
+            assert registry_binding["value"] == pipeline["business_line"]
+    for rule_id in (weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"], weekly_qtd_history_rule["rule_id"]):
+        assert canonical_bindings[rule_id]["target_business_line"]["scope"] == "pipeline"
+
+    weekly_datasets = {item["dataset_id"]: item for item in dataset_inventory["datasets"]}
+    rolling_deck_selection = weekly_datasets["DS_REVENUE_SALES_ROLLING_DECK_QTD"]["acquisition"]["source_object_or_attachment_rule"]["executable_version_selection_rule"]["locked_weekly_date_binding"]
+    ctv_selection = weekly_datasets["DS_REVENUE_CTV_EXCL_PLACEMENT_QTD"]["acquisition"]["source_object_or_attachment_rule"]["executable_selection_rule"]
+    assert rolling_deck_selection["selected_email_subject_date_must_equal"] == "Workflow Run Context workflow_reporting_date"
+    assert rolling_deck_selection["generic_cutoff_date_selection_allowed"] is False
+    assert ctv_selection["primary_condition"] == "Subject date equals locked Workflow Run Context workflow_reporting_date"
+    assert ctv_selection["manifest_date_bindings"]["source_report_date_may_substitute_for_business_cutoff"] is False
+    current_weekly_source_contract = weekly_email_classification_rule["conditions"]["current_weekly_source_selection_contract"]
+    assert current_weekly_source_contract["current_source_pipeline_scope"] == ["PL_REVENUE_TECHNICAL_WEEKLY"]
+    assert current_weekly_source_contract["ctv_current_source_contract"] == "DS_REVENUE_CTV_EXCL_PLACEMENT_QTD executable_selection_rule"
+    assert current_weekly_source_contract["generic_cutoff_date_may_select_weekly_email"] is False
+    assert weekly_report_mode_rule["manual_execution"]["required_inputs"] == ["explicit_target_report_period", "explicit_workflow_reporting_date"]
+    assert weekly_report_mode_rule["manual_execution"]["explicit_revenue_cutoff_date_is_report_mode_input"] is False
+    for check_id in (
+        "business_line_source_selection_fields_exist_in_bound_mapping_profiles",
+        "target_business_line_is_pipeline_scoped_and_exact",
+        "current_revenue_email_selection_uses_locked_workflow_reporting_date",
+        "manual_report_mode_uses_explicit_reporting_period_and_workflow_reporting_date",
+    ):
+        assert weekly_business_rule_gate["gate_checks"][check_id] == "pass"
+    for check_id in (
+        "revenue_source_selection_fields_exist_in_bound_mapping_profiles",
+        "pipeline_scoped_target_business_line_bindings_exact_and_unique",
+        "revenue_dataset_selection_uses_locked_workflow_reporting_date",
+        "manual_report_mode_excludes_revenue_cutoff_input",
+        "baseline_2026_08_09_design_contract_review_and_refreeze",
+    ):
+        assert weekly_code_gate["implementation_readiness_checks"][check_id] == "pass"
     assert technical_rule["applicability"]["data_roles"] == ["current_quarter_qtd"]
     assert technical_rule["conditions"]["role_quarter_binding"]["historical_or_previous_quarter_role_binding_allowed"] is False
     for scenario_id in ("manual_run_context", "backfill_run_context"):
@@ -1219,7 +1325,9 @@ def main() -> int:
         "first_freeze_atomic_write": top20_write["atomic_write_required"],
         "identical_rerun_second_write": False,
         "identical_rerun_reuses_state": top20_write["idempotent_rerun"]["exact_business_key_and_identical_membership_reference"] == "reuse_existing_state_without_second_write",
-        "conflicting_reference_blocks": top20_write["conflict_contract"]["existing_same_business_key_with_different_membership_reference"] == "block_customer_workflow",
+        "identical_payload_different_proposed_reference_reuses_existing_reference": top20_write["idempotent_rerun"]["identical_payload_with_proposed_different_reference"] == "discard_proposed_reference_and_reuse_existing_state_and_reference_without_second_write",
+        "reference_difference_alone_after_payload_match_blocks": top20_write["conflict_contract"]["reference_difference_alone_after_payload_identity_confirmed_is_conflict"],
+        "nonidentical_or_unverifiable_payload_with_different_reference_blocks": top20_write["conflict_contract"]["existing_same_business_key_with_different_membership_reference_and_nonidentical_or_unverifiable_payload"] == "block_customer_workflow",
         "write_failure_blocks_consumable_output": "mark_output_not_consumable_for_next_period" in top20_write["write_failure_contract"]["action"],
         "state_scope": top20_write["local_only_contract"]["storage_scope"],
         "customer_rows_in_state_metadata": top20_write["local_only_contract"]["customer_rows_in_state_metadata_allowed"],

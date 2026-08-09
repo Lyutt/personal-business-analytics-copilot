@@ -550,15 +550,19 @@ asset_rules:
       - baseline_version
       - workflow_id
       - freeze_date
+      - last_refreeze_date
+      - freeze_revision_status
       - status
       - owner
       - publication_state
       - git_lineage
       - git_lineage.review_base_branch
       - git_lineage.review_base_main_sha
+      - git_lineage.lineage_semantics
       - git_lineage.frozen_candidate_branch
       - git_lineage.frozen_candidate_commit_sha.value_source
       - git_lineage.frozen_candidate_tree_sha.value_source
+      - git_lineage.current_repository_merge_state_claimed
       - baseline_scope
       - frozen_asset_versions
       - frozen_gate_results
@@ -567,6 +571,10 @@ asset_rules:
       - validation_contract
       - implementation_authorization
       - change_control
+      - change_control.latest_baseline_version_impact_review
+      - change_control.latest_baseline_version_impact_review.review_date
+      - change_control.latest_baseline_version_impact_review.change_class
+      - change_control.latest_baseline_version_impact_review.behavior_or_output_change
 
   - asset_type: workflow_runtime_contracts
     selector: { key: config_type, value: workflow_runtime_contracts }

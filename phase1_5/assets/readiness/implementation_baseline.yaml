@@ -3,17 +3,20 @@ baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
 baseline_version: 1.0.0
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 freeze_date: 2026-08-08
+last_refreeze_date: 2026-08-09
 status: frozen_awaiting_explicit_owner_code_implementation_approval
-freeze_revision_status: refrozen_after_final_adhoc_capability_patch
+freeze_revision_status: refrozen_after_design_contract_closure
 owner: WORKFLOW_OWNER
-publication_state: unmerged_feature_branch_candidate
+publication_state: freeze_lineage_recorded
 git_lineage:
+  lineage_semantics: freeze_time_historical_review_record
   review_base_branch: main
   review_base_main_sha: fb3a4b7fd8a1b4396e001f8c89bbdb72cb643ff7
   frozen_candidate_branch: codex/design-assets-contract-closure
   frozen_candidate_commit_sha: { value_source: validation_target_HEAD, embedded_literal_required: false }
   frozen_candidate_tree_sha: { value_source: 'validation_target_HEAD^{tree}', embedded_literal_required: false }
   review_base_and_candidate_sha_semantics_must_not_be_conflated: true
+  current_repository_merge_state_claimed: false
 
 baseline_scope:
   phase: Phase 1.5
@@ -132,7 +135,7 @@ mvp_development_constraints:
 
 change_control:
   baseline_is_logically_frozen: true
-  repository_commit_binding_status: reviewed_candidate_on_unmerged_feature_branch
+  repository_commit_binding_status: freeze_candidate_reviewed
   frozen_content_includes_customer_fixed_narrative_strategy: true
   frozen_content_includes_shared_local_sqlite_contract: true
   post_freeze_behavior_or_output_change_requires_version_review: true
@@ -142,21 +145,28 @@ change_control:
     - Re-run asset integrity validation
     - Owner review before Code Implementation approval
   latest_baseline_version_impact_review:
-    review_date: 2026-08-08
-    change_class: final_adhoc_capability_index_patch
-    behavior_or_output_change: false
+    review_date: 2026-08-09
+    change_class: phase1_5_design_contract_closure
+    behavior_or_output_change: true
+    changes_reviewed:
+      - Revenue source-selection required fields now bind only real fields in each primary or fallback Mapping Profile
+      - target_business_line is Pipeline-scoped with exact per-Pipeline Rule Context identities
+      - Revenue current-email selection uses workflow_reporting_date and source_report_date independently from the business-data cutoff
+      - Manual Report Mode uses explicit target report period and workflow reporting date only
+      - Baseline lineage uses merge-neutral freeze-time semantics
     customer_analysis_output_strategy: fixed_narrative_template_rendering
     customer_analysis_initial_mvp_status: included
     physical_metric_store_strategy: shared_local_sqlite
     mvp_execution_mode: sequential
     mvp_recovery_mode: rerun_pipeline_from_start
     development_complexity_reduction: true
+    code_implementation_started: false
     code_implementation_owner_approved: false
     baseline_version_increment_required: false
-    baseline_freeze_action: refreeze_same_version_after_final_acceptance_validation
+    baseline_freeze_action: refreeze_same_version_before_code_implementation
     final_acceptance_synthetic_scenario_count: 14
     final_acceptance_result: passed
-    rationale: The current review adds only DCP indexes for existing Revenue and Inventory capabilities plus natural-language-to-ARC canonicalization and two synthetic tests. It creates no Metric, Result Contract, Pipeline, Workflow, formula, or Weekly MVP behavior and grants no implementation authority.
+    rationale: The review corrects pre-implementation design contracts and source-selection authority without changing formulas, Metric Variant or Result Contract counts, sequential MVP execution, or implementation authorization.
   final_adhoc_capability_patch_review:
     review_date: 2026-08-08
     change_class: adhoc_index_and_arc_resolution_only

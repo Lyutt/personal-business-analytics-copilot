@@ -82,6 +82,13 @@ datasets:
             expected_weekday: Thursday
             expected_received_time: 17:00-18:00 Asia/Shanghai
             subject_date_relation: Subject date equals email sent date
+          locked_weekly_date_binding:
+            workflow_scope: WF_WEEKLY_BUSINESS_REPORT
+            selected_email_subject_date_must_equal: Workflow Run Context workflow_reporting_date
+            manifest_source_report_date_must_equal: Workflow Run Context workflow_reporting_date
+            source_report_date_and_source_business_data_cutoff_date_are_independent: true
+            manifest_source_business_data_cutoff_date_binds: Workflow Run Context current_revenue_cutoff_date
+            generic_cutoff_date_selection_allowed: false
           observed_weekly_example:
             subject: FY26Q3销售业务线Rolling Deck @2026/7/9
             sent_at: 2026/7/9 17:06 Asia/Shanghai
@@ -324,11 +331,18 @@ datasets:
         attachment_pattern: 订单分季度收入.xlsx
         email_frequency: Daily
         desired_selection_scope: >-
-          获取邮件标题日期与Workflow Run Context cutoff_date一致的邮件。
+          获取邮件标题日期与锁定Workflow Run Context workflow_reporting_date一致的邮件；
+          该标题日期写入source_report_date，不作为真实业务数据截止日。
         executable_selection_rule:
           status: confirmed
-          primary_condition: Subject date equals Workflow Run Context cutoff_date
+          primary_condition: Subject date equals locked Workflow Run Context workflow_reporting_date
           subject_date_format: YYYY-MM-DD
+          manifest_date_bindings:
+            source_report_date: exact parsed Subject date; must equal locked workflow_reporting_date
+            source_business_data_cutoff_date: actual business-data cutoff represented by the selected attachment
+            current_revenue_cutoff_date: exact binding from source_business_data_cutoff_date only
+            generic_cutoff_date_selection_allowed: false
+            source_report_date_may_substitute_for_business_cutoff: false
           no_match_policy:
             initial_action: pause_workflow
             retry_delay_minutes: 30
@@ -362,7 +376,9 @@ datasets:
       dataset_update_frequency: Daily
       version_scope: >-
         每封邮件代表当前季度的最新累计收入状态。有效邮件按已确认的标题日期
-        与Workflow Run Context cutoff_date一致规则识别；多封匹配时选择发送时间最新的一封并提醒。
+        与锁定Workflow Run Context workflow_reporting_date一致规则识别；该日期作为
+        source_report_date。多封匹配时选择发送时间最新的一封并提醒；附件代表的真实
+        业务截止日独立记录为source_business_data_cutoff_date。
       period_semantics:
         year_definition: TBD
         quarter_definition: TBD

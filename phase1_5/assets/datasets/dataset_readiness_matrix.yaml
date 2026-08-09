@@ -54,6 +54,14 @@ standardization_baseline:
   single_dataset_join_rule: not_applicable
   workflow_run_context_and_manifest_required: true
 
+revenue_current_source_date_selection_contract:
+  applies_to_dataset_ids: [DS_REVENUE_SALES_ROLLING_DECK_QTD, DS_REVENUE_CTV_EXCL_PLACEMENT_QTD]
+  selected_email_source_report_date_must_equal_locked_workflow_reporting_date: true
+  source_report_date_and_source_business_data_cutoff_date_are_independent: true
+  current_revenue_cutoff_date_binds_only_source_business_data_cutoff_date: true
+  generic_cutoff_date_may_select_revenue_email: false
+  status: passed
+
 active_runtime_tbd_policy:
   runtime_authoritative_paths:
     - Pipeline Registry dataset_version_constraint

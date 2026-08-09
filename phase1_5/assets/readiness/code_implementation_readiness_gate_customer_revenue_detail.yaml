@@ -2,6 +2,7 @@ config_type: code_implementation_readiness_gate
 gate_id: GATE_CODE_IMPLEMENTATION_WF_CUSTOMER_REVENUE_DETAIL_V1
 workflow_id: WF_CUSTOMER_REVENUE_DETAIL
 assessment_date: 2026-08-08
+last_semantic_sync_date: 2026-08-09
 status: ready_awaiting_explicit_owner_approval
 gate_result: ready_awaiting_explicit_owner_approval
 owner: WORKFLOW_OWNER
@@ -45,6 +46,7 @@ implementation_readiness_checks:
   output_date_lineage_and_metadata_filesystem_consistency: pass
   top20_cross_run_freeze_contract: pass
   top20_membership_state_write_idempotency_conflict_and_failure_contract: pass
+  top20_identical_payload_reuses_existing_state_and_reference_without_write: pass
   weekly_rule_customer_runtime_independence_and_customer_adapter_binding: pass
   weekly_comparable_rule_customer_runtime_independence: pass
   quarter_first_week_template_order_tie_break: pass
@@ -55,7 +57,8 @@ implementation_readiness_checks:
   local_only_data_boundary: pass
   multi_workflow_integrity_validation: pass
   active_placeholder_classification_complete: pass
-  baseline_review_base_and_unmerged_candidate_lineage_distinct: pass
+  baseline_review_base_and_freeze_candidate_lineage_distinct: pass
+  baseline_2026_08_09_design_contract_review_and_refreeze: pass
   no_cross_workflow_file_dependency: pass
 implementation_entry_decision:
   asset_baseline_ready: true

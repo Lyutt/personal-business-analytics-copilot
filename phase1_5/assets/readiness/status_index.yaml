@@ -2,7 +2,7 @@ config_type: business_asset_status_index
 index_version: 1.0.0
 status: synchronized
 assessment_date: 2026-08-03
-last_semantic_sync_date: 2026-08-08
+last_semantic_sync_date: 2026-08-09
 design_asset_closure_review_date: 2026-08-09
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 current_stage: Phase 1.5 Final Acceptance Passed - Awaiting Explicit Owner Code Implementation Approval
@@ -67,7 +67,8 @@ implementation_baseline:
   source_artifact: phase1_5/assets/readiness/implementation_baseline.yaml
   explicit_owner_code_implementation_approval_received: false
   freeze_date: 2026-08-08
-  freeze_revision_status: refrozen_after_final_adhoc_capability_patch
+  last_refreeze_date: 2026-08-09
+  freeze_revision_status: refrozen_after_design_contract_closure
 
 scope_boundaries:
   weekly_business_report_p0_assets: complete
@@ -103,7 +104,7 @@ scope_boundaries:
   workflow_run_context_status: confirmed_distinct_workflow_reporting_source_report_and_business_cutoff_date_authorities
   weekly_active_rule_context_binding_status: complete_without_runtime_alias_guessing
   weekly_field_mapping_profile_count: 11
-  git_publication_state: unmerged_feature_branch_candidate
+  git_publication_state: freeze_lineage_recorded
   run_input_manifest_status: confirmed_explicit_binding
   percentage_point_contract_status: confirmed_true_pp_values
   configured_display_value_state_table: configured_display_values

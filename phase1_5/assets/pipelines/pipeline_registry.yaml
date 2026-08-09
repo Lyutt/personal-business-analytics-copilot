@@ -98,6 +98,13 @@ pipelines:
     pipeline_name: 技术线周度收入分析 Pipeline
     business_domain: Revenue
     business_line: Technical Line
+    pipeline_rule_context_bindings:
+      target_business_line:
+        scope: pipeline
+        value: Technical
+        value_source: explicit_pipeline_rule_context_configuration
+        applicable_rule_ids: [BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1, BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1]
+        display_name_inference_allowed: false
     business_context_id: CTX_REVENUE_TECHNICAL_WEEKLY
     trigger_type: Scheduled
     owner: WORKFLOW_OWNER
@@ -162,6 +169,13 @@ pipelines:
         join_or_relationship_rule_id: not_applicable
         run_input_manifest_required: true
         period_context_source: workflow_run_context
+        current_source_date_bindings:
+          selected_source_report_date_must_equal: workflow_reporting_date
+          manifest_source_report_date: exact selected email subject date
+          manifest_source_business_data_cutoff_date: actual business-data cutoff represented by the attachment
+          current_revenue_cutoff_date_source: manifest source_business_data_cutoff_date
+          generic_cutoff_date_selection_allowed: false
+          source_report_date_business_cutoff_substitution_allowed: false
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -281,6 +295,13 @@ pipelines:
     pipeline_name: CTV（不含植入）周度收入分析 Pipeline
     business_domain: Revenue
     business_line: CTV excluding placement
+    pipeline_rule_context_bindings:
+      target_business_line:
+        scope: pipeline
+        value: CTV
+        value_source: explicit_pipeline_rule_context_configuration
+        applicable_rule_ids: [BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1, BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1]
+        display_name_inference_allowed: false
     business_context_id: CTX_REVENUE_CTV_WEEKLY
     trigger_type: Scheduled
     owner: WORKFLOW_OWNER
@@ -344,6 +365,13 @@ pipelines:
         join_or_relationship_rule_id: not_applicable
         run_input_manifest_required: true
         period_context_source: workflow_run_context
+        current_source_date_bindings:
+          selected_source_report_date_must_equal: workflow_reporting_date
+          manifest_source_report_date: exact selected email subject date
+          manifest_source_business_data_cutoff_date: actual business-data cutoff represented by the attachment
+          current_revenue_cutoff_date_source: manifest source_business_data_cutoff_date
+          generic_cutoff_date_selection_allowed: false
+          source_report_date_business_cutoff_substitution_allowed: false
         acquisition_and_selection_rules:
           source_of_truth: Dataset Readiness Matrix
           automatic_rule_duplication_in_pipeline: false
@@ -459,6 +487,14 @@ pipelines:
     pipeline_name: 智能音箱周度收入分析 Pipeline
     business_domain: Revenue
     business_line: Smart Speaker
+    pipeline_rule_context_bindings:
+      target_business_line:
+        scope: pipeline
+        value: Smart Speaker
+        value_source: exact_registered_pipeline_business_line
+        registered_business_line_field: business_line
+        applicable_rule_ids: [BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1]
+        display_name_inference_allowed: false
     business_context_id: CTX_REVENUE_SMART_SPEAKER_WEEKLY
     trigger_type: Scheduled
     owner: WORKFLOW_OWNER
@@ -649,6 +685,14 @@ pipelines:
     pipeline_name: 极速版周度收入分析 Pipeline
     business_domain: Revenue
     business_line: Fast Version
+    pipeline_rule_context_bindings:
+      target_business_line:
+        scope: pipeline
+        value: Fast Version
+        value_source: exact_registered_pipeline_business_line
+        registered_business_line_field: business_line
+        applicable_rule_ids: [BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1]
+        display_name_inference_allowed: false
     business_context_id: CTX_REVENUE_FAST_VERSION_WEEKLY
     trigger_type: Scheduled
     owner: WORKFLOW_OWNER
@@ -2323,6 +2367,8 @@ pipelines:
         duplicate_or_previous_quarter_state_action: block_customer_workflow
         first_freeze_write_failure_action: block_customer_workflow_and_mark_output_not_consumable
         same_week_rerun_write_semantics: idempotent_reuse_only
+        identical_payload_different_proposed_reference_action: discard_proposed_reference_and_reuse_existing_state_and_reference_without_write
+        nonidentical_or_unverifiable_payload_conflict_action: block_customer_workflow_and_mark_output_not_consumable
 
     execution:
       execution_mode: sequential

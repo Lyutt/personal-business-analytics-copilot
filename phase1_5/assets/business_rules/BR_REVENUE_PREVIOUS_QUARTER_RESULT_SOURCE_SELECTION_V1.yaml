@@ -27,11 +27,13 @@ inputs:
     - target_business_line
     - target_previous_calendar_quarter
     - report_mode
-  required_standard_fields:
-    - revenue_business_line
-    - fiscal_quarter_or_source_period_range
-    - performance_revenue_amount
-    - executed_revenue_amount
+  required_standard_fields_by_source_role:
+    primary:
+      mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+      fields: [revenue_business_line, fiscal_quarter, performance_revenue_amount, executed_revenue_amount]
+    fallback:
+      mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
+      fields: [source_period_range, period_start_date, period_end_date, revenue_business_line, performance_revenue_amount, executed_revenue_amount]
   required_result_contract_ids: []
 
 source_priority:
@@ -121,6 +123,8 @@ validation:
   fallback_empty_non_numeric_zero_or_negative_behavior: source_failure
   fallback_version_priority_is_explicit: true
   owner_notification_required_on_mixed_source_selection: true
+  every_role_required_standard_field_must_exist_in_bound_mapping_profile: true
+  combined_or_synthetic_period_field_allowed: false
 
 dependency_gate:
   blocking_dependency: 业务线 Sheet incremental Field Mapping

@@ -109,6 +109,14 @@ Scheduled cadence 和 Revenue `report_mode`；它不能覆盖邮件报告日期�
 `canonical_rule_context_bindings` 必须逐一覆盖全部 Active Business Rule 的
 Context 字段、来源、派生和锁定规则，运行时禁止 Alias 猜测。
 
+`target_business_line` 不属于单一 Workflow Run Context 标量；它必须由每个
+Revenue Pipeline 的显式 Rule Context 独立绑定。Technical 固定绑定
+`Technical`，CTV 固定绑定 `CTV`；Smart Speaker 与 Fast Version 只读取
+Pipeline Registry 已登记的 `business_line` 身份，禁止从 Pipeline 名称、报表
+显示名或相似文本推断。Technical Rolling Deck 与 CTV 当前邮件均按锁定的
+`workflow_reporting_date` 精确匹配 `source_report_date`，而
+`current_revenue_cutoff_date` 仅从独立的 `source_business_data_cutoff_date` 绑定。
+
 Outlook、Apollo 与 NovaBI 的所有输入选择和查询参数只能读取该 Context。
 实际执行时间只作为审计元数据；Scheduled、Manual、Backfill 均不得按当前日期、
 文件名或执行时间重新推导业务日期。

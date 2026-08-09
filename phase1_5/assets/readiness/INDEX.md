@@ -4,7 +4,7 @@
 
 - Workflow：`WF_WEEKLY_BUSINESS_REPORT`
 - Phase 1.5 P0 Business Asset Initialization：已完成。
-- Phase 1.5 Final Acceptance已通过；Code Implementation Readiness资产已恢复为等待Owner明确批准，Implementation Baseline 1.0.0未获得代码实现授权。
+- Phase 1.5 Final Acceptance已通过；Weekly与Customer Implementation Baseline 1.0.0均已于2026-08-09完成设计合同影响审查并按同版本refreeze，仍未获得代码实现授权。
 - 允许开始代码实现：否；自动检查或Gate通过不能替代Owner批准。
 - 允许端到端 MVP 运行验收：暂为 Conditional。
 - Customer Revenue Detail Workflow：设计资产已完成并形成独立Baseline；未获得代码实现授权，且不阻断Weekly Workflow。

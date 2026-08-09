@@ -3,6 +3,7 @@ gate_id: GATE_BUSINESS_RULE_REVENUE_WF_WEEKLY_BUSINESS_REPORT_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 business_domain: Revenue
 assessment_date: 2026-08-01
+last_semantic_sync_date: 2026-08-09
 status: passed
 gate_result: passed
 owner_confirmation: confirmed_complete
@@ -40,6 +41,13 @@ gate_checks:
   weekly_canonical_rule_context_bindings_complete: pass
   report_mode_uses_workflow_reporting_dates_not_revenue_cutoffs: pass
   business_line_source_selection_required_standard_fields_explicit: pass
+  business_line_source_selection_fields_exist_in_bound_mapping_profiles: pass
+  previous_quarter_primary_and_fallback_field_contracts_are_role_specific: pass
+  target_business_line_is_pipeline_scoped_and_exact: pass
+  smart_speaker_and_fast_version_identity_not_inferred_from_display_names: pass
+  current_revenue_email_selection_uses_locked_workflow_reporting_date: pass
+  source_report_and_business_cutoff_dates_remain_independent: pass
+  manual_report_mode_uses_explicit_reporting_period_and_workflow_reporting_date: pass
   technical_single_count_rule_current_quarter_role_only: pass
   outlook_auto_send_false_unchanged: pass
   business_rule_conflict_count: 0

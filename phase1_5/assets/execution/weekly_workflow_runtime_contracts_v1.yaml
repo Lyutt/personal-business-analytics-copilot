@@ -27,7 +27,6 @@ workflow_run_context:
     previous_successful_report_workflow_reporting_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
     target_report_period: { data_type: string, nullable: false }
     workflow_year: { data_type: integer, nullable: false }
-    target_business_line: { data_type: string, nullable: false, value_source: explicit Pipeline configuration }
     target_fiscal_quarter: { data_type: string, nullable: false, pattern_semantics: 'YYYYQ[1-4]' }
     target_previous_calendar_quarter: { data_type: string, nullable: false, pattern_semantics: 'YYYYQ[1-4]' }
     report_mode: { data_type: string, nullable: false, allowed_values: [regular_week, quarter_transition_week] }
@@ -112,7 +111,6 @@ canonical_context_field_contracts:
   previous_successful_report_workflow_reporting_date: { source: immediately preceding validated Weekly output metadata, derivation: none, older-period fallback: false, lock: before report-mode selection }
   current_revenue_cutoff_date: { source: current Revenue manifest source_business_data_cutoff_date, derivation: none, thursday_or_source_report_date_inference: false, lock: before Revenue data acquisition }
   workflow_year: { source: target_fiscal_quarter, derivation: four-digit year component, lock: before Business Rule Processing }
-  target_business_line: { source: explicit Pipeline configuration, derivation: none, runtime_alias_guessing: false, lock: before Business Rule Processing }
   target_fiscal_quarter: { source: configured target report period, derivation: canonical YYYYQn value, lock: before Business Rule Processing }
   target_previous_calendar_quarter: { source: target_fiscal_quarter, derivation: immediately preceding Gregorian calendar quarter, lock: before Business Rule Processing }
   report_mode: { source: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1, derivation: compare current and immediately preceding Workflow reporting-date fiscal quarters, revenue_cutoff_influence_allowed: false, lock: before dependent Revenue Rules }
@@ -120,15 +118,15 @@ canonical_context_field_contracts:
 
 canonical_rule_context_bindings:
   BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1:
-    target_business_line: { canonical_field_id: target_business_line, source: explicit Pipeline configuration, derivation: none, lock: before Business Rule Processing }
+    target_business_line: { canonical_field_id: target_business_line, scope: pipeline, source: pipeline_scoped_rule_context_bindings for the executing Pipeline, derivation: none, lock: before Business Rule Processing }
     target_previous_calendar_quarter: { canonical_field_id: target_previous_calendar_quarter, source: target_fiscal_quarter, derivation: immediately preceding Gregorian quarter, lock: before Business Rule Processing }
     report_mode: { canonical_field_id: report_mode, source: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1, derivation: approved Rule result, lock: before this Rule executes }
   BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1:
-    target_business_line: { canonical_field_id: target_business_line, source: explicit Pipeline configuration, derivation: none, lock: before Business Rule Processing }
+    target_business_line: { canonical_field_id: target_business_line, scope: pipeline, source: pipeline_scoped_rule_context_bindings for the executing Pipeline, derivation: none, lock: before Business Rule Processing }
     current_revenue_cutoff_date: { canonical_field_id: current_revenue_cutoff_date, source: current Revenue manifest source_business_data_cutoff_date, derivation: none, lock: before Revenue data acquisition }
     workflow_year: { canonical_field_id: workflow_year, source: target_fiscal_quarter, derivation: four-digit year component, lock: before Business Rule Processing }
   BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1:
-    target_business_line: { canonical_field_id: target_business_line, source: explicit Pipeline configuration, derivation: none, lock: before Business Rule Processing }
+    target_business_line: { canonical_field_id: target_business_line, scope: pipeline, source: pipeline_scoped_rule_context_bindings for the executing Pipeline, derivation: none, lock: before Business Rule Processing }
     target_revenue_cutoff_date: { canonical_field_id: target_revenue_cutoff_date, source: current_revenue_cutoff_date, derivation: explicit exact binding, lock: before Business Rule Processing }
     target_fiscal_quarter: { canonical_field_id: target_fiscal_quarter, source: configured target report period, derivation: canonical YYYYQn, lock: before Business Rule Processing }
   BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1:
@@ -144,6 +142,39 @@ canonical_rule_context_bindings:
     all_active_business_rule_required_context_fields_must_match_exactly: true
     runtime_alias_guessing_allowed: false
     unbound_or_ambiguous_context_field_action: block_affected_pipeline_and_notify_owner
+
+pipeline_scoped_rule_context_bindings:
+  PL_REVENUE_TECHNICAL_WEEKLY:
+    target_business_line:
+      value: Technical
+      registry_binding_path: pipelines[].pipeline_rule_context_bindings.target_business_line
+      applies_to_rule_ids: [BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1, BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1]
+      lock: before Business Rule Processing
+  PL_REVENUE_CTV_WEEKLY:
+    target_business_line:
+      value: CTV
+      registry_binding_path: pipelines[].pipeline_rule_context_bindings.target_business_line
+      applies_to_rule_ids: [BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1, BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1]
+      lock: before Business Rule Processing
+  PL_REVENUE_SMART_SPEAKER_WEEKLY:
+    target_business_line:
+      value: Smart Speaker
+      registry_binding_path: pipelines[].pipeline_rule_context_bindings.target_business_line
+      identity_source: exact registered pipeline business_line
+      applies_to_rule_ids: [BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1]
+      lock: before Business Rule Processing
+  PL_REVENUE_FAST_VERSION_WEEKLY:
+    target_business_line:
+      value: Fast Version
+      registry_binding_path: pipelines[].pipeline_rule_context_bindings.target_business_line
+      identity_source: exact registered pipeline business_line
+      applies_to_rule_ids: [BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1]
+      lock: before Business Rule Processing
+  validation:
+    exactly_one_binding_per_applicable_pipeline_and_rule: true
+    workflow_run_context_scalar_target_business_line_allowed: false
+    display_name_or_similarity_inference_allowed: false
+    unregistered_business_identity_action: block_affected_pipeline_and_notify_owner
 
 parameterized_result_contract_instance_selection:
   selection_policy_id: RC_INSTANCE_SELECTION_PRODUCT_SCOPED_V1

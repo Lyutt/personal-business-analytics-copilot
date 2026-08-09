@@ -2344,14 +2344,16 @@ def validate_customer_analysis_narrative_mapping(
         "latest_baseline_version_impact_review", {}
     )
     expected_impact_review = {
-        "review_date": "2026-08-08",
-        "behavior_or_output_change": False,
+        "review_date": "2026-08-09",
+        "change_class": "phase1_5_design_contract_closure",
+        "behavior_or_output_change": True,
         "customer_analysis_output_strategy": "fixed_narrative_template_rendering",
         "customer_analysis_initial_mvp_status": "included",
         "physical_metric_store_strategy": "shared_local_sqlite",
         "mvp_execution_mode": "sequential",
         "mvp_recovery_mode": "rerun_pipeline_from_start",
         "development_complexity_reduction": True,
+        "code_implementation_started": False,
         "code_implementation_owner_approved": False,
         "baseline_version_increment_required": False,
         "final_acceptance_synthetic_scenario_count": 14,
@@ -2376,10 +2378,12 @@ def validate_customer_analysis_narrative_mapping(
         "final_adhoc_capability_patch_review", {}
     )
     if str(baseline_document.get("freeze_date")) != "2026-08-08" or baseline_document.get(
+        "last_refreeze_date"
+    ).isoformat() != "2026-08-09" or baseline_document.get(
         "freeze_revision_status"
-    ) != "refrozen_after_final_adhoc_capability_patch" or change_control.get(
+    ) != "refrozen_after_design_contract_closure" or change_control.get(
         "baseline_is_logically_frozen"
-    ) is not True or change_control.get("repository_commit_binding_status") != "reviewed_candidate_on_unmerged_feature_branch" or pre_freeze_review.get(
+    ) is not True or change_control.get("repository_commit_binding_status") != "freeze_candidate_reviewed" or pre_freeze_review.get(
         "behavior_or_output_change"
     ) is not True or pre_freeze_review.get("incorporated_before_current_freeze") is not True or final_acceptance_review.get(
         "behavior_or_output_change"
@@ -2439,8 +2443,8 @@ def validate_customer_analysis_narrative_mapping(
     for key, expected in expected_status.items():
         if status_scope.get(key) != expected:
             errors.append(f"{status_file}:scope_boundaries.{key}: expected {expected!r}")
-    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-08":
-        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-08")
+    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-09":
+        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-09")
 
     output_gate_file = (
         "phase1_5/assets/output_mappings/"
@@ -2530,7 +2534,6 @@ def validate_phase1_5_final_closure(
         "previous_successful_report_workflow_reporting_date",
         "target_report_period",
         "workflow_year",
-        "target_business_line",
         "target_fiscal_quarter",
         "target_previous_calendar_quarter",
         "report_mode",
@@ -3562,7 +3565,7 @@ def validate_implementation_baseline(
                 )
             if baseline.get("change_control", {}).get(
                 "repository_commit_binding_status"
-            ) != "reviewed_candidate_on_unmerged_feature_branch":
+            ) != "freeze_candidate_reviewed":
                 errors.append(f"{baseline_file}: repository publication state is stale")
             checked += 2
 
@@ -3629,6 +3632,20 @@ def validate_implementation_baseline(
                 f"cannot enumerate assets changed from Base SHA {base_sha}"
             )
     for workflow_id, (baseline_file, baseline) in baselines.items():
+        impact_review = baseline.get("change_control", {}).get("latest_baseline_version_impact_review", {})
+        if str(baseline.get("last_refreeze_date")) != "2026-08-09" or baseline.get(
+            "freeze_revision_status"
+        ) != "refrozen_after_design_contract_closure":
+            errors.append(f"{baseline_file}: 2026-08-09 refreeze metadata is missing")
+        if str(impact_review.get("review_date")) != "2026-08-09" or impact_review.get(
+            "change_class"
+        ) != "phase1_5_design_contract_closure" or impact_review.get(
+            "behavior_or_output_change"
+        ) is not True or impact_review.get("code_implementation_started") is not False or impact_review.get(
+            "baseline_version_increment_required"
+        ) is not False:
+            errors.append(f"{baseline_file}: latest design-contract-closure impact review is incomplete")
+        checked += 7
         if not base_sha:
             errors.append(
                 f"{baseline_file}: cannot resolve validation Base SHA from the "
@@ -3641,15 +3658,19 @@ def validate_implementation_baseline(
                     f"{baseline_file}: git_lineage.review_base_main_sha does not "
                     f"match Base SHA resolved from {base_sha_source}"
                 )
-            if baseline.get("publication_state") != "unmerged_feature_branch_candidate":
-                errors.append(f"{baseline_file}: unmerged candidate must not claim merged_to_main")
+            if baseline.get("publication_state") != "freeze_lineage_recorded":
+                errors.append(f"{baseline_file}: publication state must use merge-neutral freeze lineage semantics")
+            if lineage.get("lineage_semantics") != "freeze_time_historical_review_record" or lineage.get(
+                "current_repository_merge_state_claimed"
+            ) is not False:
+                errors.append(f"{baseline_file}: freeze-time lineage must not assert current merge state")
             if lineage.get("frozen_candidate_commit_sha", {}).get("value_source") != "validation_target_HEAD":
                 errors.append(f"{baseline_file}: frozen candidate commit SHA binding is missing")
             if lineage.get("frozen_candidate_tree_sha", {}).get("value_source") != "validation_target_HEAD^{tree}":
                 errors.append(f"{baseline_file}: frozen candidate tree SHA binding is missing")
             if lineage.get("review_base_and_candidate_sha_semantics_must_not_be_conflated") is not True:
                 errors.append(f"{baseline_file}: review Base and Candidate SHA semantics are conflated")
-            checked += 5
+            checked += 7
         checked += 1
     return checked
 
@@ -3787,6 +3808,125 @@ def validate_weekly_canonical_rule_context_bindings(
     if validation.get("runtime_alias_guessing_allowed") is not False:
         errors.append(f"{runtime_file}: runtime Context alias guessing must be false")
     checked += 1
+
+    mapping_fields: dict[str, set[str]] = {}
+    for document in documents.values():
+        if not isinstance(document, dict) or not isinstance(document.get("mapping_profile_id"), str):
+            continue
+        mapping_fields[document["mapping_profile_id"]] = {
+            item.get("standard_field_id")
+            for item in document.get("field_mappings", [])
+            if isinstance(item, dict) and isinstance(item.get("standard_field_id"), str)
+        }
+
+    for rule_id, (rule_file, rule) in active_rules.items():
+        inputs = rule.get("inputs", {})
+        profile_id = inputs.get("required_mapping_profile_id")
+        fields = inputs.get("required_standard_fields")
+        if isinstance(profile_id, str) and isinstance(fields, list):
+            missing = set(fields) - mapping_fields.get(profile_id, set())
+            if missing:
+                errors.append(f"{rule_file}: required fields absent from {profile_id}: {sorted(missing)}")
+            checked += len(fields) + 1
+        role_fields = inputs.get("required_standard_fields_by_source_role", {})
+        if isinstance(role_fields, dict):
+            for role, declaration in role_fields.items():
+                if not isinstance(declaration, dict):
+                    errors.append(f"{rule_file}: invalid source-role field declaration {role}")
+                    continue
+                role_profile = declaration.get("mapping_profile_id")
+                declared_fields = declaration.get("fields", [])
+                missing = set(declared_fields) - mapping_fields.get(role_profile, set())
+                if missing:
+                    errors.append(f"{rule_file}:{role}: required fields absent from {role_profile}: {sorted(missing)}")
+                checked += len(declared_fields) + 1
+        serialized_inputs = yaml.safe_dump(inputs, allow_unicode=True)
+        if "fiscal_quarter_or_source_period_range" in serialized_inputs:
+            errors.append(f"{rule_file}: nonexistent combined fiscal-quarter/source-period field remains")
+        checked += 1
+
+    context_fields = runtime.get("workflow_run_context", {}).get("required_fields", {})
+    if "target_business_line" in context_fields:
+        errors.append(f"{runtime_file}: target_business_line must not be a Workflow-scoped scalar")
+    scoped_bindings = runtime.get("pipeline_scoped_rule_context_bindings", {})
+    registry_file = "phase1_5/assets/pipelines/pipeline_registry.yaml"
+    pipelines = {
+        item.get("pipeline_id"): item
+        for item in documents.get(registry_file, {}).get("pipelines", [])
+        if isinstance(item, dict) and isinstance(item.get("pipeline_id"), str)
+    }
+    target_rules = {
+        rule_id: rule
+        for rule_id, (_, rule) in active_rules.items()
+        if "target_business_line" in rule.get("inputs", {}).get("required_context_fields", [])
+    }
+    expected_pipeline_rules: dict[str, set[str]] = defaultdict(set)
+    for rule_id, rule in target_rules.items():
+        for pipeline_id in rule.get("applicable_pipeline_ids", []):
+            expected_pipeline_rules[pipeline_id].add(rule_id)
+    declared_pipeline_ids = set(scoped_bindings) - {"validation"}
+    if declared_pipeline_ids != set(expected_pipeline_rules):
+        errors.append(f"{runtime_file}: Pipeline-scoped business-line bindings do not exactly cover applicable Pipelines")
+    expected_values = {
+        "PL_REVENUE_TECHNICAL_WEEKLY": "Technical",
+        "PL_REVENUE_CTV_WEEKLY": "CTV",
+        "PL_REVENUE_SMART_SPEAKER_WEEKLY": "Smart Speaker",
+        "PL_REVENUE_FAST_VERSION_WEEKLY": "Fast Version",
+    }
+    for pipeline_id, rule_ids in expected_pipeline_rules.items():
+        pipeline = pipelines.get(pipeline_id, {})
+        registry_binding = pipeline.get("pipeline_rule_context_bindings", {}).get("target_business_line", {})
+        runtime_binding = scoped_bindings.get(pipeline_id, {}).get("target_business_line", {})
+        if registry_binding.get("scope") != "pipeline" or registry_binding.get("display_name_inference_allowed") is not False:
+            errors.append(f"{registry_file}:{pipeline_id}: target_business_line binding must be exact and Pipeline-scoped")
+        if registry_binding.get("value") != expected_values.get(pipeline_id) or runtime_binding.get("value") != expected_values.get(pipeline_id):
+            errors.append(f"{pipeline_id}: target_business_line exact value mismatch")
+        if set(registry_binding.get("applicable_rule_ids", [])) != rule_ids or set(runtime_binding.get("applies_to_rule_ids", [])) != rule_ids:
+            errors.append(f"{pipeline_id}: target_business_line Rule cardinality mismatch")
+        if pipeline_id in {"PL_REVENUE_SMART_SPEAKER_WEEKLY", "PL_REVENUE_FAST_VERSION_WEEKLY"} and (
+            registry_binding.get("value_source") != "exact_registered_pipeline_business_line"
+            or registry_binding.get("value") != pipeline.get("business_line")
+        ):
+            errors.append(f"{pipeline_id}: existing registered business identity must be used without display-name inference")
+        checked += 7
+
+    dataset_file = "phase1_5/assets/datasets/dataset_inventory.yaml"
+    datasets = {
+        item.get("dataset_id"): item
+        for item in documents.get(dataset_file, {}).get("datasets", [])
+        if isinstance(item, dict)
+    }
+    rolling_rule = datasets.get("DS_REVENUE_SALES_ROLLING_DECK_QTD", {}).get("acquisition", {}).get(
+        "source_object_or_attachment_rule", {}
+    ).get("executable_version_selection_rule", {}).get("locked_weekly_date_binding", {})
+    ctv_rule = datasets.get("DS_REVENUE_CTV_EXCL_PLACEMENT_QTD", {}).get("acquisition", {}).get(
+        "source_object_or_attachment_rule", {}
+    ).get("executable_selection_rule", {})
+    if rolling_rule.get("selected_email_subject_date_must_equal") != "Workflow Run Context workflow_reporting_date" or rolling_rule.get(
+        "generic_cutoff_date_selection_allowed"
+    ) is not False:
+        errors.append(f"{dataset_file}: Technical current Rolling Deck selection date binding is incomplete")
+    ctv_dates = ctv_rule.get("manifest_date_bindings", {})
+    if ctv_rule.get("primary_condition") != "Subject date equals locked Workflow Run Context workflow_reporting_date" or ctv_dates.get(
+        "source_report_date_may_substitute_for_business_cutoff"
+    ) is not False or ctv_dates.get("generic_cutoff_date_selection_allowed") is not False:
+        errors.append(f"{dataset_file}: CTV current source date binding is incomplete")
+    checked += 6
+
+    report_mode_rule = active_rules.get("BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1", ("", {}))[1]
+    manual = report_mode_rule.get("manual_execution", {})
+    if manual.get("required_inputs") != ["explicit_target_report_period", "explicit_workflow_reporting_date"] or manual.get(
+        "explicit_revenue_cutoff_date_is_report_mode_input"
+    ) is not False:
+        errors.append("BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1: manual inputs retain Revenue cutoff semantics")
+    checked += 2
+    email_rule = active_rules.get("BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1", ("", {}))[1]
+    current_source_contract = email_rule.get("conditions", {}).get("current_weekly_source_selection_contract", {})
+    if current_source_contract.get("current_source_pipeline_scope") != ["PL_REVENUE_TECHNICAL_WEEKLY"] or current_source_contract.get(
+        "ctv_current_source_contract"
+    ) != "DS_REVENUE_CTV_EXCL_PLACEMENT_QTD executable_selection_rule":
+        errors.append("BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1: current-source Pipeline scope is ambiguous")
+    checked += 2
     return checked
 
 

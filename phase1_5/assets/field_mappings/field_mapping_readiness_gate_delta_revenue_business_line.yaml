@@ -2,6 +2,7 @@ config_type: field_mapping_readiness_gate
 gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 assessment_date: 2026-08-01
+last_semantic_sync_date: 2026-08-09
 status: passed
 gate_result: passed
 owner: WORKFLOW_OWNER
@@ -25,11 +26,20 @@ coverage:
   fallback_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
   explicit_dataset_profile_references: pass
   explicit_pipeline_profile_references: pass
-  required_standard_fields:
-    - revenue_business_line
-    - fiscal_quarter_or_source_period_range
-    - performance_revenue_amount
-    - executed_revenue_amount
+  required_standard_fields_by_profile:
+    MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1:
+      - revenue_business_line
+      - fiscal_quarter
+      - performance_revenue_amount
+      - executed_revenue_amount
+    MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1:
+      - source_period_range
+      - period_start_date
+      - period_end_date
+      - revenue_business_line
+      - performance_revenue_amount
+      - executed_revenue_amount
+  nonexistent_combined_period_field_prohibited: fiscal_quarter_or_source_period_range
 
 consistency_checks:
   - check_id: CHK_PRIMARY_AND_FALLBACK_SEMANTIC_ALIGNMENT
@@ -47,6 +57,9 @@ consistency_checks:
   - check_id: CHK_STAGE_RESPONSIBILITY_BOUNDARY
     result: passed
     evidence: No Metric formula, Business Rule definition or Output Mapping logic is defined in the profiles
+  - check_id: CHK_RULE_REQUIRED_FIELDS_EXIST_IN_BOUND_PROFILE
+    result: passed
+    evidence: Prior-year fields exist in the primary profile; previous-quarter primary and fallback fields are independently validated against their bound profiles
 
 gate_decision:
   delta_mapping_complete: true

@@ -33,9 +33,10 @@ inputs:
       dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
   required_standard_fields:
     - revenue_business_line
-    - fiscal_quarter_or_source_period_range
+    - fiscal_quarter
     - performance_revenue_amount
     - executed_revenue_amount
+  required_mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
   required_result_contract_ids: []
 
 date_relationship:
@@ -91,6 +92,7 @@ validation:
   exact_business_line_match_required: true
   metric_formula_defined_here: false
   owner_notification_required: true
+  every_required_standard_field_must_exist_in_bound_mapping_profile: true
 
 dependency_gate:
   blocking_dependency: 业务线 Sheet incremental Field Mapping

@@ -229,10 +229,12 @@ quarter_top20_membership_state_write_contract:
   atomic_write_required: true
   idempotent_rerun:
     exact_business_key_and_identical_membership_reference: reuse_existing_state_without_second_write
-    exact_business_key_and_identical_membership_payload: success
+    exact_business_key_and_identical_membership_payload: reuse_existing_state_and_existing_reference_without_second_write
+    identical_payload_with_proposed_different_reference: discard_proposed_reference_and_reuse_existing_state_and_reference_without_second_write
     reranking_or_new_reference_allowed: false
   conflict_contract:
-    existing_same_business_key_with_different_membership_reference: block_customer_workflow
+    existing_same_business_key_with_different_membership_reference_and_nonidentical_or_unverifiable_payload: block_customer_workflow
+    reference_difference_alone_after_payload_identity_confirmed_is_conflict: false
     multiple_validated_states_for_business_key: block_customer_workflow
     previous_quarter_state_as_write_target_allowed: false
     notify_owner: true

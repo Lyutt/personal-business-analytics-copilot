@@ -247,8 +247,8 @@ processing:
       top20_is_ordinary_layout_inheritance: false
       write_contract_section: quarter_top20_membership_state_write_contract
       first_freeze_write_required_before_consumable_success: true
-      same_week_rerun_idempotency: identical state key and membership reference reuses the passed local state without reranking or a second write
-      conflict_or_write_failure_action: block_customer_workflow_and_mark_output_not_consumable
+      same_week_rerun_idempotency: identical payload reuses the passed local state and its existing membership reference without reranking, creating a new reference, or a second write; any different proposed reference is discarded after payload identity is confirmed
+      conflict_or_write_failure_action: nonidentical or unverifiable payload, duplicate state, unresolvable reference, or write failure blocks the Customer Workflow and marks output not consumable
       state_persistence_scope: local_only
     existing_template_membership:
       eligibility_prerequisite: quarter_template_eligibility equals available for locked current_year and quarter

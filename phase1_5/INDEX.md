@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 2026-08-09 最终设计审查以 `main@fb3a4b7` 为 review base；当前冻结候选仍是未合并功能分支，commit/tree SHA 与 main review base 分开验证。
+- 2026-08-09 最终设计审查以 `main@fb3a4b7` 为 review base；Baseline以冻结时历史血缘分别记录 review base 与候选 commit/tree，不声明持续的当前 merge 状态。
 - Active 占位项采用四类合同：`blocking`、`runtime-only`、`not-required-for-MVP`、`superseded`；模板、Archive、Discovery 与历史执行计划中的占位描述不是运行权威。
 - Weekly 与 Customer 当前没有跨 Workflow 文件或输出依赖；共享 Source、Dataset 或 Mapping 仅表示复用登记资产。
 - Workflow Architecture Optimization v2：已确认。
@@ -19,7 +19,7 @@
 - Metric Library Initialization：已完成并通过Readiness Gate。
 - Result Contract Initialization：12个正式Contract已完成并通过Readiness Gate；
   48个Metric Variant已显式绑定Contract Field。
-- 当前收口点：Weekly的Phase 1.5 Final Acceptance已通过；Weekly与Customer Revenue Detail各自的Implementation Baseline 1.0.0均已冻结并分别等待Owner明确批准代码实现。Weekly保留本地Metric Store Runtime Bootstrap条件，Customer Workflow的运行验收尚未开始。
+- 当前收口点：Weekly的Phase 1.5 Final Acceptance已通过；Weekly与Customer Revenue Detail各自的Implementation Baseline 1.0.0已于2026-08-09完成设计合同影响审查并按同版本refreeze，分别等待Owner明确批准代码实现。Weekly保留本地Metric Store Runtime Bootstrap条件，Customer Workflow的运行验收尚未开始。
 - 统一状态入口：[Status Index](assets/readiness/status_index.yaml)。
 - 最终实现入口：[Code Implementation Readiness Gate](assets/readiness/code_implementation_readiness_gate.yaml)。
 - 冻结实现基线：[Implementation Baseline 1.0.0](assets/readiness/implementation_baseline.yaml)。

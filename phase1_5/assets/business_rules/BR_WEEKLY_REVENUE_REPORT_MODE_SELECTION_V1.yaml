@@ -81,9 +81,10 @@ manual_execution:
   manual_trigger_or_rerun_allowed: true
   required_inputs:
     - explicit_target_report_period
-    - explicit_revenue_cutoff_date
+    - explicit_workflow_reporting_date
   actual_execution_date_must_not_override_target_context: true
   revenue_business_data_cutoff_must_not_determine_report_mode: true
+  explicit_revenue_cutoff_date_is_report_mode_input: false
 
 validation:
   deterministic: true

@@ -3,6 +3,7 @@ index_version: 1.0.0
 status: synchronized
 assessment_date: 2026-08-08
 last_semantic_sync_date: 2026-08-09
+design_asset_closure_review_date: 2026-08-09
 workflow_id: WF_CUSTOMER_REVENUE_DETAIL
 current_stage: Implementation Baseline Frozen - Awaiting Explicit Owner Code Implementation Approval
 phase_status:
@@ -25,6 +26,9 @@ implementation_baseline:
   status: frozen_awaiting_explicit_owner_code_implementation_approval
   source_artifact: phase1_5/assets/readiness/implementation_baseline_customer_revenue_detail.yaml
   explicit_owner_code_implementation_approval_received: false
+  freeze_date: 2026-08-08
+  last_refreeze_date: 2026-08-09
+  freeze_revision_status: refrozen_after_design_contract_closure
 synthetic_acceptance:
   suite_id: CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1
   suite_version: 1.0.0
@@ -42,7 +46,7 @@ scope_boundaries:
   shared_registered_source_dataset_or_mapping_reuse_is_not_workflow_dependency: true
   workflow_reporting_date_source_report_date_and_revenue_cutoff_are_distinct: true
   top20_membership_state_write_contract_status: passed_design_only
-  git_publication_state: unmerged_feature_branch_candidate
+  git_publication_state: freeze_lineage_recorded
 remaining_tbd_classification:
   blocking_count: 0
   runtime-only: local input, template, mapping, and output metadata resolution before affected run activation

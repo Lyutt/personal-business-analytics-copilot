@@ -172,7 +172,7 @@ scenarios:
   - scenario_id: top20_cross_run_freeze
     expected_result: { priority: [validated_current_quarter_frozen_state, eligible_current_quarter_template_membership, first_confirmed_ranking], subsequent_rerank_allowed: false, previous_quarter_reuse_allowed: false, forecast_freeze_requires_D_available: true, ordinary_layout_inheritance: false }
   - scenario_id: top20_membership_state_write_contract
-    expected_result: { first_freeze_atomic_write: true, identical_rerun_second_write: false, identical_rerun_reuses_state: true, conflicting_reference_blocks: true, write_failure_blocks_consumable_output: true, state_scope: local_only, customer_rows_in_state_metadata: false }
+    expected_result: { first_freeze_atomic_write: true, identical_rerun_second_write: false, identical_rerun_reuses_state: true, identical_payload_different_proposed_reference_reuses_existing_reference: true, reference_difference_alone_after_payload_match_blocks: false, nonidentical_or_unverifiable_payload_with_different_reference_blocks: true, write_failure_blocks_consumable_output: true, state_scope: local_only, customer_rows_in_state_metadata: false }
   - scenario_id: no_template_industry_inheritance
     expected_result: { existing_customer_nonblank_previous_A: inherit_directly, new_or_blank_previous_A: apply_confirmed_fallback }
   - scenario_id: yoy_warning_scope

@@ -52,6 +52,14 @@ conditions:
   quarter_close_auxiliary_expectations:
     - normally received near the beginning of the following quarter
     - subject date normally represents the previous quarter end date
+  current_weekly_source_selection_contract:
+    current_source_pipeline_scope: [PL_REVENUE_TECHNICAL_WEEKLY]
+    ctv_current_source_contract: DS_REVENUE_CTV_EXCL_PLACEMENT_QTD executable_selection_rule
+    email_subject_date_must_equal_locked_workflow_reporting_date: true
+    source_report_date_must_equal_locked_workflow_reporting_date: true
+    source_business_data_cutoff_date_is_independent: true
+    current_revenue_cutoff_date_source: source_business_data_cutoff_date only
+    generic_cutoff_date_may_select_weekly_email: false
 
 actions:
   on_weekly_body_match_and_auxiliary_match:
@@ -80,6 +88,7 @@ validation:
   owner_notification_required: true
   workflow_reporting_date_email_report_date_and_business_cutoff_are_distinct: true
   thursday_delivery_window_may_define_business_data_cutoff: false
+  current_weekly_email_requires_locked_workflow_reporting_date_match: true
 
 governance:
   evidence_sources:
