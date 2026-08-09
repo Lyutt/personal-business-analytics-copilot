@@ -37,6 +37,7 @@ applicability:
     - quarter_transition_week
   data_roles:
     - current_quarter_qtd
+  excluded_data_roles_owned_by_business_line_source_selection:
     - quarter_transition_previous_quarter_final
     - prior_year_comparable
 
@@ -50,6 +51,9 @@ conditions:
       context_value: target_fiscal_quarter
   fiscal_quarter_format:
     pattern_semantics: YYYYQ[1-4]
+  role_quarter_binding:
+    current_quarter_qtd: target_fiscal_quarter
+    historical_or_previous_quarter_role_binding_allowed: false
   explicitly_unused_fields:
     - field: business_type
       reason: 业务类型表示业务广告产品，与业务线分类无关

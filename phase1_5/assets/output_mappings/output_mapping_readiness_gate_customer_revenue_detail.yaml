@@ -29,6 +29,7 @@ gate_checks:
   local_output_metadata_write_with_integer_version_mapping: pass
   local_output_metadata_failure_and_collision_consistency: pass
   explicit_date_header_and_filename_lineage: pass
+  filename_and_revenue_cutoff_headers_exclude_workflow_and_email_report_dates: pass
   completion_rate_above_100_percent_not_warning: pass
   forecast_D_unavailable_header_only_semantics: pass
   no_weekly_attachment_or_outlook_message: pass

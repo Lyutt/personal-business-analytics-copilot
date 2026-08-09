@@ -10,16 +10,15 @@ business_approver: WORKFLOW_OWNER
 
 scope:
   registered_dataset_count: 10
-  weekly_workflow_in_scope_dataset_count: 9
-  out_of_scope_dataset_count: 1
-  out_of_scope_datasets:
-    - dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
-      reason: Outside the original nine-profile Gate scope; Weekly quarter-transition fallback use is governed by the passed Revenue business-line delta Gate
+  original_gate_dataset_count: 9
+  effective_weekly_workflow_in_scope_dataset_count: 10
+  out_of_scope_dataset_count: 0
+  delta_gate_added_mapping_profile_count: 2
 
 coverage:
-  approved_mapping_profile_count: 9
-  dataset_inventory_explicit_reference_count: 9
-  pipeline_registry_explicit_reference_count: 9
+  original_gate_approved_mapping_profile_count: 9
+  effective_approved_mapping_profile_count: 11
+  effective_mapping_contract: original nine profiles plus two passed Revenue business-line delta profiles
   missing_in_scope_mapping_profile_count: 0
   unknown_mapping_profile_reference_count: 0
   unreferenced_approved_mapping_profile_count: 0
@@ -27,7 +26,7 @@ coverage:
 consistency_checks:
   - check_id: CHK_MAPPING_PROFILE_UNIQUENESS
     result: passed
-    evidence: 9 unique Mapping Profile IDs for 9 in-scope Datasets
+    evidence: 11 unique approved Mapping Profile IDs cover the effective Weekly scope; the Rolling Deck QTD Dataset has detail and business-line profiles
   - check_id: CHK_PROFILE_DATASET_MATCH
     result: passed
     evidence: Every Mapping Profile dataset_id matches its Dataset Inventory reference
@@ -47,7 +46,7 @@ consistency_checks:
       automatic_unknown_field_mapping_allowed_count: 0
   - check_id: CHK_WORKFLOW_SCOPE_BOUNDARY
     result: passed
-    evidence: Quarter-close Dataset remains not_in_scope and has no Weekly Pipeline or Mapping requirement
+    evidence: Quarter-close Dataset is an explicitly mapped conditional Weekly quarter-transition fallback governed by the passed Revenue business-line delta Gate
 
 remaining_placeholder_classification:
   blocking: []

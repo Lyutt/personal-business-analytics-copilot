@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 2026-08-09 最终设计审查已将发布血缘同步到 `main@fb3a4b7`，并移除 Customer Baseline 对 Weekly 冻结文件的审查期依赖。
+- 2026-08-09 最终设计审查以 `main@fb3a4b7` 为 review base；当前冻结候选仍是未合并功能分支，commit/tree SHA 与 main review base 分开验证。
 - Active 占位项采用四类合同：`blocking`、`runtime-only`、`not-required-for-MVP`、`superseded`；模板、Archive、Discovery 与历史执行计划中的占位描述不是运行权威。
 - Weekly 与 Customer 当前没有跨 Workflow 文件或输出依赖；共享 Source、Dataset 或 Mapping 仅表示复用登记资产。
 - Workflow Architecture Optimization v2：已确认。

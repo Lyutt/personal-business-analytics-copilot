@@ -147,3 +147,17 @@ constraints:
   business_rule_definition_allowed: false
   output_formatting_allowed: false
   unknown_fields_remain_tbd: true
+
+remaining_tbd_classification:
+  literal_placeholder_coverage: all_remaining_occurrences
+  blocking: []
+  runtime-only:
+    covered_field_path_patterns: []
+  not-required-for-MVP:
+    covered_field_path_patterns:
+      - scope.other_workbook_sheets_status
+    authority: this approved profile is scoped only to the Business-Line sheet
+  superseded:
+    covered_field_path_patterns: []
+  unclassified_occurrence_count: 0
+  business_value_inference_allowed: false

@@ -170,8 +170,8 @@ datasets:
       该Dataset来源于固定发件人的Rolling Deck收入邮件附件。邮件每周更新，
       但内容为季度累计收入快照，而非单周新增收入。Dataset覆盖完整Workbook；
       “{Year}年执行单类型”是当前主要明细分析Sheet；“业务线”Sheet已确认
-      作为季度切换首周读取上季度完整业绩收入结果的主来源，其增量字段映射
-      尚待确认。去年同期附件可从Owner维护的本地历史归档目录读取，但其原始
+      作为季度切换首周读取上季度完整业绩收入结果的主来源；业务线Sheet字段
+      映射已由通过的Revenue business-line delta Gate确认。去年同期附件可从Owner维护的本地历史归档目录读取，但其原始
       来源仍为同一Outlook邮件流，不形成新的Dataset或Data Source。本阶段
       不包含字段映射、收入计算规则、指标逻辑或Pipeline设计。
 
@@ -1558,6 +1558,8 @@ remaining_tbd_classification:
       - datasets[*].data_contract.period_semantics.subject_date_format
       - datasets[*].data_contract.period_semantics.attachment_date_format
       - datasets[*].data_contract.period_semantics.attachment_date_format_observed_example
+      - datasets[*].notes
+      - query_assets[*].expected_output_grain
     authority: approved Mapping Profiles and explicit runtime input bindings do not consume these descriptive fields
   superseded:
     covered_field_path_patterns:

@@ -15,8 +15,9 @@ checks:
   deterministic_context_initialization_for_all_run_types: pass
   four_owner_parameter_manual_and_backfill_contract: pass
   technical_period_identity_without_calendar_dependency: pass
-  report_mode_derived_from_actual_quarter_first_reporting_cutoff: pass
-  expected_previous_period_and_cutoff_independently_derived: pass
+  report_mode_derived_from_actual_quarter_first_reporting_date: pass
+  expected_previous_period_and_reporting_date_independently_derived: pass
+  actual_revenue_cutoff_separate_from_thursday_and_source_report_date: pass
   role_specific_current_and_prior_year_fiscal_quarter_binding: pass
   conditional_confirmed_template_version_requirement: pass
   customer_run_input_manifest_and_workflow_scoped_dataset_contract: pass
@@ -33,6 +34,7 @@ checks:
   local_output_metadata_write_and_integer_version_contract: pass
   local_output_metadata_failure_and_filesystem_collision_consistency: pass
   top20_cross_run_quarter_state_freeze: pass
+  top20_membership_state_write_contract: pass
   quarter_template_current_year_quarter_version_eligibility: pass
   prior_output_local_metadata_selection_without_filename_parsing: pass
   no_shared_metric_store_write: pass
@@ -41,5 +43,5 @@ checks:
   workflow_dependency_count_isolation: pass
   no_cross_workflow_file_or_output_dependency: pass
   active_placeholder_classification_and_no_business_value_inference: pass
-  frozen_weekly_comparable_rule_zero_change: pass
+  weekly_comparable_rule_customer_runtime_independence_preserved: pass
 decision: Pipeline design is complete; code implementation remains separately gated.

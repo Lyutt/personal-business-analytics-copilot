@@ -433,6 +433,7 @@ def reference_kind(key: str) -> str | None:
         "upstream_pipeline_id": "pipeline",
         "upstream_pipeline_ids": "pipeline",
         "parallel_peer_pipeline_ids": "pipeline",
+        "independent_peer_pipeline_ids": "pipeline",
         "trigger_consumer_pipeline_id": "pipeline",
         "metric_id": "metric",
         "applies_to_metric_ids": "metric",
@@ -2378,7 +2379,7 @@ def validate_customer_analysis_narrative_mapping(
         "freeze_revision_status"
     ) != "refrozen_after_final_adhoc_capability_patch" or change_control.get(
         "baseline_is_logically_frozen"
-    ) is not True or change_control.get("repository_commit_binding_status") != "reviewed_from_latest_main_fb3a4b7" or pre_freeze_review.get(
+    ) is not True or change_control.get("repository_commit_binding_status") != "reviewed_candidate_on_unmerged_feature_branch" or pre_freeze_review.get(
         "behavior_or_output_change"
     ) is not True or pre_freeze_review.get("incorporated_before_current_freeze") is not True or final_acceptance_review.get(
         "behavior_or_output_change"
@@ -2515,6 +2516,8 @@ def validate_phase1_5_final_closure(
     required_context_fields = {
         "workflow_run_id",
         "run_type",
+        "workflow_execution_date",
+        "workflow_reporting_date",
         "reporting_period_id",
         "reporting_period_start_date",
         "reporting_period_end_date",
@@ -2523,12 +2526,22 @@ def validate_phase1_5_final_closure(
         "comparison_period_start_date",
         "comparison_period_end_date",
         "cutoff_date",
+        "current_revenue_cutoff_date",
+        "previous_successful_report_workflow_reporting_date",
+        "target_report_period",
+        "workflow_year",
+        "target_business_line",
+        "target_fiscal_quarter",
+        "target_previous_calendar_quarter",
+        "report_mode",
+        "target_revenue_cutoff_date",
         "timezone",
     }
     if (
         runtime.get("workflow_id") != "WF_WEEKLY_BUSINESS_REPORT"
         or context.get("one_context_per_workflow_run") is not True
-        or context.get("immutable_after_run_start") is not True
+        or context.get("lock_before_any_pipeline_data_acquisition") is not True
+        or context.get("immutable_after_context_lock") is not True
         or set(context.get("required_fields", {})) != required_context_fields
         or context.get("required_fields", {}).get("run_type", {}).get("allowed_values")
         != ["scheduled", "manual", "backfill"]
@@ -2549,6 +2562,8 @@ def validate_phase1_5_final_closure(
         "period_role",
         "local_input_reference",
         "product_parameter",
+        "source_report_date",
+        "source_business_data_cutoff_date",
     }
     if (
         manifest.get("one_manifest_per_workflow_run") is not True
@@ -3412,6 +3427,14 @@ def validate_implementation_baseline(
             "metric_variant_count": workflow_variant_count,
             "result_contract_count": len(workflow_contracts),
         }
+        if workflow_id == "WF_WEEKLY_BUSINESS_REPORT":
+            expected_counts["field_mapping_profile_count"] = sum(
+                1
+                for file, document in documents.items()
+                if file.startswith("phase1_5/assets/field_mappings/MAP_")
+                and isinstance(document, dict)
+                and isinstance(document.get("mapping_profile_id"), str)
+            )
         frozen_versions = baseline.get("frozen_asset_versions", {})
         for key, expected in expected_counts.items():
             if key not in frozen_versions:
@@ -3539,7 +3562,7 @@ def validate_implementation_baseline(
                 )
             if baseline.get("change_control", {}).get(
                 "repository_commit_binding_status"
-            ) != "reviewed_from_latest_main_fb3a4b7":
+            ) != "reviewed_candidate_on_unmerged_feature_branch":
                 errors.append(f"{baseline_file}: repository publication state is stale")
             checked += 2
 
@@ -3611,14 +3634,22 @@ def validate_implementation_baseline(
                 f"{baseline_file}: cannot resolve validation Base SHA from the "
                 "Actions context or local Git refs"
             )
-        elif (
-            baseline_file in changed_asset_paths
-            and baseline.get("source_main_commit_sha") != base_sha
-        ):
-            errors.append(
-                f"{baseline_file}: changed baseline source_main_commit_sha does not "
-                f"match Base SHA resolved from {base_sha_source}"
-            )
+        else:
+            lineage = baseline.get("git_lineage", {})
+            if lineage.get("review_base_main_sha") != base_sha:
+                errors.append(
+                    f"{baseline_file}: git_lineage.review_base_main_sha does not "
+                    f"match Base SHA resolved from {base_sha_source}"
+                )
+            if baseline.get("publication_state") != "unmerged_feature_branch_candidate":
+                errors.append(f"{baseline_file}: unmerged candidate must not claim merged_to_main")
+            if lineage.get("frozen_candidate_commit_sha", {}).get("value_source") != "validation_target_HEAD":
+                errors.append(f"{baseline_file}: frozen candidate commit SHA binding is missing")
+            if lineage.get("frozen_candidate_tree_sha", {}).get("value_source") != "validation_target_HEAD^{tree}":
+                errors.append(f"{baseline_file}: frozen candidate tree SHA binding is missing")
+            if lineage.get("review_base_and_candidate_sha_semantics_must_not_be_conflated") is not True:
+                errors.append(f"{baseline_file}: review Base and Candidate SHA semantics are conflated")
+            checked += 5
         checked += 1
     return checked
 
@@ -3633,6 +3664,8 @@ def validate_active_tbd_classification(
         "phase1_5/assets/datasets/dataset_inventory.yaml",
         "phase1_5/assets/field_mappings/MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1.yaml",
         "phase1_5/assets/field_mappings/MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1.yaml",
+        "phase1_5/assets/field_mappings/MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1.yaml",
+        "phase1_5/assets/metric_stores/metric_result_store_registry.yaml",
     }
     categories = ("blocking", "runtime-only", "not-required-for-MVP", "superseded")
     occurrences: dict[str, list[str]] = defaultdict(list)
@@ -3645,7 +3678,11 @@ def validate_active_tbd_classification(
         elif isinstance(value, list):
             for index, child in enumerate(value):
                 collect(child, file, f"{path}[{index}]")
-        elif isinstance(value, str) and re.search(r"\bTBD\b", value, re.IGNORECASE):
+        elif isinstance(value, str) and re.search(
+            r"(?<![A-Za-z0-9])TBD(?:\\?_|(?![A-Za-z0-9]))",
+            value,
+            re.IGNORECASE,
+        ):
             occurrences[file].append(path)
 
     for file, document in documents.items():
@@ -3689,6 +3726,67 @@ def validate_active_tbd_classification(
             errors.append(f"{file}: unclassified literal TBD paths {sorted(uncovered)}")
         checked += len(occurrences.get(file, [])) + len(categories) + 3
 
+    return checked
+
+
+def validate_weekly_canonical_rule_context_bindings(
+    documents: dict[str, Any], errors: list[str]
+) -> int:
+    """Close every approved Weekly Rule Context field without runtime aliases."""
+
+    runtime_file = "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
+    runtime = documents.get(runtime_file, {})
+    binding_contract = runtime.get("canonical_rule_context_bindings", {})
+    active_rules: dict[str, tuple[str, dict[str, Any]]] = {}
+    for file, document in documents.items():
+        if not isinstance(document, dict) or document.get("config_type") != "business_rule":
+            continue
+        if document.get("approval_status") != "approved":
+            continue
+        if "WF_WEEKLY_BUSINESS_REPORT" not in document.get("applicable_workflow_ids", []):
+            continue
+        rule_id = document.get("rule_id")
+        if isinstance(rule_id, str):
+            active_rules[rule_id] = (file, document)
+
+    declared_rule_ids = set(binding_contract) - {"validation"}
+    if declared_rule_ids != set(active_rules):
+        errors.append(
+            f"{runtime_file}: canonical Rule bindings must exactly cover approved Weekly Rules; "
+            f"expected {sorted(active_rules)}, got {sorted(declared_rule_ids)}"
+        )
+
+    checked = 0
+    for rule_id, (rule_file, rule) in sorted(active_rules.items()):
+        required_fields = rule.get("inputs", {}).get("required_context_fields", [])
+        bindings = binding_contract.get(rule_id, {})
+        if set(bindings) != set(required_fields):
+            errors.append(
+                f"{runtime_file}:{rule_id}: Context bindings do not exactly match "
+                f"{rule_file} required_context_fields"
+            )
+        for field_id in required_fields:
+            binding = bindings.get(field_id, {})
+            if binding.get("canonical_field_id") != field_id:
+                errors.append(f"{runtime_file}:{rule_id}.{field_id}: canonical field ID mismatch")
+            for required_key in ("source", "derivation", "lock"):
+                if not isinstance(binding.get(required_key), str) or not binding[required_key].strip():
+                    errors.append(f"{runtime_file}:{rule_id}.{field_id}: missing {required_key}")
+            checked += 4
+
+        standard_fields = rule.get("inputs", {}).get("required_standard_fields", [])
+        if isinstance(standard_fields, str) and re.search(
+            r"(?<![A-Za-z0-9])TBD(?:\\?_|(?![A-Za-z0-9]))",
+            standard_fields,
+            re.IGNORECASE,
+        ):
+            errors.append(f"{rule_file}: Active required_standard_fields retains a TBD placeholder")
+        checked += 1
+
+    validation = binding_contract.get("validation", {})
+    if validation.get("runtime_alias_guessing_allowed") is not False:
+        errors.append(f"{runtime_file}: runtime Context alias guessing must be false")
+    checked += 1
     return checked
 
 
@@ -3836,6 +3934,9 @@ def main() -> int:
     active_tbd_classification_checks = validate_active_tbd_classification(
         documents, errors
     )
+    weekly_rule_context_binding_checks = validate_weekly_canonical_rule_context_bindings(
+        documents, errors
+    )
     checked_status_entries = validate_status_consistency(documents, errors)
 
     if errors:
@@ -3872,6 +3973,7 @@ def main() -> int:
         f"{external_asset_binding_count} consumer bindings checked; "
         f"{implementation_baseline_checks} Implementation Baseline checks passed; "
         f"{active_tbd_classification_checks} active TBD classification checks passed; "
+        f"{weekly_rule_context_binding_checks} Weekly Rule Context binding checks passed; "
         f"{len(references)} asset references resolved; "
         f"{checked_paths} Required paths checked across {matched_assets} assets; "
         f"{checked_status_entries} Gate status links are consistent."

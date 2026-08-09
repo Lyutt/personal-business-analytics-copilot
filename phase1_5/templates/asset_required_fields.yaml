@@ -552,8 +552,13 @@ asset_rules:
       - freeze_date
       - status
       - owner
-      - source_main_commit_sha
-      - source_branch
+      - publication_state
+      - git_lineage
+      - git_lineage.review_base_branch
+      - git_lineage.review_base_main_sha
+      - git_lineage.frozen_candidate_branch
+      - git_lineage.frozen_candidate_commit_sha.value_source
+      - git_lineage.frozen_candidate_tree_sha.value_source
       - baseline_scope
       - frozen_asset_versions
       - frozen_gate_results

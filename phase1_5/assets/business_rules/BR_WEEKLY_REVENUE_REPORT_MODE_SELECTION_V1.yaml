@@ -20,7 +20,7 @@ approval_status: approved
 effective_from: 2026-07-31
 
 purpose: >
-  基于明确的目标收入截止日期与上一期成功周报收入截止日期，
+  基于明确的Workflow报告周期日期与上一期报告周期日期，
   确定收入模块使用regular_week或quarter_transition_week业务上下文。
 
 calendar_definition:
@@ -35,20 +35,20 @@ calendar_definition:
 inputs:
   required_context_fields:
     - target_report_period
-    - current_revenue_cutoff_date
-    - previous_successful_report_revenue_cutoff_date
+    - workflow_reporting_date
+    - previous_successful_report_workflow_reporting_date
   required_standard_fields: []
   required_result_contract_ids: []
 
 conditions:
   quarter_transition_week:
     expression_semantics: >
-      fiscal_quarter(current_revenue_cutoff_date) differs from
-      fiscal_quarter(previous_successful_report_revenue_cutoff_date)
+      fiscal_quarter(workflow_reporting_date) differs from
+      fiscal_quarter(previous_successful_report_workflow_reporting_date)
   regular_week:
     expression_semantics: >
-      fiscal_quarter(current_revenue_cutoff_date) equals
-      fiscal_quarter(previous_successful_report_revenue_cutoff_date)
+      fiscal_quarter(workflow_reporting_date) equals
+      fiscal_quarter(previous_successful_report_workflow_reporting_date)
   automatic_days_from_quarter_start_fallback_allowed: false
 
 actions:
@@ -83,6 +83,7 @@ manual_execution:
     - explicit_target_report_period
     - explicit_revenue_cutoff_date
   actual_execution_date_must_not_override_target_context: true
+  revenue_business_data_cutoff_must_not_determine_report_mode: true
 
 validation:
   deterministic: true

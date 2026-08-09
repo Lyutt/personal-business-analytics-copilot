@@ -28,7 +28,7 @@ implementation_baseline:
 synthetic_acceptance:
   suite_id: CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1
   suite_version: 1.0.0
-  scenario_count: 42
+  scenario_count: 43
   status: passed
   ci_command: python scripts/validate_final_acceptance.py
 scope_boundaries:
@@ -40,6 +40,9 @@ scope_boundaries:
   raw_business_data_in_git: prohibited
   weekly_workflow_file_dependency: none
   shared_registered_source_dataset_or_mapping_reuse_is_not_workflow_dependency: true
+  workflow_reporting_date_source_report_date_and_revenue_cutoff_are_distinct: true
+  top20_membership_state_write_contract_status: passed_design_only
+  git_publication_state: unmerged_feature_branch_candidate
 remaining_tbd_classification:
   blocking_count: 0
   runtime-only: local input, template, mapping, and output metadata resolution before affected run activation

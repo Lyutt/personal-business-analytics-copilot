@@ -74,13 +74,17 @@ is required only when a current-quarter template candidate exists and is
 eligible; it is null when no such template is available. Current, historical,
 manual and backfill Rolling Deck inputs must each be recorded in
 `CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1` and exactly match the locked
-Context. `reporting_period_id` is the technical identity formed from the target
-fiscal quarter and current cutoff. The reporting cadence is Thursday in
-`Asia/Shanghai`; `report_mode` is `quarter_first_week` only when the current
-cutoff is the first Thursday on or after the target quarter start date, and is
+Context. `workflow_reporting_date` is the Thursday reporting-period identity
+(or the explicit target report date for manual/backfill),
+`current_source_report_date` is the selected email/attachment report date, and
+`current_revenue_cutoff_date` is the actual latest revenue business-data date
+represented inside that source. Equality among these dates is not required.
+`reporting_period_id` is formed from the target fiscal quarter and
+`workflow_reporting_date`; `report_mode` is `quarter_first_week` only when that
+reporting date is the first Thursday on or after the target quarter start, and is
 `regular_week` otherwise. Output-history presence never influences that mode.
-The Context independently derives `expected_previous_cutoff` as seven calendar
-days before the current cutoff and forms
+The Context independently derives `expected_previous_reporting_date` as seven calendar
+days before the current reporting date and forms
 `expected_previous_reporting_period_id` from that date and its fiscal quarter.
 `previous_reporting_period_id` is the exact alias of that expected identity,
 without an unregistered calendar or fifth Owner input. The Weekly manifest contract, filenames and "latest file" are never
@@ -160,6 +164,13 @@ do not grant Output Mapping authority to originate or change business values.
   ranking is generated and frozen. Later weeks and reruns never rerank, and a
   previous-quarter membership is never reused. Forecast membership freezes for
   the first time only after D becomes available. Top20 is not layout inheritance.
+  A first freeze must atomically write the local-only quarter membership state
+  after Result Contract validation and before the output becomes consumable.
+  A rerun with the same business key and membership reference reuses that state
+  idempotently without a second write. A conflicting reference, duplicate state,
+  write failure or unresolvable local reference blocks the Workflow, marks the
+  output non-consumable and notifies the Owner; customer rows never enter state
+  metadata or Git.
   Otherwise, when D is available, prior-year
   membership ranks by C descending, D descending, customer name ascending and
   forecast membership ranks by D descending, C descending, customer name
@@ -193,7 +204,10 @@ do not grant Output Mapping authority to originate or change business values.
 After a validated workbook is successfully written, store local-only output
 metadata containing `workflow_run_id`, `result_id`, `reporting_period_id`, the
 integer `output_version`, opaque `output_file_reference`, passed validation
-status, completion timestamp, current cutoff and prior comparable as-of date.
+status, completion timestamp, Workflow reporting date, actual current revenue
+cutoff and prior comparable as-of date. Filename `YYYYMMDD`, `AsOfDate` and
+headers labeled as revenue cutoff bind only the actual business-data cutoff;
+Thursday cadence and email report dates cannot substitute.
 Logical v1/v2/v3 map to integers 1/2/3; version 1 uses the base filename, while
 versions 2 and above use `v2`, `v3`, ... suffixes. A same-period collision uses
 one plus the highest unique passed metadata version. The next reporting period

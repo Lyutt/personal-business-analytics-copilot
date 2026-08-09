@@ -5,9 +5,14 @@ workflow_id: WF_CUSTOMER_REVENUE_DETAIL
 freeze_date: 2026-08-08
 status: frozen_awaiting_explicit_owner_code_implementation_approval
 owner: WORKFLOW_OWNER
-source_main_commit_sha: fb3a4b7fd8a1b4396e001f8c89bbdb72cb643ff7
-source_branch: main
-publication_state: merged_to_main
+publication_state: unmerged_feature_branch_candidate
+git_lineage:
+  review_base_branch: main
+  review_base_main_sha: fb3a4b7fd8a1b4396e001f8c89bbdb72cb643ff7
+  frozen_candidate_branch: codex/design-assets-contract-closure
+  frozen_candidate_commit_sha: { value_source: validation_target_HEAD, embedded_literal_required: false }
+  frozen_candidate_tree_sha: { value_source: 'validation_target_HEAD^{tree}', embedded_literal_required: false }
+  review_base_and_candidate_sha_semantics_must_not_be_conflated: true
 baseline_scope:
   phase: Phase 1.5
   workflow_scope: Customer Revenue Detail V1 design assets
@@ -28,7 +33,7 @@ frozen_asset_versions:
   explicit_output_field_binding_count: 32
   synthetic_acceptance_suite_id: CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1
   synthetic_acceptance_suite_version: 1.0.0
-  synthetic_acceptance_scenario_count: 42
+  synthetic_acceptance_scenario_count: 43
 workflow_dependency_counts:
   pipeline_count: 1
   dataset_dependency_count: 1
@@ -64,9 +69,10 @@ change_control:
   customer_asset_change_requires_baseline_version_review: true
   weekly_business_report_baseline_must_not_change: true
   customer_reporting_period_selection_contract:
-    report_mode_source: actual first Thursday reporting cutoff on or after target quarter start
-    expected_previous_cutoff_derivation: locked current cutoff minus 7 calendar days
-    expected_previous_reporting_period_id_derivation: fiscal quarter containing expected_previous_cutoff plus exact cutoff
+    current_revenue_cutoff_date_semantics: actual revenue business-data cutoff; never Thursday cadence or email report date
+    report_mode_source: workflow_reporting_date equals the actual first Thursday reporting date on or after target quarter start
+    expected_previous_reporting_date_derivation: locked workflow_reporting_date minus 7 calendar days
+    expected_previous_reporting_period_id_derivation: fiscal quarter containing expected_previous_reporting_date plus exact reporting date
     regular_week_requires_exact_immediately_preceding_validated_consumable_output: true
     older_reporting_period_fallback_allowed: false
     same_week_rerun_reuses_original_locked_selection: true

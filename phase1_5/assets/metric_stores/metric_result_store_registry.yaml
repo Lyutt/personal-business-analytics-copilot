@@ -508,3 +508,17 @@ notes:
   - MVP只实现一个供Inventory、User Analytics与Advertising逻辑Store共用的通用本地物理Store Adapter；不分别开发三个存储引擎。
   - 技术线与CTV既有工作簿的已确认修正记录见Discovery文档。
   - 智能音箱与极速版两个空白Store Asset已于2026-07-29创建并完成表头验证。
+
+remaining_tbd_classification:
+  literal_placeholder_coverage: all_remaining_occurrences
+  blocking: []
+  runtime-only:
+    covered_field_path_patterns:
+      - metric_result_stores[*].store_assets[*].business_date_uniqueness
+    activation_rule: resolve locally before a duplicate-date case outside the approved same-workbook supplementation rule is processed
+  not-required-for-MVP:
+    covered_field_path_patterns: []
+  superseded:
+    covered_field_path_patterns: []
+  unclassified_occurrence_count: 0
+  business_value_inference_allowed: false

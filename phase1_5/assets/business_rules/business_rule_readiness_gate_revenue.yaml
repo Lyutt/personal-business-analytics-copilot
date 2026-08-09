@@ -37,6 +37,10 @@ gate_checks:
   output_formatting_excluded: pass
   ambiguous_source_selection_has_owner_confirmation_path: pass
   known_field_mapping_dependencies_resolved: pass
+  weekly_canonical_rule_context_bindings_complete: pass
+  report_mode_uses_workflow_reporting_dates_not_revenue_cutoffs: pass
+  business_line_source_selection_required_standard_fields_explicit: pass
+  technical_single_count_rule_current_quarter_role_only: pass
   outlook_auto_send_false_unchanged: pass
   business_rule_conflict_count: 0
 
@@ -48,7 +52,7 @@ deferred_to_designated_phase:
 
 decision:
   revenue_business_rule_initialization_complete: true
-  runtime_ready_without_mapping_delta: true
+  runtime_ready_with_passed_mapping_delta: true
   metric_library_entry_allowed_after_owner_direction: true
   automatic_next_stage_allowed: false
   code_implementation_authorized_by_this_gate: false

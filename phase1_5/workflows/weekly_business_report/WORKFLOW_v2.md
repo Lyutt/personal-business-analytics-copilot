@@ -94,10 +94,20 @@ Pipeline Registry 中显式登记，不因周报展示位置改变其业务归�
 `Workflow Run Context`。Context 统一提供：
 
 - `run_type`：`scheduled`、`manual` 或 `backfill`；
+- `workflow_reporting_date`：Scheduled Thursday 或 Manual/Backfill 明确指定的报告周期日期；
 - `reporting_period_id` 及起止日期；
 - `current_period_start_date` / `current_period_end_date`；
 - `comparison_period_start_date` / `comparison_period_end_date`；
-- `cutoff_date` 与 `timezone=Asia/Shanghai`。
+- `cutoff_date` 与 `timezone=Asia/Shanghai`；
+- Revenue 的 `current_revenue_cutoff_date`：所选当前收入源内真实业务数据截止日。
+
+`workflow_reporting_date`、邮件/附件 `source_report_date` 与
+`source_business_data_cutoff_date` 是三个独立字段。Thursday 只定义
+Scheduled cadence 和 Revenue `report_mode`；它不能覆盖邮件报告日期或真实收入
+数据截止日。任何标注“收入截止”的表头或文件名只能使用
+`current_revenue_cutoff_date`。Weekly Runtime Contract 的
+`canonical_rule_context_bindings` 必须逐一覆盖全部 Active Business Rule 的
+Context 字段、来源、派生和锁定规则，运行时禁止 Alias 猜测。
 
 Outlook、Apollo 与 NovaBI 的所有输入选择和查询参数只能读取该 Context。
 实际执行时间只作为审计元数据；Scheduled、Manual、Backfill 均不得按当前日期、

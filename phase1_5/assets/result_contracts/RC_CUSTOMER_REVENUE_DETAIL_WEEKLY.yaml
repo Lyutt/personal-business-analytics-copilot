@@ -15,12 +15,15 @@ producer:
 contract_shape: record_set
 contract_fields: []
 date_lineage_contract:
+  workflow_reporting_date: reporting period identity only
+  current_source_report_date: source lineage only
   F_J_and_output_AsOfDate: current_revenue_cutoff_date
   K_L: prior_comparable_as_of_date
   M_N: selected_previous_output_current_revenue_cutoff_date
   Q_R: prior_week_comparable_as_of_date
   filename_YYYYMMDD: current_revenue_cutoff_date
-  previous_output_metadata_context_fields_required: [current_revenue_cutoff_date, prior_comparable_as_of_date, target_fiscal_quarter]
+  previous_output_metadata_context_fields_required: [workflow_reporting_date, current_revenue_cutoff_date, prior_comparable_as_of_date, target_fiscal_quarter]
+  workflow_or_source_report_date_may_substitute_for_revenue_cutoff: false
 record_sets:
   - record_set_id: customer_detail
     record_grain: [customer_name]

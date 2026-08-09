@@ -23,11 +23,13 @@ purpose: >
 
 inputs:
   required_context_fields:
-    - workflow_execution_date
+    - workflow_reporting_date
   required_source_metadata:
     - email_body
     - email_subject_date
     - email_sent_time
+    - source_report_date
+    - source_business_data_cutoff_date
   required_standard_fields: []
   required_result_contract_ids: []
 
@@ -76,6 +78,8 @@ validation:
   subject_similarity_only_classification_allowed: false
   ambiguous_result_behavior: pause_revenue_section_and_notify_owner
   owner_notification_required: true
+  workflow_reporting_date_email_report_date_and_business_cutoff_are_distinct: true
+  thursday_delivery_window_may_define_business_data_cutoff: false
 
 governance:
   evidence_sources:

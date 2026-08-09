@@ -30,7 +30,8 @@ implementation_readiness_checks:
   canonical_context_bindings_and_no_runtime_guessing: pass
   deterministic_context_initialization_before_data_collection: pass
   four_parameter_manual_and_backfill_without_calendar_dependency: pass
-  actual_quarter_first_week_mode_and_independent_expected_previous_period_derivation: pass
+  actual_quarter_first_reporting_date_mode_and_independent_expected_previous_period_derivation: pass
+  workflow_source_report_and_actual_revenue_cutoff_date_semantics_separated: pass
   role_specific_current_and_prior_year_fiscal_quarter_filtering: pass
   conditional_template_version_requirement: pass
   workflow_scoped_customer_run_input_manifest: pass
@@ -43,8 +44,9 @@ implementation_readiness_checks:
   local_output_metadata_write_and_integer_version_contract: pass
   output_date_lineage_and_metadata_filesystem_consistency: pass
   top20_cross_run_freeze_contract: pass
-  frozen_weekly_rule_restored_and_customer_adapter_bound: pass
-  frozen_weekly_comparable_rule_restored: pass
+  top20_membership_state_write_idempotency_conflict_and_failure_contract: pass
+  weekly_rule_customer_runtime_independence_and_customer_adapter_binding: pass
+  weekly_comparable_rule_customer_runtime_independence: pass
   quarter_first_week_template_order_tie_break: pass
   result_missing_rendering_and_failed_value_prohibitions: pass
   formula_mirror_tolerance_contract: pass
@@ -53,7 +55,7 @@ implementation_readiness_checks:
   local_only_data_boundary: pass
   multi_workflow_integrity_validation: pass
   active_placeholder_classification_complete: pass
-  baseline_publication_lineage_synchronized_to_latest_main: pass
+  baseline_review_base_and_unmerged_candidate_lineage_distinct: pass
   no_cross_workflow_file_dependency: pass
 implementation_entry_decision:
   asset_baseline_ready: true

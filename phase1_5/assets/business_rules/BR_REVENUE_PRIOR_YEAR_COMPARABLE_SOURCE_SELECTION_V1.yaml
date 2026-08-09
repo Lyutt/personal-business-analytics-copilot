@@ -31,7 +31,11 @@ inputs:
   required_source_assets:
     - archive_id: ARCHIVE_REVENUE_ROLLING_DECK_PRIOR_YEAR
       dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
-  required_standard_fields: TBD_PENDING_BUSINESS_LINE_SHEET_FIELD_MAPPING
+  required_standard_fields:
+    - revenue_business_line
+    - fiscal_quarter_or_source_period_range
+    - performance_revenue_amount
+    - executed_revenue_amount
   required_result_contract_ids: []
 
 date_relationship:

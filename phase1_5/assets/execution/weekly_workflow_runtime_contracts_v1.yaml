@@ -8,10 +8,13 @@ workflow_id: WF_WEEKLY_BUSINESS_REPORT
 workflow_run_context:
   context_id: WORKFLOW_RUN_CONTEXT_WF_WEEKLY_BUSINESS_REPORT_V1
   one_context_per_workflow_run: true
-  immutable_after_run_start: true
+  lock_before_any_pipeline_data_acquisition: true
+  immutable_after_context_lock: true
   required_fields:
     workflow_run_id: { data_type: string, nullable: false }
     run_type: { data_type: string, nullable: false, allowed_values: [scheduled, manual, backfill] }
+    workflow_execution_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: actual or Owner-specified execution date; not a source report date or business cutoff }
+    workflow_reporting_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: canonical Weekly reporting-period identity date }
     reporting_period_id: { data_type: string, nullable: false }
     reporting_period_start_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
     reporting_period_end_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
@@ -19,13 +22,30 @@ workflow_run_context:
     current_period_end_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
     comparison_period_start_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
     comparison_period_end_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
-    cutoff_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
+    cutoff_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: non-Revenue module query cutoff where explicitly bound; never an alias for current_revenue_cutoff_date }
+    current_revenue_cutoff_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: actual latest Revenue business-data date represented by the bound current source }
+    previous_successful_report_workflow_reporting_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
+    target_report_period: { data_type: string, nullable: false }
+    workflow_year: { data_type: integer, nullable: false }
+    target_business_line: { data_type: string, nullable: false, value_source: explicit Pipeline configuration }
+    target_fiscal_quarter: { data_type: string, nullable: false, pattern_semantics: 'YYYYQ[1-4]' }
+    target_previous_calendar_quarter: { data_type: string, nullable: false, pattern_semantics: 'YYYYQ[1-4]' }
+    report_mode: { data_type: string, nullable: false, allowed_values: [regular_week, quarter_transition_week] }
+    target_revenue_cutoff_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: explicit canonical alias of current_revenue_cutoff_date for carry-forward Rule compatibility }
     timezone: { data_type: string, nullable: false, required_value: Asia/Shanghai }
   period_rules:
     scheduled: Explicit scheduler input resolves and locks every required period field before any Pipeline starts.
     manual: Owner must provide the reporting period and cutoff date explicitly; execution timestamp is audit metadata only.
     backfill: Owner must provide the historical reporting period and cutoff date explicitly; current clock date is never substituted.
     quarter_transition: Quarter classification reads the locked current and comparison periods from this Context.
+  date_semantics:
+    workflow_reporting_date: Thursday cadence/report identity for scheduled runs; explicit target report date for manual/backfill
+    source_report_date: per-manifest email or attachment report date
+    source_business_data_cutoff_date: per-manifest actual latest business date represented by that source instance
+    current_revenue_cutoff_date: canonical current Revenue business-data cutoff bound from source_business_data_cutoff_date
+    equality_between_reporting_source_report_and_business_cutoff_dates_required: false
+    report_mode_date_authority: workflow_reporting_date and previous_successful_report_workflow_reporting_date only
+    revenue_headers_or_filenames_labeled_as_cutoff_must_use: current_revenue_cutoff_date
   query_parameter_authority:
     outlook: workflow_run_context_and_run_input_manifest_only
     apollo: workflow_run_context_and_run_input_manifest_only
@@ -62,6 +82,14 @@ run_input_manifest:
       data_type: string
       nullable: false
       value_policy: explicit_product_key_or_not_applicable
+    source_report_date:
+      data_type: date_or_not_applicable
+      nullable: false
+      semantics: source lineage date; not a business-data cutoff
+    source_business_data_cutoff_date:
+      data_type: date_or_not_applicable
+      nullable: false
+      semantics: actual latest business date represented by this input instance
   entry_business_key: [workflow_run_id, dataset_id, period_role, product_parameter]
   duplicate_entry_action: Block the affected Pipeline input; do not select by filename, timestamp, or list order.
   prohibited_inference:
@@ -75,6 +103,47 @@ run_input_manifest:
     period_role_must_resolve_from_workflow_run_context: true
     local_input_reference_must_resolve_without_entering_git: true
     product_parameter_required_for_product_scoped_pipeline: true
+    current_revenue_input_cutoff_must_equal_locked_current_revenue_cutoff_date: true
+    source_report_date_may_substitute_for_business_cutoff: false
+
+canonical_context_field_contracts:
+  workflow_reporting_date: { source: scheduler target reporting date or explicit manual/backfill target report date, derivation: none, lock: before data acquisition }
+  target_report_period: { source: reporting_period_id, derivation: exact canonical report-period identity, lock: before Business Rule Processing }
+  previous_successful_report_workflow_reporting_date: { source: immediately preceding validated Weekly output metadata, derivation: none, older-period fallback: false, lock: before report-mode selection }
+  current_revenue_cutoff_date: { source: current Revenue manifest source_business_data_cutoff_date, derivation: none, thursday_or_source_report_date_inference: false, lock: before Revenue data acquisition }
+  workflow_year: { source: target_fiscal_quarter, derivation: four-digit year component, lock: before Business Rule Processing }
+  target_business_line: { source: explicit Pipeline configuration, derivation: none, runtime_alias_guessing: false, lock: before Business Rule Processing }
+  target_fiscal_quarter: { source: configured target report period, derivation: canonical YYYYQn value, lock: before Business Rule Processing }
+  target_previous_calendar_quarter: { source: target_fiscal_quarter, derivation: immediately preceding Gregorian calendar quarter, lock: before Business Rule Processing }
+  report_mode: { source: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1, derivation: compare current and immediately preceding Workflow reporting-date fiscal quarters, revenue_cutoff_influence_allowed: false, lock: before dependent Revenue Rules }
+  target_revenue_cutoff_date: { source: current_revenue_cutoff_date, derivation: explicit exact canonical binding for BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1, lock: before Business Rule Processing }
+
+canonical_rule_context_bindings:
+  BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1:
+    target_business_line: { canonical_field_id: target_business_line, source: explicit Pipeline configuration, derivation: none, lock: before Business Rule Processing }
+    target_previous_calendar_quarter: { canonical_field_id: target_previous_calendar_quarter, source: target_fiscal_quarter, derivation: immediately preceding Gregorian quarter, lock: before Business Rule Processing }
+    report_mode: { canonical_field_id: report_mode, source: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1, derivation: approved Rule result, lock: before this Rule executes }
+  BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1:
+    target_business_line: { canonical_field_id: target_business_line, source: explicit Pipeline configuration, derivation: none, lock: before Business Rule Processing }
+    current_revenue_cutoff_date: { canonical_field_id: current_revenue_cutoff_date, source: current Revenue manifest source_business_data_cutoff_date, derivation: none, lock: before Revenue data acquisition }
+    workflow_year: { canonical_field_id: workflow_year, source: target_fiscal_quarter, derivation: four-digit year component, lock: before Business Rule Processing }
+  BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1:
+    target_business_line: { canonical_field_id: target_business_line, source: explicit Pipeline configuration, derivation: none, lock: before Business Rule Processing }
+    target_revenue_cutoff_date: { canonical_field_id: target_revenue_cutoff_date, source: current_revenue_cutoff_date, derivation: explicit exact binding, lock: before Business Rule Processing }
+    target_fiscal_quarter: { canonical_field_id: target_fiscal_quarter, source: configured target report period, derivation: canonical YYYYQn, lock: before Business Rule Processing }
+  BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1:
+    workflow_reporting_date: { canonical_field_id: workflow_reporting_date, source: scheduler or explicit target report date, derivation: none, lock: before source classification }
+  BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1:
+    target_fiscal_quarter: { canonical_field_id: target_fiscal_quarter, source: configured target report period, derivation: canonical YYYYQn, lock: before Business Rule Processing }
+    report_mode: { canonical_field_id: report_mode, source: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1, derivation: approved Rule result, lock: before this Rule executes }
+  BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1:
+    target_report_period: { canonical_field_id: target_report_period, source: reporting_period_id, derivation: exact canonical report-period identity, lock: before this Rule executes }
+    workflow_reporting_date: { canonical_field_id: workflow_reporting_date, source: scheduler or explicit target report date, derivation: none, lock: before this Rule executes }
+    previous_successful_report_workflow_reporting_date: { canonical_field_id: previous_successful_report_workflow_reporting_date, source: immediately preceding validated Weekly output metadata, derivation: none, lock: before this Rule executes }
+  validation:
+    all_active_business_rule_required_context_fields_must_match_exactly: true
+    runtime_alias_guessing_allowed: false
+    unbound_or_ambiguous_context_field_action: block_affected_pipeline_and_notify_owner
 
 parameterized_result_contract_instance_selection:
   selection_policy_id: RC_INSTANCE_SELECTION_PRODUCT_SCOPED_V1

@@ -27,7 +27,11 @@ inputs:
     - target_business_line
     - target_previous_calendar_quarter
     - report_mode
-  required_standard_fields: TBD_PENDING_BUSINESS_LINE_SHEET_FIELD_MAPPING
+  required_standard_fields:
+    - revenue_business_line
+    - fiscal_quarter_or_source_period_range
+    - performance_revenue_amount
+    - executed_revenue_amount
   required_result_contract_ids: []
 
 source_priority:

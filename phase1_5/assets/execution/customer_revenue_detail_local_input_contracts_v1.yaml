@@ -59,19 +59,20 @@ previous_reporting_period_output_metadata_contract:
     output_file_reference: { data_type: local_only_opaque_reference, nullable: false }
     validation_status: { data_type: string, allowed_values: [passed], nullable: false }
     completed_at: { data_type: datetime, nullable: false }
+    workflow_reporting_date: { data_type: date, nullable: false }
     current_revenue_cutoff_date: { data_type: date, nullable: false }
     prior_comparable_as_of_date: { data_type: date, nullable: false }
     target_fiscal_quarter: { data_type: string, nullable: false }
     history_consumption_status: { data_type: string, allowed_values: [consumable], nullable: false }
   selection_predicates:
     reporting_period_id: exactly equals locked expected_previous_reporting_period_id
-    current_revenue_cutoff_date: exactly equals locked expected_previous_cutoff
+    workflow_reporting_date: exactly equals locked expected_previous_reporting_date
     validation_status: passed
     history_consumption_status: consumable
     same_reporting_period_as_current_run_allowed: false
     select_highest_output_version_within_exact_expected_period: true
     selected_highest_version_must_be_unique: true
-    derive_expected_period_or_cutoff_from_selected_metadata: false
+    derive_expected_period_or_reporting_date_from_selected_metadata: false
     older_reporting_period_fallback_allowed: false
   bind_selected_metadata_to_context:
     result_id: selected_previous_output_result_id
@@ -89,7 +90,7 @@ previous_reporting_period_output_metadata_contract:
   quarter_first_week_previous_output_business_value_usage_allowed: false
   missing_action_when_previous_output_is_required_for_values_or_layout: block_customer_workflow
   ambiguous_invalid_or_unresolvable_metadata_action: block_customer_workflow
-  same_cutoff_rerun_behavior: retain the originally locked expected previous cutoff, expected previous reporting period ID, and exact selected output; never reselect an older period
+  same_period_rerun_behavior: retain the originally locked expected previous reporting date, expected previous reporting period ID, and exact selected output; never reselect an older period
 customer_run_input_manifest_contract:
   manifest_id: CUSTOMER_REVENUE_DETAIL_RUN_INPUT_MANIFEST_V1
   workflow_scope: WF_CUSTOMER_REVENUE_DETAIL
@@ -111,6 +112,9 @@ customer_run_input_manifest_contract:
     input_role: { allowed_values: [current_qtd, prior_year_full_quarter, prior_year_comparable] }
     source_instance_reference: { data_type: local_only_opaque_reference, nullable: false }
     reporting_period_id: { binding: reporting_period_id, nullable: false }
+    workflow_reporting_date: { binding: workflow_reporting_date, nullable: false, semantics: Workflow period identity date }
+    source_report_date: { data_type: date, nullable: false, semantics: email or attachment report date; never a business-data cutoff }
+    source_business_data_cutoff_date: { data_type: date, nullable: false, semantics: actual latest business date represented by the bound source instance }
     target_fiscal_quarter: { binding: target_fiscal_quarter, nullable: false }
     prior_year_fiscal_quarter: { binding: prior_year_fiscal_quarter, nullable: false }
     current_revenue_cutoff_date: { binding: current_revenue_cutoff_date, nullable: false }
@@ -121,7 +125,10 @@ customer_run_input_manifest_contract:
   exact_role_bindings:
     current_qtd:
       fiscal_quarter_field: target_fiscal_quarter
-      other_fields: [reporting_period_id, current_revenue_cutoff_date]
+      other_fields: [reporting_period_id, workflow_reporting_date, source_report_date, source_business_data_cutoff_date]
+      context_bindings:
+        source_report_date: current_source_report_date
+        source_business_data_cutoff_date: current_revenue_cutoff_date
     prior_year_full_quarter:
       fiscal_quarter_field: prior_year_fiscal_quarter
       other_fields: [prior_year_full_quarter_period_id]
@@ -163,6 +170,7 @@ local_output_metadata_write_contract:
     output_file_reference: { data_type: local_only_opaque_reference, nullable: false }
     validation_status: { constant: passed }
     completed_at: { data_type: datetime, nullable: false }
+    workflow_reporting_date: { binding: workflow_reporting_date, nullable: false }
     current_revenue_cutoff_date: { binding: current_revenue_cutoff_date, nullable: false }
     prior_comparable_as_of_date: { binding: prior_comparable_as_of_date, nullable: false }
     target_fiscal_quarter: { binding: target_fiscal_quarter, nullable: false }
@@ -212,6 +220,31 @@ quarter_top20_membership_state_contract:
   previous_quarter_membership_reuse_allowed: false
   duplicate_validated_state_for_business_key_action: block_customer_workflow
   state_mismatch_or_unresolvable_reference_action: block_customer_workflow
+quarter_top20_membership_state_write_contract:
+  write_trigger: no validated state exists for the exact state_business_key and an authoritative first-freeze membership has passed Customer Result Contract validation
+  write_timing: after validated membership is fixed and before the run or workbook may become consumable history
+  required_write_fields: [workflow_id, current_year, quarter, membership_type, membership_reference, validation_status, frozen_at, source_type, source_workflow_run_id, source_result_id]
+  validation_status_written: passed
+  first_freeze_source_types: [eligible_current_quarter_template_membership, first_confirmed_ranking]
+  atomic_write_required: true
+  idempotent_rerun:
+    exact_business_key_and_identical_membership_reference: reuse_existing_state_without_second_write
+    exact_business_key_and_identical_membership_payload: success
+    reranking_or_new_reference_allowed: false
+  conflict_contract:
+    existing_same_business_key_with_different_membership_reference: block_customer_workflow
+    multiple_validated_states_for_business_key: block_customer_workflow
+    previous_quarter_state_as_write_target_allowed: false
+    notify_owner: true
+  write_failure_contract:
+    action: [block_customer_workflow_success, mark_output_not_consumable_for_next_period, notify_owner]
+    workbook_or_metadata_may_claim_frozen_state: false
+    retry_must_reuse_same_locked_membership: true
+  local_only_contract:
+    storage_scope: local_only
+    repository_persistence_allowed: false
+    customer_rows_in_state_metadata_allowed: false
+    membership_reference_type: local_only_opaque_reference
 constraints:
   local_file_contents_must_not_enter_git: true
   customer_rows_must_not_enter_metadata: true

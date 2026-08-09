@@ -16,8 +16,8 @@ gate_checks:
   quarter_baseline_fallback: pass
   quarter_first_week_technical_applicability: pass
   quarter_first_week_mode_independent_of_output_history: pass
-  frozen_weekly_technical_rule_unchanged: pass
-  frozen_weekly_comparable_rule_unchanged: pass
+  weekly_technical_rule_customer_runtime_independence_preserved: pass
+  weekly_comparable_rule_customer_runtime_independence_preserved: pass
   canonical_context_field_ids_and_explicit_bindings: pass
   canonical_input_role_ids_and_role_specific_fiscal_quarters: pass
   target_fiscal_quarter_derived_before_context_lock: pass
@@ -40,6 +40,7 @@ gate_checks:
   detail_sorting: pass
   independent_frozen_top20_memberships: pass
   cross_run_top20_membership_state_priority_and_no_rerank: pass
+  quarter_top20_membership_state_write_idempotency_conflict_and_failure_contract: pass
   forecast_top20_first_freeze_requires_D_available: pass
   template_existing_top20_memberships_preserved: pass
   generated_top20_rank_order_and_D_availability: pass
@@ -47,4 +48,5 @@ gate_checks:
   filename_collision_without_overwrite: pass
   formula_mirror_numeric_tolerance_contract: pass
   absolute_100_percent_warning_limited_to_yoy_fields: pass
+  reporting_date_source_report_date_and_revenue_cutoff_separated: pass
 decision: pass

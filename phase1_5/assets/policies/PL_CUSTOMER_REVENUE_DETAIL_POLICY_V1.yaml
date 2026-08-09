@@ -52,13 +52,16 @@ trigger:
       target_field_id: prior_year_fiscal_quarter
       derive_before_lock: true
     technical_period_identity:
-      reporting_period_id: derive from target_fiscal_quarter and current_revenue_cutoff_date
+      workflow_reporting_date: exact canonical alias of WorkflowExecutionDate for the target reporting period
+      current_source_report_date: exact report date from selected current_qtd email or attachment metadata
+      current_revenue_cutoff_date: actual latest revenue business-data date represented by the selected current_qtd source; never derived from Thursday cadence or email report date
+      reporting_period_id: derive from target_fiscal_quarter and workflow_reporting_date
       reporting_cadence: weekly Thursday in Asia/Shanghai
-      actual_quarter_first_reporting_cutoff: first Thursday on or after the calendar start date of target_fiscal_quarter
-      report_mode: quarter_first_week only when current_revenue_cutoff_date equals actual_quarter_first_reporting_cutoff; otherwise regular_week
+      actual_quarter_first_reporting_date: first Thursday on or after the calendar start date of target_fiscal_quarter
+      report_mode: quarter_first_week only when workflow_reporting_date equals actual_quarter_first_reporting_date; otherwise regular_week
       report_mode_may_depend_on_available_output_history: false
-      expected_previous_cutoff: current_revenue_cutoff_date minus 7 calendar days
-      expected_previous_reporting_period_id: derive from expected_previous_cutoff and the fiscal quarter containing that date
+      expected_previous_reporting_date: workflow_reporting_date minus 7 calendar days
+      expected_previous_reporting_period_id: derive from expected_previous_reporting_date and the fiscal quarter containing that date
       previous_reporting_period_id: exact alias of expected_previous_reporting_period_id before metadata selection
       older_successful_output_search_allowed: false
       external_calendar_dependency_allowed: false
@@ -191,9 +194,10 @@ processing:
   previous_output_selection:
     local_input_contract_bundle: CUSTOMER_REVENUE_DETAIL_LOCAL_INPUT_CONTRACTS_V1
     metadata_contract_section: previous_reporting_period_output_metadata_contract
-    required_metadata_fields: [workflow_run_id, result_id, reporting_period_id, output_version, output_file_reference, validation_status, completed_at, current_revenue_cutoff_date, prior_comparable_as_of_date, target_fiscal_quarter, history_consumption_status]
+    required_metadata_fields: [workflow_run_id, result_id, reporting_period_id, output_version, output_file_reference, validation_status, completed_at, workflow_reporting_date, current_revenue_cutoff_date, prior_comparable_as_of_date, target_fiscal_quarter, history_consumption_status]
     required_reporting_period_id: locked expected_previous_reporting_period_id
-    required_cutoff: locked expected_previous_cutoff
+    required_reporting_date: locked expected_previous_reporting_date
+    selected_previous_output_business_cutoff_source: selected metadata current_revenue_cutoff_date; no expected-cutoff equality inference
     context_period_identity_is_derived_before_metadata_selection: true
     validation_status: passed
     same_reporting_period_attempt_allowed: false
@@ -241,6 +245,11 @@ processing:
       subsequent_week_or_rerun_reranking_allowed: false
       previous_quarter_membership_reuse_allowed: false
       top20_is_ordinary_layout_inheritance: false
+      write_contract_section: quarter_top20_membership_state_write_contract
+      first_freeze_write_required_before_consumable_success: true
+      same_week_rerun_idempotency: identical state key and membership reference reuses the passed local state without reranking or a second write
+      conflict_or_write_failure_action: block_customer_workflow_and_mark_output_not_consumable
+      state_persistence_scope: local_only
     existing_template_membership:
       eligibility_prerequisite: quarter_template_eligibility equals available for locked current_year and quarter
       valid_existing_list_is_authoritative: true

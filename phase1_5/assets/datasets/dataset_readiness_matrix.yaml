@@ -20,10 +20,11 @@ field_mapping_readiness_gate:
   gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
   status: passed_for_original_scope
   assessment_date: 2026-07-31
-  in_scope_dataset_count: 9
-  approved_mapping_profile_count: 9
+  original_scope_dataset_count: 9
+  effective_in_scope_dataset_count: 10
+  effective_approved_mapping_profile_count: 11
   blocking_issue_count: 0
-  out_of_scope_dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+  original_scope_exclusion_superseded_by_passed_delta_gate: DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
   gate_artifact: phase1_5/assets/field_mappings/field_mapping_readiness_gate.yaml
   post_gate_usage_change:
     detected_at: 2026-07-31

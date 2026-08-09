@@ -24,6 +24,10 @@ CUSTOMER_POLICY = ROOT / "phase1_5/assets/policies/PL_CUSTOMER_REVENUE_DETAIL_PO
 CUSTOMER_OUTPUT = ROOT / "phase1_5/assets/output_mappings/OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1.yaml"
 TECHNICAL_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1.yaml"
 WEEKLY_COMPARABLE_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml"
+WEEKLY_PREVIOUS_QUARTER_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1.yaml"
+WEEKLY_QTD_HISTORY_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1.yaml"
+WEEKLY_EMAIL_CLASSIFICATION_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1.yaml"
+WEEKLY_REPORT_MODE_RULE = ROOT / "phase1_5/assets/business_rules/BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1.yaml"
 CUSTOMER_FULL_QUARTER_RULE = ROOT / "phase1_5/assets/business_rules/BR_CUSTOMER_REVENUE_PRIOR_YEAR_FULL_QUARTER_SOURCE_SELECTION_V1.yaml"
 CUSTOMER_COMPARABLE_RULE = ROOT / "phase1_5/assets/business_rules/BR_CUSTOMER_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml"
 CUSTOMER_TECHNICAL_ADAPTER = ROOT / "phase1_5/assets/business_rules/BR_CUSTOMER_REVENUE_TECHNICAL_ELIGIBILITY_ADAPTER_V1.yaml"
@@ -79,6 +83,7 @@ def select_previous_period_output(
         "output_file_reference",
         "validation_status",
         "completed_at",
+        "workflow_reporting_date",
         "current_revenue_cutoff_date",
         "prior_comparable_as_of_date",
         "target_fiscal_quarter",
@@ -102,25 +107,25 @@ def select_previous_period_output(
 
 
 def derive_customer_reporting_period_context(
-    current_year: int, quarter: int, current_cutoff_text: str
+    current_year: int, quarter: int, workflow_reporting_date_text: str
 ) -> dict[str, str]:
-    cutoff = date.fromisoformat(current_cutoff_text)
+    reporting_date = date.fromisoformat(workflow_reporting_date_text)
     quarter_start = date(current_year, (quarter - 1) * 3 + 1, 1)
     first_thursday = quarter_start + timedelta(
         days=(3 - quarter_start.weekday()) % 7
     )
-    assert cutoff.weekday() == 3, "Customer reporting cutoff must follow Thursday cadence"
-    expected_previous_cutoff = cutoff - timedelta(days=7)
-    previous_quarter = (expected_previous_cutoff.month - 1) // 3 + 1
+    assert reporting_date.weekday() == 3, "Customer workflow reporting date must follow Thursday cadence"
+    expected_previous_reporting_date = reporting_date - timedelta(days=7)
+    previous_quarter = (expected_previous_reporting_date.month - 1) // 3 + 1
     expected_previous_reporting_period_id = (
-        f"CUSTOMER:{expected_previous_cutoff.year}Q{previous_quarter}:"
-        f"{expected_previous_cutoff.isoformat()}"
+        f"CUSTOMER:{expected_previous_reporting_date.year}Q{previous_quarter}:"
+        f"{expected_previous_reporting_date.isoformat()}"
     )
     return {
         "report_mode": (
-            "quarter_first_week" if cutoff == first_thursday else "regular_week"
+            "quarter_first_week" if reporting_date == first_thursday else "regular_week"
         ),
-        "expected_previous_cutoff": expected_previous_cutoff.isoformat(),
+        "expected_previous_reporting_date": expected_previous_reporting_date.isoformat(),
         "expected_previous_reporting_period_id": expected_previous_reporting_period_id,
     }
 
@@ -338,6 +343,10 @@ def main() -> int:
     customer_output = load(CUSTOMER_OUTPUT)
     technical_rule = load(TECHNICAL_RULE)
     weekly_comparable_rule = load(WEEKLY_COMPARABLE_RULE)
+    weekly_previous_quarter_rule = load(WEEKLY_PREVIOUS_QUARTER_RULE)
+    weekly_qtd_history_rule = load(WEEKLY_QTD_HISTORY_RULE)
+    weekly_email_classification_rule = load(WEEKLY_EMAIL_CLASSIFICATION_RULE)
+    weekly_report_mode_rule = load(WEEKLY_REPORT_MODE_RULE)
     full_quarter_rule = load(CUSTOMER_FULL_QUARTER_RULE)
     comparable_rule = load(CUSTOMER_COMPARABLE_RULE)
     customer_technical_adapter = load(CUSTOMER_TECHNICAL_ADAPTER)
@@ -365,9 +374,11 @@ def main() -> int:
     assert customer_suite.get("contains_real_business_data") is False
     assert customer_suite.get("external_side_effects_allowed") is False
     assert customer_suite.get("suite_id") == "CUSTOMER_REVENUE_DETAIL_ACCEPTANCE_V1"
-    assert len(customer_scenarios) == 42
-    assert weekly_baseline["source_main_commit_sha"] == customer_baseline["source_main_commit_sha"]
-    assert weekly_baseline["publication_state"] == customer_baseline["publication_state"] == "merged_to_main"
+    assert len(customer_scenarios) == 43
+    assert weekly_baseline["publication_state"] == customer_baseline["publication_state"] == "unmerged_feature_branch_candidate"
+    assert weekly_baseline["git_lineage"] == customer_baseline["git_lineage"]
+    assert weekly_baseline["git_lineage"]["review_base_main_sha"] != "HEAD"
+    assert weekly_baseline["frozen_asset_versions"]["field_mapping_profile_count"] == 11
     assert "weekly_frozen_asset_zero_diff_contract" not in customer_baseline["change_control"]
     for active_document in (data_source_inventory, dataset_inventory, rolling_deck_mapping, ctv_mapping):
         classification = active_document["remaining_tbd_classification"]
@@ -389,17 +400,19 @@ def main() -> int:
                 "quarter_template_eligibility_contract",
                 "previous_output_metadata_contract_without_filename_parsing",
                 "formula_mirror_numeric_tolerance_contract",
-                "frozen_weekly_comparable_rule_unchanged",
+                "weekly_comparable_rule_customer_runtime_independence_preserved",
                 "quarter_first_week_template_order_tie_break",
                 "effective_layout_source_no_business_value_inheritance",
                 "canonical_input_role_ids_and_role_specific_fiscal_quarters",
                 "no_template_existing_customer_industry_inheritance",
                 "cross_run_top20_membership_state_priority_and_no_rerank",
+                "quarter_top20_membership_state_write_idempotency_conflict_and_failure_contract",
                 "forecast_top20_first_freeze_requires_D_available",
                 "absolute_100_percent_warning_limited_to_yoy_fields",
                 "quarter_first_week_mode_independent_of_output_history",
                 "missing_immediate_previous_period_blocks_without_two_week_fallback",
                 "quarter_first_week_blank_M_N_Q_R_and_I_equals_F",
+                "reporting_date_source_report_date_and_revenue_cutoff_separated",
             },
         ),
         "pipeline": (
@@ -415,7 +428,7 @@ def main() -> int:
                 "customer_run_input_manifest_and_workflow_scoped_dataset_contract",
                 "effective_layout_source_and_layout_only_fallback",
                 "local_output_metadata_write_and_integer_version_contract",
-                "frozen_weekly_comparable_rule_zero_change",
+                "weekly_comparable_rule_customer_runtime_independence_preserved",
                 "four_owner_parameter_manual_and_backfill_contract",
                 "technical_period_identity_without_calendar_dependency",
                 "role_specific_current_and_prior_year_fiscal_quarter_binding",
@@ -424,8 +437,10 @@ def main() -> int:
                 "source_wait_policy_scoped_by_run_type_and_role",
                 "local_output_metadata_failure_and_filesystem_collision_consistency",
                 "top20_cross_run_quarter_state_freeze",
-                "report_mode_derived_from_actual_quarter_first_reporting_cutoff",
-                "expected_previous_period_and_cutoff_independently_derived",
+                "top20_membership_state_write_contract",
+                "report_mode_derived_from_actual_quarter_first_reporting_date",
+                "expected_previous_period_and_reporting_date_independently_derived",
+                "actual_revenue_cutoff_separate_from_thursday_and_source_report_date",
                 "regular_week_requires_exact_immediately_preceding_output_without_older_fallback",
                 "quarter_first_week_previous_output_usage_limited_to_layout_customer_and_A",
                 "no_cross_workflow_file_or_output_dependency",
@@ -435,11 +450,12 @@ def main() -> int:
         "code_implementation": (
             customer_code_gate["implementation_readiness_checks"],
             {
-                "actual_quarter_first_week_mode_and_independent_expected_previous_period_derivation",
+                "actual_quarter_first_reporting_date_mode_and_independent_expected_previous_period_derivation",
+                "workflow_source_report_and_actual_revenue_cutoff_date_semantics_separated",
                 "exact_immediately_preceding_output_required_without_history_gap_fallback",
                 "same_week_rerun_retains_locked_expected_previous_period_selection",
                 "active_placeholder_classification_complete",
-                "baseline_publication_lineage_synchronized_to_latest_main",
+                "baseline_review_base_and_unmerged_candidate_lineage_distinct",
                 "no_cross_workflow_file_dependency",
             },
         ),
@@ -477,6 +493,7 @@ def main() -> int:
                 "absent_template_fallback_but_invalid_present_template_blocks",
                 "local_output_metadata_failure_and_collision_consistency",
                 "explicit_date_header_and_filename_lineage",
+                "filename_and_revenue_cutoff_headers_exclude_workflow_and_email_report_dates",
                 "completion_rate_above_100_percent_not_warning",
             },
         ),
@@ -488,6 +505,34 @@ def main() -> int:
     context = runtime["workflow_run_context"]
     assert context["query_parameter_authority"]["actual_execution_date_business_date_inference_allowed"] is False
     assert set(context["required_fields"]["run_type"]["allowed_values"]) == {"scheduled", "manual", "backfill"}
+    assert context["date_semantics"]["report_mode_date_authority"] == "workflow_reporting_date and previous_successful_report_workflow_reporting_date only"
+    assert context["date_semantics"]["revenue_headers_or_filenames_labeled_as_cutoff_must_use"] == "current_revenue_cutoff_date"
+    weekly_active_rules = {
+        rule["rule_id"]: rule
+        for rule in (
+            weekly_previous_quarter_rule,
+            weekly_comparable_rule,
+            weekly_qtd_history_rule,
+            weekly_email_classification_rule,
+            technical_rule,
+            weekly_report_mode_rule,
+        )
+    }
+    canonical_bindings = runtime["canonical_rule_context_bindings"]
+    assert set(canonical_bindings) - {"validation"} == set(weekly_active_rules)
+    for rule_id, rule in weekly_active_rules.items():
+        assert set(canonical_bindings[rule_id]) == set(rule["inputs"]["required_context_fields"])
+        assert all(binding["lock"] for binding in canonical_bindings[rule_id].values())
+    expected_business_line_fields = [
+        "revenue_business_line",
+        "fiscal_quarter_or_source_period_range",
+        "performance_revenue_amount",
+        "executed_revenue_amount",
+    ]
+    assert weekly_previous_quarter_rule["inputs"]["required_standard_fields"] == expected_business_line_fields
+    assert weekly_comparable_rule["inputs"]["required_standard_fields"] == expected_business_line_fields
+    assert technical_rule["applicability"]["data_roles"] == ["current_quarter_qtd"]
+    assert technical_rule["conditions"]["role_quarter_binding"]["historical_or_previous_quarter_role_binding_allowed"] is False
     for scenario_id in ("manual_run_context", "backfill_run_context"):
         expected = scenarios[scenario_id]["expected_result"]
         assert expected == {"period_source": "workflow_run_context", "execution_date_inference_used": False}
@@ -756,8 +801,8 @@ def main() -> int:
     assert previous_policy["same_week_rerun_reuses_locked_selection"] is True
     assert previous_policy["older_reporting_period_fallback_allowed"] is False
     assert previous_policy["required_reporting_period_id"] == "locked expected_previous_reporting_period_id"
-    assert previous_policy["required_cutoff"] == "locked expected_previous_cutoff"
-    assert rerun["expected_result"]["rerun_retains_expected_previous_cutoff"] is customer_context["selection_and_rerun_semantics"]["same_week_rerun_retains_expected_previous_cutoff"]
+    assert previous_policy["required_reporting_date"] == "locked expected_previous_reporting_date"
+    assert rerun["expected_result"]["rerun_retains_expected_previous_reporting_date"] is customer_context["selection_and_rerun_semantics"]["same_week_rerun_retains_expected_previous_reporting_date"]
     assert rerun["expected_result"]["rerun_retains_expected_previous_reporting_period_id"] is customer_context["selection_and_rerun_semantics"]["same_week_rerun_retains_expected_previous_reporting_period_id"]
 
     missing_previous = customer_scenarios[
@@ -766,15 +811,13 @@ def main() -> int:
     missing_context = derive_customer_reporting_period_context(
         missing_previous["synthetic_input"]["current_year"],
         missing_previous["synthetic_input"]["quarter"],
-        missing_previous["synthetic_input"]["current_revenue_cutoff_date"],
+        missing_previous["synthetic_input"]["workflow_reporting_date"],
     )
     exact_matches = [
         item
         for item in missing_previous["synthetic_input"]["available_outputs"]
         if item["reporting_period_id"]
         == missing_context["expected_previous_reporting_period_id"]
-        and item["current_revenue_cutoff_date"]
-        == missing_context["expected_previous_cutoff"]
         and item["validation_status"] == "passed"
         and item["history_consumption_status"] == "consumable"
     ]
@@ -790,7 +833,7 @@ def main() -> int:
     mid_context = derive_customer_reporting_period_context(
         mid_quarter["synthetic_input"]["current_year"],
         mid_quarter["synthetic_input"]["quarter"],
-        mid_quarter["synthetic_input"]["current_revenue_cutoff_date"],
+        mid_quarter["synthetic_input"]["workflow_reporting_date"],
     )
     assert {
         **mid_context,
@@ -985,7 +1028,8 @@ def main() -> int:
     ]
     assert metadata_contract["filename_parsing_for_history_selection_allowed"] is False
     assert metadata_contract["selection_predicates"]["reporting_period_id"] == "exactly equals locked expected_previous_reporting_period_id"
-    assert metadata_contract["selection_predicates"]["current_revenue_cutoff_date"] == "exactly equals locked expected_previous_cutoff"
+    assert metadata_contract["selection_predicates"]["workflow_reporting_date"] == "exactly equals locked expected_previous_reporting_date"
+    assert "current_revenue_cutoff_date" not in metadata_contract["selection_predicates"]
     assert metadata_contract["selection_predicates"]["older_reporting_period_fallback_allowed"] is False
 
     frozen_case = customer_scenarios[
@@ -1007,19 +1051,20 @@ def main() -> int:
     cutoff = date.fromisoformat(init_input["current_revenue_cutoff_date"])
     prior_comparable = cutoff.replace(year=cutoff.year - 1) + timedelta(days=1)
     period_context = derive_customer_reporting_period_context(
-        init_input["current_year"], init_input["quarter"], init_input["current_revenue_cutoff_date"]
+        init_input["current_year"], init_input["quarter"], init_input["workflow_reporting_date"]
     )
     assert {
         "prior_year": init_input["current_year"] - 1,
         "target_fiscal_quarter": f"{init_input['current_year']}Q{init_input['quarter']}",
         "prior_year_fiscal_quarter": f"{init_input['current_year'] - 1}Q{init_input['quarter']}",
-        "reporting_period_id": f"CUSTOMER:{init_input['current_year']}Q{init_input['quarter']}:{init_input['current_revenue_cutoff_date']}",
+        "reporting_period_id": f"CUSTOMER:{init_input['current_year']}Q{init_input['quarter']}:{init_input['workflow_reporting_date']}",
         "report_mode": period_context["report_mode"],
-        "expected_previous_cutoff": period_context["expected_previous_cutoff"],
+        "expected_previous_reporting_date": period_context["expected_previous_reporting_date"],
         "expected_previous_reporting_period_id": period_context["expected_previous_reporting_period_id"],
         "previous_reporting_period_id": period_context["expected_previous_reporting_period_id"],
         "prior_year_full_quarter_period_id": f"{init_input['current_year'] - 1}Q{init_input['quarter']}",
         "prior_comparable_as_of_date": prior_comparable.isoformat(),
+        "reporting_and_cutoff_dates_may_differ": init_input["workflow_reporting_date"] != init_input["current_revenue_cutoff_date"],
         "confirmed_template_version": None,
         "locked_before_data_collection": customer_context["lock_policy"]["lock_before_stage"] == "DATA_COLLECTION",
     } == context_init["expected_result"]
@@ -1027,6 +1072,7 @@ def main() -> int:
     assert set(customer_context["required_fields"]["run_type"]["allowed_values"]) == {"scheduled", "manual", "backfill", "rerun"}
     assert customer_context["deterministic_initialization_contract"]["all_required_and_conditionally_required_fields_resolved_before_lock"] is True
     assert customer_context["derived_field_bindings"]["report_mode"]["history_output_presence_or_target_quarter_membership_may_influence_mode"] is False
+    assert customer_context["derived_field_bindings"]["report_mode"]["source_field_ids"] == ["current_year", "quarter", "workflow_reporting_date"]
 
     manifest_case = customer_scenarios["customer_run_input_manifest_scope"]["expected_result"]
     manifest = customer_local_inputs["customer_run_input_manifest_contract"]
@@ -1089,7 +1135,7 @@ def main() -> int:
     manual_case = customer_scenarios["four_parameter_manual_run"]
     manual_inputs = customer_pipeline["execution"]["manual_trigger_required_parameters"]
     manual_values = manual_case["synthetic_input"]
-    manual_reporting_id = f"CUSTOMER:{manual_values['CurrentYear']}Q{manual_values['Quarter']}:{manual_values['CurrentRevenueCutoffDate']}"
+    manual_reporting_id = f"CUSTOMER:{manual_values['CurrentYear']}Q{manual_values['Quarter']}:{manual_values['WorkflowExecutionDate']}"
     assert {
         "required_parameter_count": len(manual_inputs),
         "reporting_period_id": manual_reporting_id,
@@ -1151,6 +1197,8 @@ def main() -> int:
         "M_N": date_lineage["M_N"],
         "Q_R": date_lineage["Q_R"],
         "filename_YYYYMMDD": date_lineage["filename_YYYYMMDD"],
+        "workflow_reporting_date_used_as_cutoff": customer_output["output_target"]["date_semantics_contract"]["thursday_or_email_report_date_may_render_as_revenue_cutoff"],
+        "source_report_date_used_as_cutoff": customer_output["output_target"]["date_semantics_contract"]["thursday_or_email_report_date_may_render_as_revenue_cutoff"],
     } == date_case
     output_bindings = customer_output["parameterization"]["explicit_run_context_bindings"]
     assert output_bindings["PriorWeekComparableAsOfDate"] == "prior_week_comparable_as_of_date"
@@ -1164,6 +1212,18 @@ def main() -> int:
         "forecast_freeze_requires_D_available": customer_policy["processing"]["top20"]["forecast_availability"]["first_freeze_only_after_D_available"],
         "ordinary_layout_inheritance": top20_state["top20_is_ordinary_layout_inheritance"],
     } == top20_case
+
+    top20_write_case = customer_scenarios["top20_membership_state_write_contract"]["expected_result"]
+    top20_write = customer_local_inputs["quarter_top20_membership_state_write_contract"]
+    assert {
+        "first_freeze_atomic_write": top20_write["atomic_write_required"],
+        "identical_rerun_second_write": False,
+        "identical_rerun_reuses_state": top20_write["idempotent_rerun"]["exact_business_key_and_identical_membership_reference"] == "reuse_existing_state_without_second_write",
+        "conflicting_reference_blocks": top20_write["conflict_contract"]["existing_same_business_key_with_different_membership_reference"] == "block_customer_workflow",
+        "write_failure_blocks_consumable_output": "mark_output_not_consumable_for_next_period" in top20_write["write_failure_contract"]["action"],
+        "state_scope": top20_write["local_only_contract"]["storage_scope"],
+        "customer_rows_in_state_metadata": top20_write["local_only_contract"]["customer_rows_in_state_metadata_allowed"],
+    } == top20_write_case
 
     industry_inherit_case = customer_scenarios["no_template_industry_inheritance"]["expected_result"]
     no_template_industry = customer_policy["processing"]["industry_selection"]

@@ -6,9 +6,14 @@ freeze_date: 2026-08-08
 status: frozen_awaiting_explicit_owner_code_implementation_approval
 freeze_revision_status: refrozen_after_final_adhoc_capability_patch
 owner: WORKFLOW_OWNER
-source_main_commit_sha: fb3a4b7fd8a1b4396e001f8c89bbdb72cb643ff7
-source_branch: main
-publication_state: merged_to_main
+publication_state: unmerged_feature_branch_candidate
+git_lineage:
+  review_base_branch: main
+  review_base_main_sha: fb3a4b7fd8a1b4396e001f8c89bbdb72cb643ff7
+  frozen_candidate_branch: codex/design-assets-contract-closure
+  frozen_candidate_commit_sha: { value_source: validation_target_HEAD, embedded_literal_required: false }
+  frozen_candidate_tree_sha: { value_source: 'validation_target_HEAD^{tree}', embedded_literal_required: false }
+  review_base_and_candidate_sha_semantics_must_not_be_conflated: true
 
 baseline_scope:
   phase: Phase 1.5
@@ -42,7 +47,7 @@ frozen_asset_versions:
   external_asset_reference_registry: 1.0.0
   external_asset_reference_count: 10
   pipeline_registry: 0.1.0-initialization
-  field_mapping_profile_count: 10
+  field_mapping_profile_count: 11
   approved_revenue_business_rule_count: 6
   metric_library_count: 3
   metric_variant_count: 48
@@ -127,7 +132,7 @@ mvp_development_constraints:
 
 change_control:
   baseline_is_logically_frozen: true
-  repository_commit_binding_status: reviewed_from_latest_main_fb3a4b7
+  repository_commit_binding_status: reviewed_candidate_on_unmerged_feature_branch
   frozen_content_includes_customer_fixed_narrative_strategy: true
   frozen_content_includes_shared_local_sqlite_contract: true
   post_freeze_behavior_or_output_change_requires_version_review: true
@@ -203,6 +208,6 @@ remaining_tbd_classification:
   superseded:
     - Draft PR publication-state wording
     - Inventory metadata placeholders whose runtime authority is now the Workflow Run Context, Run Input Manifest, Pipeline Registry, or approved Mapping Profile
-    - Compound TBD_PENDING required_standard_fields markers in approved Weekly source-selection Rules; runtime field authority is the bound approved Mapping Profile
+    - Pre-closure compound placeholder markers replaced by explicit approved Revenue business-line Mapping fields
   unclassified_active_placeholder_count: 0
   business_value_inference_allowed: false

@@ -755,6 +755,7 @@ remaining_tbd_classification:
       - source_schema.field_order_is_contractual
       - field_mappings[*].required
       - field_mappings[*].nullable
+      - scope.other_workbook_sheets_status
     authority: header-based matching with field_missing_validation_required=false and entry_level_required_flags_evaluated=false
   superseded:
     covered_field_path_patterns: []

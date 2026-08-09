@@ -12,6 +12,11 @@ output_target:
   storage_location: ${CUSTOMER_REVENUE_OUTPUT_DIR_LOCAL_ONLY}
   filename_pattern: '{YY}年Q{Quarter}硬广预算盘点-收入截止{YYYYMMDD}.xlsx'
   filename_date_binding: { token: YYYYMMDD, context_field: current_revenue_cutoff_date }
+  date_semantics_contract:
+    workflow_reporting_date_usage: reporting period identity and report_mode only
+    source_report_date_usage: source lineage only
+    current_revenue_cutoff_date_usage: filename YYYYMMDD, current-year AsOfDate headers, and current revenue data lineage
+    thursday_or_email_report_date_may_render_as_revenue_cutoff: false
   collision_policy:
     overwrite_allowed: false
     next_available_suffix: v2_v3_and_so_on
