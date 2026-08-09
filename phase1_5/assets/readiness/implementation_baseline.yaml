@@ -153,6 +153,11 @@ change_control:
       - target_business_line is Pipeline-scoped with exact per-Pipeline Rule Context identities
       - Revenue current-email selection uses workflow_reporting_date and source_report_date independently from the business-data cutoff
       - Manual Report Mode uses explicit target report period and workflow reporting date only
+      - Core Weekly Context locks independently while Revenue-only fields resolve conditionally and fail only Revenue scope
+      - Expected previous Revenue reporting date is exactly the adjacent Weekly period with no older-success fallback
+      - All four Weekly Revenue Result Contracts and the Revenue Store record workflow_reporting_date plus current_revenue_cutoff_date and prohibit generic cutoff_date
+      - Technical incremental WoW reads the exact previous validated incremental Metric; YoY uses Owner-confirmed option A from the exact prior-year comparable Technical Store Metric
+      - Prior-year source failure leaves only dependent YoY fields missing with warning while retaining valid current-period Revenue fields
       - Baseline lineage uses merge-neutral freeze-time semantics
     customer_analysis_output_strategy: fixed_narrative_template_rendering
     customer_analysis_initial_mvp_status: included

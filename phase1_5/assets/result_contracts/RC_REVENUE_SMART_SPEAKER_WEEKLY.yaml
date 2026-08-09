@@ -69,5 +69,8 @@ validation:
   duplicate_field_id_check: true
   metric_variant_binding_check: true
   contract_completeness_check: true
-lineage: { required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, cutoff_date, report_mode, dataset_instance_ids, mapping_profile_versions, business_rule_versions, metric_variant_versions, generated_at, validation_status, approval_status] }
+lineage:
+  required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, workflow_reporting_date, current_revenue_cutoff_date, report_mode, dataset_instance_ids, mapping_profile_versions, business_rule_versions, metric_variant_versions, generated_at, validation_status, approval_status]
+  revenue_business_cutoff_field: current_revenue_cutoff_date
+  generic_cutoff_date_allowed: false
 constraints: { automatic_business_inference_allowed: false, output_mapping_may_calculate: false, unknown_business_values_remain_tbd: true }

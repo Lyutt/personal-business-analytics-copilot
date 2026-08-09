@@ -51,6 +51,13 @@ FALLBACK_BUSINESS_LINE_MAPPING = ROOT / "phase1_5/assets/field_mappings/MAP_REVE
 REVENUE_MAPPING_DELTA_GATE = ROOT / "phase1_5/assets/field_mappings/field_mapping_readiness_gate_delta_revenue_business_line.yaml"
 WEEKLY_BUSINESS_RULE_GATE = ROOT / "phase1_5/assets/business_rules/business_rule_readiness_gate_revenue.yaml"
 WEEKLY_CODE_GATE = ROOT / "phase1_5/assets/readiness/code_implementation_readiness_gate.yaml"
+REVENUE_METRICS = ROOT / "phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml"
+REVENUE_RESULT_CONTRACTS = [
+    ROOT / "phase1_5/assets/result_contracts/RC_REVENUE_TECHNICAL_WEEKLY.yaml",
+    ROOT / "phase1_5/assets/result_contracts/RC_REVENUE_CTV_WEEKLY.yaml",
+    ROOT / "phase1_5/assets/result_contracts/RC_REVENUE_SMART_SPEAKER_WEEKLY.yaml",
+    ROOT / "phase1_5/assets/result_contracts/RC_REVENUE_FAST_VERSION_WEEKLY.yaml",
+]
 
 
 def load(path: Path) -> dict[str, Any]:
@@ -375,6 +382,8 @@ def main() -> int:
     revenue_mapping_delta_gate = load(REVENUE_MAPPING_DELTA_GATE)
     weekly_business_rule_gate = load(WEEKLY_BUSINESS_RULE_GATE)
     weekly_code_gate = load(WEEKLY_CODE_GATE)
+    revenue_metrics = load(REVENUE_METRICS)
+    revenue_result_contracts = [load(path) for path in REVENUE_RESULT_CONTRACTS]
     scenarios = scenario_map(suite)
     customer_scenarios = scenario_map(customer_suite)
     semantic_cases = semantic_case_map(suite)
@@ -538,8 +547,25 @@ def main() -> int:
     context = runtime["workflow_run_context"]
     assert context["query_parameter_authority"]["actual_execution_date_business_date_inference_allowed"] is False
     assert set(context["required_fields"]["run_type"]["allowed_values"]) == {"scheduled", "manual", "backfill"}
-    assert context["date_semantics"]["report_mode_date_authority"] == "workflow_reporting_date and previous_successful_report_workflow_reporting_date only"
+    assert context["date_semantics"]["report_mode_date_authority"] == "workflow_reporting_date and deterministically derived expected_previous_revenue_workflow_reporting_date only"
     assert context["date_semantics"]["revenue_headers_or_filenames_labeled_as_cutoff_must_use"] == "current_revenue_cutoff_date"
+    revenue_scope_fields = context["revenue_scope_fields"]
+    assert revenue_scope_fields["non_revenue_pipeline_continuation_required"] is True
+    assert revenue_scope_fields["partial_draft_allowed_under_existing_fallback"] is True
+    assert context["lock_before_any_pipeline_data_acquisition_scope"] == "core required_fields only"
+    assert revenue_scope_fields["core_context_relock_or_mutation_allowed"] is False
+    assert "current_revenue_cutoff_date" not in context["required_fields"]
+    assert "report_mode" not in context["required_fields"]
+    assert {
+        "current_revenue_cutoff_date",
+        "expected_previous_revenue_workflow_reporting_date",
+        "target_report_period",
+        "workflow_year",
+        "target_fiscal_quarter",
+        "target_previous_calendar_quarter",
+        "report_mode",
+        "target_revenue_cutoff_date",
+    } == set(revenue_scope_fields["fields"])
     weekly_active_rules = {
         rule["rule_id"]: rule
         for rule in (
@@ -622,11 +648,28 @@ def main() -> int:
     assert current_weekly_source_contract["generic_cutoff_date_may_select_weekly_email"] is False
     assert weekly_report_mode_rule["manual_execution"]["required_inputs"] == ["explicit_target_report_period", "explicit_workflow_reporting_date"]
     assert weekly_report_mode_rule["manual_execution"]["explicit_revenue_cutoff_date_is_report_mode_input"] is False
+    previous_output_contract = weekly_report_mode_rule["actions"]["previous_output_selection_contract"]
+    assert previous_output_contract["report_mode_must_not_depend_on_output_existence"] is True
+    assert previous_output_contract["older_successful_output_fallback_allowed"] is False
+    assert runtime["canonical_context_field_contracts"]["expected_previous_revenue_workflow_reporting_date"] == {
+        "scope": "Revenue only",
+        "source": "workflow_reporting_date",
+        "derivation": "subtract exactly 7 calendar days under the locked Weekly cadence",
+        "successful-output-selection_influence_allowed": False,
+        "older-period fallback": False,
+        "lock": "before report-mode selection",
+    }
     for check_id in (
         "business_line_source_selection_fields_exist_in_bound_mapping_profiles",
         "target_business_line_is_pipeline_scoped_and_exact",
         "current_revenue_email_selection_uses_locked_workflow_reporting_date",
         "manual_report_mode_uses_explicit_reporting_period_and_workflow_reporting_date",
+        "core_context_locks_independently_of_revenue_scope_fields",
+        "expected_previous_revenue_reporting_date_is_adjacent_and_deterministic",
+        "missing_revenue_context_allows_non_revenue_partial_draft",
+        "prior_year_source_failure_is_yoy_field_scoped",
+        "technical_incremental_yoy_denominator_owner_confirmed_unique_store_metric",
+        "technical_incremental_full_quarter_equivalence_prohibited",
     ):
         assert weekly_business_rule_gate["gate_checks"][check_id] == "pass"
     for check_id in (
@@ -634,6 +677,14 @@ def main() -> int:
         "pipeline_scoped_target_business_line_bindings_exact_and_unique",
         "revenue_dataset_selection_uses_locked_workflow_reporting_date",
         "manual_report_mode_excludes_revenue_cutoff_input",
+        "weekly_core_context_independent_from_revenue_scope_resolution",
+        "revenue_context_failure_scope_and_partial_draft",
+        "expected_previous_revenue_reporting_date_adjacent_no_fallback",
+        "four_weekly_revenue_result_contract_date_lineage",
+        "revenue_metric_store_date_lineage",
+        "technical_incremental_wow_exact_previous_metric_binding",
+        "technical_incremental_yoy_unique_owner_confirmed_source",
+        "prior_year_unavailable_field_level_failure_precedence",
         "baseline_2026_08_09_design_contract_review_and_refreeze",
     ):
         assert weekly_code_gate["implementation_readiness_checks"][check_id] == "pass"
@@ -647,6 +698,83 @@ def main() -> int:
     assert scenarios["quarter_transition"]["expected_result"] == {
         "report_mode": "quarter_transition",
         "date_source": "workflow_run_context",
+    }
+
+    revenue_assertions = {
+        item["assertion_id"]: item
+        for item in suite["weekly_revenue_contract_assertions"]
+    }
+    assert set(revenue_assertions) == {
+        "revenue_context_missing_inventory_continues_partial_draft",
+        "revenue_result_lineage_rejects_generic_cutoff",
+        "technical_incremental_wow_exact_previous_metric",
+        "technical_incremental_yoy_unique_denominator",
+        "prior_year_unavailable_failure_precedence",
+    }
+    partial_case = revenue_assertions["revenue_context_missing_inventory_continues_partial_draft"]
+    assert partial_case["expected_result"] == {
+        "revenue_scope_blocked": True,
+        "inventory_continues": True,
+        "workflow_completion_status": "partial_draft",
+    }
+
+    for contract in revenue_result_contracts:
+        lineage = contract["lineage"]
+        assert {"workflow_reporting_date", "current_revenue_cutoff_date"}.issubset(lineage["required_instance_fields"])
+        assert "cutoff_date" not in lineage["required_instance_fields"]
+        assert lineage["revenue_business_cutoff_field"] == "current_revenue_cutoff_date"
+        assert lineage["generic_cutoff_date_allowed"] is False
+    assert revenue_assertions["revenue_result_lineage_rejects_generic_cutoff"]["expected_result"] == {
+        "four_revenue_contracts_accept": False,
+        "required_business_cutoff_field": "current_revenue_cutoff_date",
+    }
+
+    metric_by_id = {item["metric_variant_id"]: item for item in revenue_metrics["metric_variants"]}
+    incremental_id = "MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1"
+    wow_dependency = metric_by_id["MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_WOW_V1"]["denominator_result_dependency"]
+    yoy_metric = metric_by_id["MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_YOY_V1"]
+    yoy_dependency = yoy_metric["denominator_result_dependency"]
+    assert wow_dependency == {
+        "metric_variant_id": incremental_id,
+        "store_id": "STORE_WEEKLY_REVENUE_HISTORICAL",
+        "store_asset_id": "STORE_ASSET_WEEKLY_REVENUE_TECHNICAL",
+        "reporting_period_selection": "exactly equals expected_previous_revenue_workflow_reporting_date",
+        "validation_status_required": "passed",
+        "adjacent_previous_period_only": True,
+        "older_successful_period_fallback_allowed": False,
+    }
+    wow_case = revenue_assertions["technical_incremental_wow_exact_previous_metric"]
+    current_reporting_date = date.fromisoformat(wow_case["synthetic_input"]["current_workflow_reporting_date"])
+    expected_previous_date = (current_reporting_date - timedelta(days=7)).isoformat()
+    assert wow_case["expected_result"] == {
+        "expected_previous_revenue_workflow_reporting_date": expected_previous_date,
+        "metric_variant_id": incremental_id,
+        "store_asset_id": "STORE_ASSET_WEEKLY_REVENUE_TECHNICAL",
+        "older_fallback_used": False,
+    }
+    assert yoy_dependency["metric_variant_id"] == incremental_id
+    assert yoy_dependency["store_asset_id"] == "STORE_ASSET_WEEKLY_REVENUE_TECHNICAL"
+    assert yoy_dependency["owner_confirmation"] == "confirmed_option_A_2026-08-09"
+    assert yoy_dependency["unique_source_required"] is True
+    assert yoy_dependency["qtd_or_full_quarter_executed_revenue_amount_equivalence_allowed"] is False
+    assert revenue_assertions["technical_incremental_yoy_unique_denominator"]["expected_result"]["selected_source_count"] == 1
+    assert revenue_assertions["technical_incremental_yoy_unique_denominator"]["expected_result"]["qtd_or_full_quarter_equivalence_allowed"] is False
+
+    revenue_store = next(item for item in store["metric_result_stores"] if item["store_id"] == "STORE_WEEKLY_REVENUE_HISTORICAL")
+    assert revenue_store["revenue_date_lineage_contract"]["required_fields"] == ["workflow_reporting_date", "current_revenue_cutoff_date"]
+    assert revenue_store["revenue_date_lineage_contract"]["generic_cutoff_date_allowed"] is False
+    assert revenue_store["revenue_date_lineage_contract"]["older_successful_period_fallback_allowed"] is False
+
+    prior_year_actions = weekly_comparable_rule["actions"]
+    assert "pause_revenue_section" not in prior_year_actions["on_file_not_found_or_multiple_matches_or_unreadable"]
+    assert "retain_valid_current_qtd_performance_and_executed_results" in prior_year_actions["on_file_not_found_or_multiple_matches_or_unreadable"]
+    precedence_case = revenue_assertions["prior_year_unavailable_failure_precedence"]["expected_result"]
+    assert precedence_case == {
+        "current_qtd_performance_status": "valid_value",
+        "current_qtd_executed_status": "valid_value",
+        "affected_yoy_status": "missing",
+        "warning_required": True,
+        "current_revenue_scope_blocked": False,
     }
 
     pp = scenarios["twelve_pp_anomaly_trigger"]

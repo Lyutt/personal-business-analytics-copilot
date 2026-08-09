@@ -48,6 +48,12 @@ gate_checks:
   current_revenue_email_selection_uses_locked_workflow_reporting_date: pass
   source_report_and_business_cutoff_dates_remain_independent: pass
   manual_report_mode_uses_explicit_reporting_period_and_workflow_reporting_date: pass
+  core_context_locks_independently_of_revenue_scope_fields: pass
+  expected_previous_revenue_reporting_date_is_adjacent_and_deterministic: pass
+  missing_revenue_context_allows_non_revenue_partial_draft: pass
+  prior_year_source_failure_is_yoy_field_scoped: pass
+  technical_incremental_yoy_denominator_owner_confirmed_unique_store_metric: pass
+  technical_incremental_full_quarter_equivalence_prohibited: pass
   technical_single_count_rule_current_quarter_role_only: pass
   outlook_auto_send_false_unchanged: pass
   business_rule_conflict_count: 0

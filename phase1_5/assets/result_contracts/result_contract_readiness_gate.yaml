@@ -32,6 +32,9 @@ gate_checks:
   input_contract_field_dependencies_complete: pass
   input_contract_dependency_unique_authority: pass
   contract_input_lineage_matches_metric_dependencies: pass
+  weekly_revenue_contracts_use_explicit_reporting_and_revenue_cutoff_lineage: pass
+  weekly_revenue_contracts_prohibit_generic_cutoff_date: pass
+  prior_year_unavailable_yoy_missing_precedence_preserves_current_fields: pass
   record_grain_fields_or_dimensions_resolve: pass
   upstream_contract_field_route_conditions_explicit: pass
   output_mapping_contract_field_references_complete: pass

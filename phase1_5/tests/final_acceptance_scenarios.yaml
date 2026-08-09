@@ -75,6 +75,23 @@ dcp_semantic_test_cases:
         added_metrics: [qtd_performance_revenue_yoy, weekly_incremental_executed_revenue_yoy]
         excluded_metrics: [weekly_incremental_executed_revenue_wow]
 
+weekly_revenue_contract_assertions:
+  - assertion_id: revenue_context_missing_inventory_continues_partial_draft
+    synthetic_input: { core_context_valid: true, revenue_scope_fields_resolved: false, inventory_pipeline_valid: true }
+    expected_result: { revenue_scope_blocked: true, inventory_continues: true, workflow_completion_status: partial_draft }
+  - assertion_id: revenue_result_lineage_rejects_generic_cutoff
+    synthetic_input: { lineage_fields: [workflow_reporting_date, current_revenue_cutoff_date], attempted_business_cutoff_field: cutoff_date }
+    expected_result: { four_revenue_contracts_accept: false, required_business_cutoff_field: current_revenue_cutoff_date }
+  - assertion_id: technical_incremental_wow_exact_previous_metric
+    synthetic_input: { current_workflow_reporting_date: '2026-08-06', available_periods: ['2026-07-23', '2026-07-30'] }
+    expected_result: { expected_previous_revenue_workflow_reporting_date: '2026-07-30', metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1, store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL, older_fallback_used: false }
+  - assertion_id: technical_incremental_yoy_unique_denominator
+    synthetic_input: { owner_confirmed_option: A, candidate_sources: [validated_prior_year_incremental_metric, qtd_executed_revenue_amount, full_quarter_executed_revenue_amount] }
+    expected_result: { selected_source: validated_prior_year_incremental_metric, metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1, store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL, selected_source_count: 1, qtd_or_full_quarter_equivalence_allowed: false }
+  - assertion_id: prior_year_unavailable_failure_precedence
+    synthetic_input: { current_qtd_performance_valid: true, current_qtd_executed_valid: true, prior_year_source_available: false }
+    expected_result: { current_qtd_performance_status: valid_value, current_qtd_executed_status: valid_value, affected_yoy_status: missing, warning_required: true, current_revenue_scope_blocked: false }
+
 scenarios:
   - scenario_id: normal_week
     synthetic_input:

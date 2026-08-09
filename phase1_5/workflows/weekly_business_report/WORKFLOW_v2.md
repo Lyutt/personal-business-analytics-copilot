@@ -367,6 +367,14 @@ Workflow 级异常只用于：
 - Customer Revenue Detail 与 Weekly Workflow 无文件级依赖。
 - Outlook 只创建 Draft，`auto_send=false`。
 
+## Revenue-scoped context and history contract
+
+The core Workflow Run Context locks independently of Revenue availability. Revenue-only fields, including `current_revenue_cutoff_date`, `expected_previous_revenue_workflow_reporting_date`, `report_mode`, and `target_revenue_cutoff_date`, resolve only for activated Revenue scope. Failure to resolve them blocks Revenue scope only; validated non-Revenue Pipelines continue and may form an approved `partial_draft`.
+
+`expected_previous_revenue_workflow_reporting_date` is always `workflow_reporting_date - 7 calendar days`. Regular-week history reads must match that exact adjacent period and may not skip to an older successful output. Revenue Result Contract and Metric Store lineage records both `workflow_reporting_date` and `current_revenue_cutoff_date`; generic `cutoff_date` is not a Revenue business-cutoff substitute.
+
+Technical incremental WoW consumes the exact previous-period validated `MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1` from `STORE_ASSET_WEEKLY_REVENUE_TECHNICAL`. Technical incremental YoY uses the Owner-confirmed option A: the exact prior-year comparable validated instance of that same Metric and Store Asset. QTD or full-quarter `executed_revenue_amount` is not equivalent to an incremental denominator. Missing prior-year sources leave only dependent YoY fields blank with warning and do not invalidate otherwise valid current-period Revenue results.
+
 ## 16. Ad-hoc Analysis 最小边界
 
 - 一次性 Brief 先转换为 Analysis Request Contract，再通过 DCP Registry 进行 metadata 精确匹配。

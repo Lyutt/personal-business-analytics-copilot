@@ -60,6 +60,9 @@ readiness_records:
     store_asset_count: 4
     metric_and_formula_definitions_confirmed: true
     local_storage_contract_confirmed: true
+    revenue_date_lineage_fields_confirmed: [workflow_reporting_date, current_revenue_cutoff_date]
+    generic_cutoff_date_for_revenue_history_allowed: false
+    technical_incremental_exact_previous_and_prior_year_lookup_contracts_confirmed: true
     runtime_preconditions:
       - Resolve LOCAL_WORKFLOW_DATA_ROOT locally
       - Confirm required workbooks and worksheets exist
@@ -135,6 +138,8 @@ summary:
 
 gate_conclusion:
   metric_store_implementation_contracts: pass
+  weekly_revenue_date_lineage_contract: pass
+  technical_incremental_dependency_contract: pass
   code_implementation_start: wait_for_explicit_owner_approval
   end_to_end_runtime_acceptance: conditional
   runtime_acceptance_blocker_count: 3

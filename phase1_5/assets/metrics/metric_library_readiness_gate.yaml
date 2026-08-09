@@ -53,6 +53,10 @@ gate_checks:
   formulas_and_calculation_methods_explicit: pass
   aggregation_and_comparison_semantics_explicit: pass
   validation_and_failure_scope_explicit: pass
+  technical_incremental_wow_exact_previous_validated_metric_dependency: pass
+  technical_incremental_yoy_unique_owner_confirmed_store_metric_dependency: pass
+  technical_incremental_full_quarter_executed_equivalence_prohibited: pass
+  prior_year_unavailable_retains_valid_current_period_revenue_metrics: pass
   pipeline_metric_variant_bindings_explicit: pass
   metric_result_base_units_explicit: pass
   local_knowledge_pack_dependencies_explicit: pass

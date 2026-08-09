@@ -1498,6 +1498,7 @@ def validate_configured_display_value_policy(
             )
 
     baseline_file = "phase1_5/assets/readiness/implementation_baseline.yaml"
+    revenue_metric_file = "phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml"
     baseline = documents.get(baseline_file, {})
     frozen_versions = (
         baseline.get("frozen_asset_versions", {})
@@ -1958,6 +1959,8 @@ def validate_mvp_acceptance_semantics(
         "metric_variant_version",
         "reporting_period_start",
         "reporting_period_end",
+        "workflow_reporting_date",
+        "current_revenue_cutoff_date",
         "dimensions_json",
         "value_numeric",
         "numeric_semantics",
@@ -2497,6 +2500,9 @@ def validate_phase1_5_final_closure(
     """Validate the final Phase 1.5 runtime, persistence, and ad-hoc contracts."""
     checked = 0
     runtime_file = "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
+    revenue_metric_file = "phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml"
+    store_file = "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
+    scenarios_file = "phase1_5/tests/final_acceptance_scenarios.yaml"
     registry_file = "phase1_5/assets/pipelines/pipeline_registry.yaml"
     dataset_file = "phase1_5/assets/datasets/dataset_inventory.yaml"
     readiness_file = "phase1_5/assets/datasets/dataset_readiness_matrix.yaml"
@@ -2530,22 +2536,30 @@ def validate_phase1_5_final_closure(
         "comparison_period_start_date",
         "comparison_period_end_date",
         "cutoff_date",
+        "timezone",
+    }
+    required_revenue_scope_fields = {
         "current_revenue_cutoff_date",
-        "previous_successful_report_workflow_reporting_date",
+        "expected_previous_revenue_workflow_reporting_date",
         "target_report_period",
         "workflow_year",
         "target_fiscal_quarter",
         "target_previous_calendar_quarter",
         "report_mode",
         "target_revenue_cutoff_date",
-        "timezone",
     }
+    revenue_scope = context.get("revenue_scope_fields", {})
     if (
         runtime.get("workflow_id") != "WF_WEEKLY_BUSINESS_REPORT"
         or context.get("one_context_per_workflow_run") is not True
         or context.get("lock_before_any_pipeline_data_acquisition") is not True
+        or context.get("lock_before_any_pipeline_data_acquisition_scope") != "core required_fields only"
         or context.get("immutable_after_context_lock") is not True
         or set(context.get("required_fields", {})) != required_context_fields
+        or set(revenue_scope.get("fields", {})) != required_revenue_scope_fields
+        or revenue_scope.get("non_revenue_pipeline_continuation_required") is not True
+        or revenue_scope.get("partial_draft_allowed_under_existing_fallback") is not True
+        or revenue_scope.get("core_context_relock_or_mutation_allowed") is not False
         or context.get("required_fields", {}).get("run_type", {}).get("allowed_values")
         != ["scheduled", "manual", "backfill"]
         or context.get("query_parameter_authority", {}).get(
@@ -3756,6 +3770,9 @@ def validate_weekly_canonical_rule_context_bindings(
     """Close every approved Weekly Rule Context field without runtime aliases."""
 
     runtime_file = "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
+    revenue_metric_file = "phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml"
+    store_file = "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
+    scenarios_file = "phase1_5/tests/final_acceptance_scenarios.yaml"
     runtime = documents.get(runtime_file, {})
     binding_contract = runtime.get("canonical_rule_context_bindings", {})
     active_rules: dict[str, tuple[str, dict[str, Any]]] = {}
@@ -3920,6 +3937,94 @@ def validate_weekly_canonical_rule_context_bindings(
     ) is not False:
         errors.append("BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1: manual inputs retain Revenue cutoff semantics")
     checked += 2
+
+    canonical_fields = runtime.get("canonical_context_field_contracts", {})
+    expected_previous = canonical_fields.get("expected_previous_revenue_workflow_reporting_date", {})
+    previous_output_contract = report_mode_rule.get("actions", {}).get("previous_output_selection_contract", {})
+    if (
+        expected_previous.get("derivation") != "subtract exactly 7 calendar days under the locked Weekly cadence"
+        or expected_previous.get("successful-output-selection_influence_allowed") is not False
+        or expected_previous.get("older-period fallback") is not False
+        or previous_output_contract.get("older_successful_output_fallback_allowed") is not False
+        or previous_output_contract.get("report_mode_must_not_depend_on_output_existence") is not True
+    ):
+        errors.append(f"{runtime_file}: adjacent previous Revenue reporting-period contract is incomplete")
+    checked += 5
+
+    revenue_contract_files = [
+        "phase1_5/assets/result_contracts/RC_REVENUE_TECHNICAL_WEEKLY.yaml",
+        "phase1_5/assets/result_contracts/RC_REVENUE_CTV_WEEKLY.yaml",
+        "phase1_5/assets/result_contracts/RC_REVENUE_SMART_SPEAKER_WEEKLY.yaml",
+        "phase1_5/assets/result_contracts/RC_REVENUE_FAST_VERSION_WEEKLY.yaml",
+    ]
+    required_revenue_lineage = {"workflow_reporting_date", "current_revenue_cutoff_date"}
+    for contract_file in revenue_contract_files:
+        lineage = documents.get(contract_file, {}).get("lineage", {})
+        fields = set(lineage.get("required_instance_fields", []))
+        if (
+            not required_revenue_lineage.issubset(fields)
+            or "cutoff_date" in fields
+            or lineage.get("revenue_business_cutoff_field") != "current_revenue_cutoff_date"
+            or lineage.get("generic_cutoff_date_allowed") is not False
+        ):
+            errors.append(f"{contract_file}: Revenue date lineage is incomplete or uses generic cutoff_date")
+        checked += 4
+
+    revenue_metrics = {
+        item.get("metric_variant_id"): item
+        for item in documents.get(revenue_metric_file, {}).get("metric_variants", [])
+        if isinstance(item, dict)
+    }
+    incremental_id = "MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1"
+    wow_dependency = revenue_metrics.get(
+        "MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_WOW_V1", {}
+    ).get("denominator_result_dependency", {})
+    yoy_dependency = revenue_metrics.get(
+        "MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_YOY_V1", {}
+    ).get("denominator_result_dependency", {})
+    for dependency in (wow_dependency, yoy_dependency):
+        if (
+            dependency.get("metric_variant_id") != incremental_id
+            or dependency.get("store_asset_id") != "STORE_ASSET_WEEKLY_REVENUE_TECHNICAL"
+            or dependency.get("validation_status_required") != "passed"
+        ):
+            errors.append(f"{revenue_metric_file}: Technical incremental denominator binding is not exact")
+    if (
+        wow_dependency.get("reporting_period_selection")
+        != "exactly equals expected_previous_revenue_workflow_reporting_date"
+        or wow_dependency.get("older_successful_period_fallback_allowed") is not False
+        or yoy_dependency.get("owner_confirmation") != "confirmed_option_A_2026-08-09"
+        or yoy_dependency.get("unique_source_required") is not True
+        or yoy_dependency.get("qtd_or_full_quarter_executed_revenue_amount_equivalence_allowed") is not False
+    ):
+        errors.append(f"{revenue_metric_file}: Technical incremental WoW/YoY dependency policy is incomplete")
+    checked += 10
+
+    store = documents.get(store_file, {})
+    revenue_store = next(
+        (item for item in store.get("metric_result_stores", []) if item.get("store_id") == "STORE_WEEKLY_REVENUE_HISTORICAL"),
+        {},
+    )
+    date_lineage = revenue_store.get("revenue_date_lineage_contract", {})
+    if (
+        date_lineage.get("required_fields") != ["workflow_reporting_date", "current_revenue_cutoff_date"]
+        or date_lineage.get("generic_cutoff_date_allowed") is not False
+        or date_lineage.get("older_successful_period_fallback_allowed") is not False
+    ):
+        errors.append(f"{store_file}: Revenue Metric Store date lineage is incomplete")
+    checked += 3
+
+    assertions = documents.get(scenarios_file, {}).get("weekly_revenue_contract_assertions", [])
+    expected_assertion_ids = {
+        "revenue_context_missing_inventory_continues_partial_draft",
+        "revenue_result_lineage_rejects_generic_cutoff",
+        "technical_incremental_wow_exact_previous_metric",
+        "technical_incremental_yoy_unique_denominator",
+        "prior_year_unavailable_failure_precedence",
+    }
+    if {item.get("assertion_id") for item in assertions} != expected_assertion_ids:
+        errors.append(f"{scenarios_file}: Weekly Revenue cross-asset synthetic assertions are incomplete")
+    checked += 1
     email_rule = active_rules.get("BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1", ("", {}))[1]
     current_source_contract = email_rule.get("conditions", {}).get("current_weekly_source_selection_contract", {})
     if current_source_contract.get("current_source_pipeline_scope") != ["PL_REVENUE_TECHNICAL_WEEKLY"] or current_source_contract.get(

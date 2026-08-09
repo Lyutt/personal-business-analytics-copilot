@@ -9,6 +9,7 @@ workflow_run_context:
   context_id: WORKFLOW_RUN_CONTEXT_WF_WEEKLY_BUSINESS_REPORT_V1
   one_context_per_workflow_run: true
   lock_before_any_pipeline_data_acquisition: true
+  lock_before_any_pipeline_data_acquisition_scope: core required_fields only
   immutable_after_context_lock: true
   required_fields:
     workflow_run_id: { data_type: string, nullable: false }
@@ -23,15 +24,23 @@ workflow_run_context:
     comparison_period_start_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
     comparison_period_end_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
     cutoff_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: non-Revenue module query cutoff where explicitly bound; never an alias for current_revenue_cutoff_date }
-    current_revenue_cutoff_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: actual latest Revenue business-data date represented by the bound current source }
-    previous_successful_report_workflow_reporting_date: { data_type: date, nullable: false, format: YYYY-MM-DD }
-    target_report_period: { data_type: string, nullable: false }
-    workflow_year: { data_type: integer, nullable: false }
-    target_fiscal_quarter: { data_type: string, nullable: false, pattern_semantics: 'YYYYQ[1-4]' }
-    target_previous_calendar_quarter: { data_type: string, nullable: false, pattern_semantics: 'YYYYQ[1-4]' }
-    report_mode: { data_type: string, nullable: false, allowed_values: [regular_week, quarter_transition_week] }
-    target_revenue_cutoff_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: explicit canonical alias of current_revenue_cutoff_date for carry-forward Rule compatibility }
     timezone: { data_type: string, nullable: false, required_value: Asia/Shanghai }
+  revenue_scope_fields:
+    resolution_condition: Resolve and lock only when at least one Revenue Pipeline is activated for the Workflow Run.
+    failure_scope: Revenue Pipelines and Revenue output section only
+    non_revenue_pipeline_continuation_required: true
+    partial_draft_allowed_under_existing_fallback: true
+    resolution_and_lock_timing: after the core Context lock and Revenue manifest metadata binding, before the activated Revenue Pipeline acquires or processes business records
+    core_context_relock_or_mutation_allowed: false
+    fields:
+      current_revenue_cutoff_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: actual latest Revenue business-data date represented by the bound current source }
+      expected_previous_revenue_workflow_reporting_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: immediately adjacent prior Weekly reporting date }
+      target_report_period: { data_type: string, nullable: false }
+      workflow_year: { data_type: integer, nullable: false }
+      target_fiscal_quarter: { data_type: string, nullable: false, pattern_semantics: 'YYYYQ[1-4]' }
+      target_previous_calendar_quarter: { data_type: string, nullable: false, pattern_semantics: 'YYYYQ[1-4]' }
+      report_mode: { data_type: string, nullable: false, allowed_values: [regular_week, quarter_transition_week] }
+      target_revenue_cutoff_date: { data_type: date, nullable: false, format: YYYY-MM-DD, semantics: explicit canonical alias of current_revenue_cutoff_date for carry-forward Rule compatibility }
   period_rules:
     scheduled: Explicit scheduler input resolves and locks every required period field before any Pipeline starts.
     manual: Owner must provide the reporting period and cutoff date explicitly; execution timestamp is audit metadata only.
@@ -43,7 +52,7 @@ workflow_run_context:
     source_business_data_cutoff_date: per-manifest actual latest business date represented by that source instance
     current_revenue_cutoff_date: canonical current Revenue business-data cutoff bound from source_business_data_cutoff_date
     equality_between_reporting_source_report_and_business_cutoff_dates_required: false
-    report_mode_date_authority: workflow_reporting_date and previous_successful_report_workflow_reporting_date only
+    report_mode_date_authority: workflow_reporting_date and deterministically derived expected_previous_revenue_workflow_reporting_date only
     revenue_headers_or_filenames_labeled_as_cutoff_must_use: current_revenue_cutoff_date
   query_parameter_authority:
     outlook: workflow_run_context_and_run_input_manifest_only
@@ -52,7 +61,9 @@ workflow_run_context:
     actual_execution_date_business_date_inference_allowed: false
     filename_date_inference_allowed: false
     current_clock_date_fallback_allowed: false
-  invalid_context_action: Block the Workflow Run before data acquisition and notify owner.
+  invalid_context_action:
+    core_context_invalid: Block the Workflow Run before data acquisition and notify owner.
+    revenue_scope_context_invalid: Block Revenue scope only, notify owner, continue non-Revenue Pipelines, and permit partial_draft under the approved fallback.
 
 run_input_manifest:
   manifest_id: RUN_INPUT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1
@@ -102,19 +113,19 @@ run_input_manifest:
     period_role_must_resolve_from_workflow_run_context: true
     local_input_reference_must_resolve_without_entering_git: true
     product_parameter_required_for_product_scoped_pipeline: true
-    current_revenue_input_cutoff_must_equal_locked_current_revenue_cutoff_date: true
+    current_revenue_input_cutoff_must_equal_locked_current_revenue_cutoff_date_when_revenue_scope_active: true
     source_report_date_may_substitute_for_business_cutoff: false
 
 canonical_context_field_contracts:
   workflow_reporting_date: { source: scheduler target reporting date or explicit manual/backfill target report date, derivation: none, lock: before data acquisition }
   target_report_period: { source: reporting_period_id, derivation: exact canonical report-period identity, lock: before Business Rule Processing }
-  previous_successful_report_workflow_reporting_date: { source: immediately preceding validated Weekly output metadata, derivation: none, older-period fallback: false, lock: before report-mode selection }
-  current_revenue_cutoff_date: { source: current Revenue manifest source_business_data_cutoff_date, derivation: none, thursday_or_source_report_date_inference: false, lock: before Revenue data acquisition }
+  expected_previous_revenue_workflow_reporting_date: { scope: Revenue only, source: workflow_reporting_date, derivation: subtract exactly 7 calendar days under the locked Weekly cadence, successful-output-selection_influence_allowed: false, older-period fallback: false, lock: before report-mode selection }
+  current_revenue_cutoff_date: { scope: Revenue only, source: current Revenue manifest source_business_data_cutoff_date, derivation: none, thursday_or_source_report_date_inference: false, lock: before Revenue data acquisition }
   workflow_year: { source: target_fiscal_quarter, derivation: four-digit year component, lock: before Business Rule Processing }
   target_fiscal_quarter: { source: configured target report period, derivation: canonical YYYYQn value, lock: before Business Rule Processing }
   target_previous_calendar_quarter: { source: target_fiscal_quarter, derivation: immediately preceding Gregorian calendar quarter, lock: before Business Rule Processing }
-  report_mode: { source: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1, derivation: compare current and immediately preceding Workflow reporting-date fiscal quarters, revenue_cutoff_influence_allowed: false, lock: before dependent Revenue Rules }
-  target_revenue_cutoff_date: { source: current_revenue_cutoff_date, derivation: explicit exact canonical binding for BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1, lock: before Business Rule Processing }
+  report_mode: { scope: Revenue only, source: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1, derivation: compare current and deterministically adjacent previous Workflow reporting-date fiscal quarters, revenue_cutoff_influence_allowed: false, successful-output-existence_influence_allowed: false, lock: before dependent Revenue Rules }
+  target_revenue_cutoff_date: { scope: Revenue only, source: current_revenue_cutoff_date, derivation: explicit exact canonical binding for BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1, lock: before Business Rule Processing }
 
 canonical_rule_context_bindings:
   BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1:
@@ -137,7 +148,7 @@ canonical_rule_context_bindings:
   BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1:
     target_report_period: { canonical_field_id: target_report_period, source: reporting_period_id, derivation: exact canonical report-period identity, lock: before this Rule executes }
     workflow_reporting_date: { canonical_field_id: workflow_reporting_date, source: scheduler or explicit target report date, derivation: none, lock: before this Rule executes }
-    previous_successful_report_workflow_reporting_date: { canonical_field_id: previous_successful_report_workflow_reporting_date, source: immediately preceding validated Weekly output metadata, derivation: none, lock: before this Rule executes }
+    expected_previous_revenue_workflow_reporting_date: { canonical_field_id: expected_previous_revenue_workflow_reporting_date, source: workflow_reporting_date, derivation: subtract exactly 7 calendar days, successful-output-selection_influence_allowed: false, older-period fallback: false, lock: before this Rule executes }
   validation:
     all_active_business_rule_required_context_fields_must_match_exactly: true
     runtime_alias_guessing_allowed: false
@@ -212,6 +223,7 @@ workflow_completion_status:
     warning_required: true
     warning_minimum_fields: [pipeline_id, affected_report_scope, fallback_used, failure_summary]
     may_be_reported_as_complete_success: false
+    revenue_context_failure_is_eligible_when_non_revenue_results_are_reviewable: true
   blocked:
     condition: A Required failure has no approved Draft fallback, Workflow Run Context or Manifest is invalid, or Output Assembly cannot produce a reviewable Draft.
     draft_may_be_labeled_complete: false

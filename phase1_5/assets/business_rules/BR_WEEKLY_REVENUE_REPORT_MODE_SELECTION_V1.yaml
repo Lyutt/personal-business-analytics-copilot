@@ -36,7 +36,7 @@ inputs:
   required_context_fields:
     - target_report_period
     - workflow_reporting_date
-    - previous_successful_report_workflow_reporting_date
+    - expected_previous_revenue_workflow_reporting_date
   required_standard_fields: []
   required_result_contract_ids: []
 
@@ -44,11 +44,11 @@ conditions:
   quarter_transition_week:
     expression_semantics: >
       fiscal_quarter(workflow_reporting_date) differs from
-      fiscal_quarter(previous_successful_report_workflow_reporting_date)
+      fiscal_quarter(expected_previous_revenue_workflow_reporting_date)
   regular_week:
     expression_semantics: >
       fiscal_quarter(workflow_reporting_date) equals
-      fiscal_quarter(previous_successful_report_workflow_reporting_date)
+      fiscal_quarter(expected_previous_revenue_workflow_reporting_date)
   automatic_days_from_quarter_start_fallback_allowed: false
 
 actions:
@@ -64,11 +64,12 @@ actions:
   on_regular_week:
     set_context:
       report_mode: regular_week
-  on_missing_previous_successful_report:
-    - pause_revenue_section
-    - notify_owner
-    - request_owner_confirmation
-    - continue_non_revenue_pipelines
+  previous_output_selection_contract:
+    expected_previous_date_derivation: workflow_reporting_date minus exactly 7 calendar days
+    report_mode_must_not_depend_on_output_existence: true
+    regular_week_history_read_predicate: validated consumable output workflow_reporting_date exactly equals expected_previous_revenue_workflow_reporting_date
+    older_successful_output_fallback_allowed: false
+    missing_exact_previous_output_action: block only dependent Revenue history comparisons; continue current-period fields and non-Revenue Pipelines
   on_ambiguous_or_missing_calendar_configuration:
     - block_revenue_section_only
     - notify_owner

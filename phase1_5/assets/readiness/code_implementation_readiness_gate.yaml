@@ -96,6 +96,14 @@ implementation_readiness_checks:
   revenue_dataset_selection_uses_locked_workflow_reporting_date: pass
   source_report_date_and_business_cutoff_date_independent: pass
   manual_report_mode_excludes_revenue_cutoff_input: pass
+  weekly_core_context_independent_from_revenue_scope_resolution: pass
+  revenue_context_failure_scope_and_partial_draft: pass
+  expected_previous_revenue_reporting_date_adjacent_no_fallback: pass
+  four_weekly_revenue_result_contract_date_lineage: pass
+  revenue_metric_store_date_lineage: pass
+  technical_incremental_wow_exact_previous_metric_binding: pass
+  technical_incremental_yoy_unique_owner_confirmed_source: pass
+  prior_year_unavailable_field_level_failure_precedence: pass
   all_active_placeholder_forms_prohibited: pass
   weekly_field_mapping_profile_count_11_verified: pass
   run_input_manifest_explicit_binding: pass

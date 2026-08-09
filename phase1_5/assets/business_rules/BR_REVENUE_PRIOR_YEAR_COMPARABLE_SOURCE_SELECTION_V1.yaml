@@ -71,15 +71,18 @@ conditions:
 
 actions:
   on_file_not_found_or_multiple_matches_or_unreadable:
-    - pause_revenue_section
+    - mark_only_prior_year_dependent_yoy_fields_missing
+    - retain_valid_current_qtd_performance_and_executed_results
     - notify_owner
-    - request_owner_confirmation
+    - continue_other_valid_current_revenue_results
   on_one_business_line_result_failure:
-    - pause_affected_business_line_result
+    - mark_only_affected_business_line_yoy_fields_missing
+    - retain_affected_business_line_valid_current_qtd_performance_and_executed_results
     - notify_owner
     - allow_other_valid_business_line_result_to_continue
   on_both_business_line_results_failure:
-    - pause_revenue_section
+    - mark_all_prior_year_dependent_yoy_fields_missing
+    - retain_all_valid_current_qtd_performance_and_executed_results
     - notify_owner
   on_workflow_year_after_2026:
     - pause_comparable_source_selection
@@ -93,6 +96,18 @@ validation:
   metric_formula_defined_here: false
   owner_notification_required: true
   every_required_standard_field_must_exist_in_bound_mapping_profile: true
+  prior_year_source_failure_may_block_valid_current_period_revenue_results: false
+
+technical_incremental_yoy_denominator_contract:
+  owner_confirmed_option: A
+  source_metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+  source_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+  source_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
+  source_period: exact prior-year comparable period selected by this Rule
+  validation_status_required: passed
+  unique_source_required: true
+  business_line_executed_revenue_amount_may_substitute_for_incremental_metric: false
+  missing_or_invalid_action: mark weekly_incremental_executed_revenue_yoy missing, warn owner, and retain valid current-period Revenue fields
 
 dependency_gate:
   blocking_dependency: 业务线 Sheet incremental Field Mapping

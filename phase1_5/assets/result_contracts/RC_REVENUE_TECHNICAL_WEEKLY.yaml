@@ -112,5 +112,11 @@ validation:
   metric_variant_binding_check: true
   contract_completeness_check: true
 lineage:
-  required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, cutoff_date, report_mode, dataset_instance_ids, mapping_profile_versions, business_rule_versions, metric_variant_versions, generated_at, validation_status, approval_status]
+  required_instance_fields: [result_id, workflow_run_id, pipeline_run_id, reporting_period, workflow_reporting_date, current_revenue_cutoff_date, report_mode, dataset_instance_ids, mapping_profile_versions, business_rule_versions, metric_variant_versions, generated_at, validation_status, approval_status]
+  revenue_business_cutoff_field: current_revenue_cutoff_date
+  generic_cutoff_date_allowed: false
+  prior_year_unavailable_field_precedence:
+    retained_current_fields: [qtd_performance_revenue, qtd_executed_revenue]
+    missing_with_warning_fields: [qtd_performance_revenue_yoy, weekly_incremental_executed_revenue_yoy]
+    may_block_other_valid_current_revenue_fields: false
 constraints: { automatic_business_inference_allowed: false, output_mapping_may_calculate: false, unknown_business_values_remain_tbd: true }
