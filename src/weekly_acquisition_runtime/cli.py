@@ -6,9 +6,12 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+from time import perf_counter
+from typing import Any, Mapping
 
-from .adapters import AdapterRegistry
+from .adapters import AdapterRegistry, AdapterResult, QueryContract
 from .config_validation import build_input_binding_registry, load_yaml, validate_composition
 from .contracts import (
     AcquisitionMode,
@@ -19,6 +22,7 @@ from .contracts import (
 )
 from .draft_gate import evaluate_draft_gate
 from .errors import AcquisitionError, ProviderCapabilityError
+from .runtime import AcquisitionRuntime
 from .storage import LocalRuntimeStorage
 
 
@@ -30,6 +34,11 @@ DEFAULT_EXTENSION = (
     ROOT / "phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml"
 )
 DEFAULT_DATASET_INVENTORY = ROOT / "phase1_5/assets/datasets/dataset_inventory.yaml"
+DEFAULT_PIPELINE_REGISTRY = ROOT / "phase1_5/assets/pipelines/pipeline_registry.yaml"
+BROWSER_ACQUISITION_SOURCE_IDS = {
+    "SRC_INTERNAL_PLATFORM_APOLLO",
+    "SRC_INTERNAL_PLATFORM_NOVABI",
+}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -54,6 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
     acquire.add_argument("--runtime-bundle", type=Path, default=DEFAULT_RUNTIME_BUNDLE)
     acquire.add_argument("--extension", type=Path, default=DEFAULT_EXTENSION)
     acquire.add_argument("--dataset-inventory", type=Path, default=DEFAULT_DATASET_INVENTORY)
+    acquire.add_argument("--pipeline-registry", type=Path, default=DEFAULT_PIPELINE_REGISTRY)
 
     draft = sub.add_parser("request-draft-creation")
     draft.add_argument("--workflow-status", required=True)
@@ -61,6 +71,75 @@ def build_parser() -> argparse.ArgumentParser:
     draft.add_argument("--human-confirmation", action="store_true")
     draft.add_argument("--post-acceptance-auto-draft-owner-approved", action="store_true")
     return parser
+
+
+def _authoritative_query_parameters(
+    *,
+    contract: QueryContract,
+    context: LockedRunContext,
+    entry: RunInputEntry,
+    local_config: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Resolve every query parameter from an explicit allowed authority."""
+
+    bindings = local_config.get("query_parameter_bindings")
+    if not isinstance(bindings, Mapping):
+        raise ProviderCapabilityError(
+            "query_parameter_bindings is required; implicit Adapter parameters are prohibited"
+        )
+    expected_names = set(contract.parameters)
+    if set(bindings) != expected_names:
+        raise ProviderCapabilityError(
+            "query_parameter_bindings must exactly cover QueryContract.parameters"
+        )
+    manifest_values = {
+        **entry.business_key.as_dict(),
+        "dataset_version": entry.dataset_version,
+        "query_asset_id_or_not_applicable": entry.query_asset_binding.get(
+            "query_asset_id", "not_applicable"
+        ),
+        "source_report_date": entry.source_report_date,
+        "source_business_data_cutoff_date": entry.source_business_data_cutoff_date,
+    }
+    config_values = local_config.get("query_parameter_values", {})
+    if not isinstance(config_values, Mapping):
+        raise ProviderCapabilityError("query_parameter_values must be an object")
+    authorities: dict[str, Mapping[str, Any]] = {
+        "locked_run_context": context.values,
+        "run_input_manifest": manifest_values,
+        "local_runtime_config": config_values,
+    }
+    resolved: dict[str, Any] = {}
+    for parameter_name in sorted(expected_names):
+        specification = bindings[parameter_name]
+        if not isinstance(specification, Mapping) or set(specification) != {
+            "authority",
+            "field",
+        }:
+            raise ProviderCapabilityError(
+                f"Query parameter {parameter_name} requires exact authority and field binding"
+            )
+        authority = specification["authority"]
+        field = specification["field"]
+        if not isinstance(authority, str) or authority not in authorities:
+            raise ProviderCapabilityError(
+                f"Query parameter {parameter_name} uses an unsupported authority"
+            )
+        if not isinstance(field, str) or field not in authorities[authority]:
+            raise ProviderCapabilityError(
+                f"Query parameter {parameter_name} field is not explicitly bound"
+            )
+        value = authorities[authority][field]
+        if value is None:
+            raise ProviderCapabilityError(
+                f"Query parameter {parameter_name} cannot resolve to null"
+            )
+        resolved[parameter_name] = value
+    if resolved != dict(contract.parameters):
+        raise ProviderCapabilityError(
+            "QueryContract.parameters do not match the locked Context and explicit Manifest/config binding"
+        )
+    return resolved
 
 
 def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None) -> int:
@@ -79,7 +158,9 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
             extension = load_yaml(args.extension)
             validate_composition(runtime_bundle, extension)
             input_registry = build_input_binding_registry(
-                extension, load_yaml(args.dataset_inventory)
+                extension,
+                load_yaml(args.dataset_inventory),
+                load_yaml(args.pipeline_registry),
             )
             local_root = os.environ.get("LOCAL_WORKFLOW_DATA_ROOT_LOCAL_ONLY")
             if not local_root:
@@ -95,8 +176,9 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
                     "local_runtime_config_reference does not resolve to a local config file"
                 )
             local_config = json.loads(config_path.read_text(encoding="utf-8"))
-            context = LockedRunContext.lock(local_config["run_context"])
-            if context.workflow_run_id != args.workflow_run_id:
+            runtime = AcquisitionRuntime(storage, input_registry)
+            run = runtime.start_run(local_config["run_context"])
+            if run.context.workflow_run_id != args.workflow_run_id:
                 raise ProviderCapabilityError(
                     "workflow_run_id does not match the locked local Run Context"
                 )
@@ -136,15 +218,7 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
                 acquisition_mode=AcquisitionMode.AUTOMATED,
             )
             entry.validate(input_registry, require_attempt_binding=False)
-            if binding.source_id == "SRC_CORP_OUTLOOK_PRIMARY_MAILBOX":
-                if entry.source_report_date != context.values["workflow_reporting_date"]:
-                    raise ProviderCapabilityError(
-                        "Outlook source_report_date does not match the locked workflow_reporting_date"
-                    )
-                if entry.source_business_data_cutoff_date == "not_applicable":
-                    raise ProviderCapabilityError(
-                        "Outlook Revenue input requires source_business_data_cutoff_date"
-                    )
+            runtime.declare_input(run, entry)
             LocalRuntimeStorage._safe_component(
                 args.acquisition_attempt_id, "acquisition_attempt_id"
             )
@@ -154,12 +228,13 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
                 )
             adapter = registry.require(args.adapter_id)
             adapter_contract = getattr(adapter, "contract", None)
-            if adapter_contract is not None and any(
+            if not isinstance(adapter_contract, QueryContract) or any(
                 (
-                    getattr(adapter_contract, "adapter_id", None) != args.adapter_id,
-                    getattr(adapter_contract, "dataset_id", None) != args.dataset_id,
-                    getattr(adapter_contract, "query_asset_id", None)
+                    adapter_contract.adapter_id != args.adapter_id,
+                    adapter_contract.dataset_id != args.dataset_id,
+                    adapter_contract.query_asset_id
                     != args.query_asset_id_or_not_applicable,
+                    adapter_contract.source_id != binding.source_id,
                 )
             ):
                 raise ProviderCapabilityError(
@@ -170,7 +245,54 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
                 raise ProviderCapabilityError(
                     "Configured Adapter does not expose the acquisition boundary; fallback is prohibited"
                 )
-            acquire_boundary()
+            attempt_root = runtime.create_attempt(
+                run, key, args.acquisition_attempt_id
+            )
+            _authoritative_query_parameters(
+                contract=adapter_contract,
+                context=run.context,
+                entry=entry,
+                local_config=local_config,
+            )
+            browser_lock = None
+            if binding.source_id in BROWSER_ACQUISITION_SOURCE_IDS:
+                browser_lock = runtime.browser_lock()
+                browser_lock.acquire(
+                    {
+                        "workflow_run_id": args.workflow_run_id,
+                        "acquisition_attempt_id": args.acquisition_attempt_id,
+                        "adapter_id": args.adapter_id,
+                        "acquired_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+            try:
+                started = datetime.now(timezone.utc)
+                started_clock = perf_counter()
+                result = acquire_boundary()
+                completed = datetime.now(timezone.utc)
+                if not isinstance(result, AdapterResult):
+                    raise ProviderCapabilityError(
+                        "Configured Adapter returned no valid acquisition result; fallback is prohibited"
+                    )
+                manifest, manifest_reference = runtime.persist_automated_result(
+                    run=run,
+                    business_key=key,
+                    attempt_id=args.acquisition_attempt_id,
+                    attempt_root=attempt_root,
+                    query_contract=adapter_contract,
+                    result=result,
+                    started_at=started.isoformat(),
+                    completed_at=completed.isoformat(),
+                    duration_ms=max(0, round((perf_counter() - started_clock) * 1000)),
+                )
+            finally:
+                if browser_lock is not None:
+                    browser_lock.release()
+            runtime.bind_successful_attempt(
+                run, key, manifest, manifest_reference
+            )
+            run_manifest_reference = runtime.finalize_run_input_manifest(run)
+            runtime.consume_bound_input(run, key)
             print(
                 json.dumps(
                     {
@@ -178,6 +300,8 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
                         "workflow_run_id": args.workflow_run_id,
                         "acquisition_attempt_id": args.acquisition_attempt_id,
                         "dataset_id": args.dataset_id,
+                        "attempt_manifest_reference": manifest_reference,
+                        "run_input_manifest_reference": run_manifest_reference,
                     },
                     sort_keys=True,
                 )

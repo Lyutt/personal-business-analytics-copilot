@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Mapping
 
+from .adapters import AdapterResult, QueryContract
 from .browser_lock import BrowserAcquisitionLock
 from .contracts import (
     AcquisitionMode,
@@ -89,6 +91,84 @@ class AcquisitionRuntime:
         manifest_path = attempt_root / "manifests" / "attempt_manifest.json"
         self.storage.write_json_exclusive(manifest_path, manifest.as_dict())
         return self.storage.opaque_reference(manifest_path)
+
+    def persist_automated_result(
+        self,
+        *,
+        run: RuntimeRun,
+        business_key: BusinessKey,
+        attempt_id: str,
+        attempt_root: Path,
+        query_contract: QueryContract,
+        result: AdapterResult,
+        started_at: str,
+        completed_at: str,
+        duration_ms: int,
+    ) -> tuple[AttemptManifest, str]:
+        """Validate and persist one automated result under its pre-created Attempt."""
+
+        entry = run.run_input_manifest.get_entry(business_key)
+        if entry.acquisition_mode is not AcquisitionMode.AUTOMATED:
+            raise ContractViolation("Automated result requires acquisition_mode=automated")
+        registered = self.input_binding_registry.require(business_key.dataset_id)
+        expected_attempt_root = (
+            self.storage.root
+            / "runs"
+            / run.context.workflow_run_id
+            / "attempts"
+            / attempt_id
+        ).resolve()
+        if attempt_root.resolve() != expected_attempt_root:
+            raise ContractViolation("Automated result Attempt path does not match the explicit Attempt ID")
+        if any(
+            (
+                query_contract.adapter_id != registered.adapter_id,
+                query_contract.source_id != registered.source_id,
+                query_contract.dataset_id != business_key.dataset_id,
+                query_contract.query_asset_id
+                != registered.query_asset_id_or_not_applicable,
+            )
+        ):
+            raise ContractViolation("Query Contract does not match the explicit Dataset binding")
+        if dict(result.normalized_parameter_readback) != dict(query_contract.parameters):
+            raise ContractViolation("Automated result parameter readback is not an exact match")
+        if tuple(result.columns) != tuple(query_contract.expected_columns):
+            raise ContractViolation("Automated result schema is not an exact match")
+
+        input_path = attempt_root / "inputs" / "automated_result.json"
+        self.storage.write_json_exclusive(
+            input_path,
+            {
+                "columns": list(result.columns),
+                "rows": [dict(row) for row in result.rows],
+            },
+        )
+        input_reference = self.storage.opaque_reference(input_path)
+        schema_payload = json.dumps(
+            list(result.columns), ensure_ascii=False, separators=(",", ":")
+        ).encode("utf-8")
+        manifest = AttemptManifest(
+            business_key=business_key,
+            acquisition_attempt_id=attempt_id,
+            acquisition_mode=AcquisitionMode.AUTOMATED,
+            adapter_id=query_contract.adapter_id,
+            adapter_version=query_contract.adapter_version,
+            provider_id=query_contract.provider_id,
+            query_asset_id_or_not_applicable=query_contract.query_asset_id,
+            normalized_parameter_readback=dict(result.normalized_parameter_readback),
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+            session_status_code=result.session_status_code,
+            local_input_opaque_reference=input_reference,
+            sha256=self.storage.sha256(input_path),
+            row_count_or_not_applicable=len(result.rows),
+            schema_fingerprint_or_not_applicable=hashlib.sha256(schema_payload).hexdigest(),
+            page_contract_version_or_not_applicable=query_contract.page_contract_version,
+            validation_status="passed",
+        )
+        manifest.require_passed()
+        return manifest, self.persist_attempt_manifest(attempt_root, manifest)
 
     def bind_successful_attempt(
         self,

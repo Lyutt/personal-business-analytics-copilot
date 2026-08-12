@@ -24,6 +24,8 @@ PERIOD_ROLES = {
 QUERY_BINDING_STATUSES = {"bound", NOT_APPLICABLE}
 _DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}\Z")
 _SHA256_PATTERN = re.compile(r"[0-9a-fA-F]{64}\Z")
+_VERSION_PATTERN = re.compile(r"(\d+)\.(\d+)\.(\d+)\Z")
+_VERSION_CLAUSE_PATTERN = re.compile(r"(>=|<=|==|>|<)(\d+\.\d+\.\d+)\Z")
 
 
 class AcquisitionMode(str, Enum):
@@ -60,6 +62,44 @@ def _iso_datetime(value: object, field_name: str) -> str:
     if parsed.tzinfo is None:
         raise ContractViolation(f"{field_name} must include a timezone offset")
     return text
+
+
+def _version_tuple(value: object, field_name: str) -> tuple[int, int, int]:
+    text = _required_text(value, field_name)
+    match = _VERSION_PATTERN.fullmatch(text)
+    if match is None:
+        raise ContractViolation(f"{field_name} must use MAJOR.MINOR.PATCH")
+    return tuple(int(part) for part in match.groups())
+
+
+def _version_clauses(constraint: str) -> list[tuple[str, tuple[int, int, int]]]:
+    clauses = []
+    for raw_clause in constraint.split(","):
+        clause = raw_clause.strip()
+        match = _VERSION_CLAUSE_PATTERN.fullmatch(clause)
+        if match is None:
+            raise ContractViolation(
+                f"Unsupported Pipeline dataset_version_constraint: {constraint}"
+            )
+        operator, required_text = match.groups()
+        required = _version_tuple(required_text, "dataset_version_constraint")
+        clauses.append((operator, required))
+    return clauses
+
+
+def _version_satisfies(version: str, constraint: str) -> bool:
+    candidate = _version_tuple(version, "dataset_version")
+    for operator, required in _version_clauses(constraint):
+        comparisons = {
+            ">=": candidate >= required,
+            "<=": candidate <= required,
+            "==": candidate == required,
+            ">": candidate > required,
+            "<": candidate < required,
+        }
+        if not comparisons[operator]:
+            return False
+    return True
 
 
 @dataclass(frozen=True)
@@ -159,6 +199,7 @@ class RegisteredInputBinding:
     adapter_id: str
     source_id: str
     product_scoped: bool = False
+    dataset_version_constraints: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         for name in (
@@ -168,6 +209,8 @@ class RegisteredInputBinding:
             "source_id",
         ):
             _required_text(getattr(self, name), name)
+        for constraint in self.dataset_version_constraints:
+            _version_clauses(constraint)
 
 
 @dataclass(frozen=True)
@@ -205,6 +248,17 @@ class InputBindingRegistry:
         if binding.product_scoped and product == NOT_APPLICABLE:
             raise ContractViolation("product-scoped input requires an explicit product_parameter")
         return binding
+
+    def validate_dataset_version(self, dataset_id: object, dataset_version: object) -> None:
+        binding = self.require(dataset_id)
+        version = _required_text(dataset_version, "dataset_version")
+        _version_tuple(version, "dataset_version")
+        for constraint in binding.dataset_version_constraints:
+            if not _version_satisfies(version, constraint):
+                raise ContractViolation(
+                    "Run Input dataset_version does not satisfy the Pipeline Registry "
+                    f"constraint for {binding.dataset_id}: {constraint}"
+                )
 
 
 @dataclass(frozen=True)
@@ -361,6 +415,9 @@ class RunInputEntry:
         )
         if registry is not None:
             registered = registry.require(self.business_key.dataset_id)
+            registry.validate_dataset_version(
+                self.business_key.dataset_id, self.dataset_version
+            )
             expected_query = registered.query_asset_id_or_not_applicable
             if query_asset_id != expected_query:
                 raise ContractViolation("Query Asset does not match the registered Dataset binding")

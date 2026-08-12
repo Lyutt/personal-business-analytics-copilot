@@ -72,7 +72,7 @@ def validate_composition(runtime_bundle: dict[str, Any], extension: dict[str, An
 
 
 def build_input_binding_registry(
-    extension: dict[str, Any], dataset_inventory: dict[str, Any]
+    extension: dict[str, Any], dataset_inventory: dict[str, Any], pipeline_registry: dict[str, Any]
 ) -> InputBindingRegistry:
     """Build exact Dataset/Query/Adapter bindings without name similarity or inference."""
 
@@ -92,6 +92,24 @@ def build_input_binding_registry(
             "product_scoped_dataset_ids", []
         )
     )
+    pipelines = pipeline_registry.get("pipelines")
+    if not isinstance(pipelines, list):
+        raise ContractViolation("Pipeline Registry pipelines is missing")
+    workflow_id = extension["workflow_id"]
+    constraints_by_dataset: dict[str, set[str]] = {}
+    for pipeline in pipelines:
+        if not isinstance(pipeline, dict) or not any(
+            isinstance(workflow, dict) and workflow.get("workflow_id") == workflow_id
+            for workflow in pipeline.get("workflow_bindings", [])
+        ):
+            continue
+        for dependency in pipeline.get("dataset_dependencies", []):
+            if not isinstance(dependency, dict):
+                continue
+            dataset_id = dependency.get("dataset_id")
+            constraint = dependency.get("dataset_version_constraint")
+            if isinstance(dataset_id, str) and isinstance(constraint, str):
+                constraints_by_dataset.setdefault(dataset_id, set()).add(constraint)
     bindings: dict[str, RegisteredInputBinding] = {}
     for source_id, source_binding in source_bindings.items():
         if source_id == "validation":
@@ -122,6 +140,9 @@ def build_input_binding_registry(
                 adapter_id=adapter_id,
                 source_id=source_id,
                 product_scoped=dataset_id in product_scoped,
+                dataset_version_constraints=tuple(
+                    sorted(constraints_by_dataset.get(dataset_id, set()))
+                ),
             )
     unknown_product_scope = product_scoped - set(bindings)
     if unknown_product_scope:
@@ -129,6 +150,6 @@ def build_input_binding_registry(
             f"product_scoped_dataset_ids are not registered: {sorted(unknown_product_scope)}"
         )
     return InputBindingRegistry(
-        workflow_id=extension["workflow_id"],
+        workflow_id=workflow_id,
         bindings=MappingProxyType(bindings),
     )

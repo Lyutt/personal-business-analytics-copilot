@@ -74,11 +74,11 @@ class LocalRuntimeStorage:
 
     @staticmethod
     def write_json_exclusive(path: Path, value: Any) -> None:
+        payload = json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
         path.parent.mkdir(parents=True, exist_ok=True)
         try:
             with path.open("x", encoding="utf-8", newline="\n") as handle:
-                json.dump(value, handle, ensure_ascii=False, sort_keys=True, indent=2)
-                handle.write("\n")
+                handle.write(payload)
         except FileExistsError as exc:
             raise ImmutableArtifactError(f"Artifact already exists: {path.name}") from exc
 

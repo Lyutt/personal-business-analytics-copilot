@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from weekly_acquisition_runtime.adapters import (  # noqa: E402
     ApolloQueryAdapter,
+    AdapterResult,
     AdapterRegistry,
     QueryContract,
     SessionExpired,
@@ -23,7 +24,11 @@ from weekly_acquisition_runtime.adapters import (  # noqa: E402
 )
 from weekly_acquisition_runtime.browser_lock import BrowserAcquisitionLock  # noqa: E402
 from weekly_acquisition_runtime.config_validation import load_yaml, validate_composition  # noqa: E402
-from weekly_acquisition_runtime.cli import build_parser, main as cli_main  # noqa: E402
+from weekly_acquisition_runtime.cli import (  # noqa: E402
+    BROWSER_ACQUISITION_SOURCE_IDS,
+    build_parser,
+    main as cli_main,
+)
 from weekly_acquisition_runtime.contracts import (  # noqa: E402
     AcquisitionMode,
     AttemptManifest,
@@ -105,6 +110,7 @@ def synthetic_registry() -> InputBindingRegistry:
                 query_asset_id_or_not_applicable="QRY_SYNTH_EXACT",
                 adapter_id="ADP_SYNTH_EXACT_V1",
                 source_id="SRC_SYNTH",
+                dataset_version_constraints=(">=0.1.0,<0.2.0",),
             ),
             "DS_PRODUCT_SYNTH": RegisteredInputBinding(
                 dataset_id="DS_PRODUCT_SYNTH",
@@ -222,6 +228,29 @@ class RuntimeChainTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(Exception, "passed"):
             failed.require_passed()
+
+    def test_automated_attempt_without_passed_manifest_cannot_be_consumed(self) -> None:
+        run = self.runtime.start_run(context())
+        key = BusinessKey("RUN_SYNTH_001", "DS_SYNTH", "current", "not_applicable")
+        self.runtime.declare_input(run, entry(key, AcquisitionMode.AUTOMATED))
+        attempt_root = self.runtime.create_attempt(run, key, "ATTEMPT_INCOMPLETE")
+        with self.assertRaises(UnboundInputError):
+            self.runtime.consume_bound_input(run, key)
+        failed = AttemptManifest(
+            business_key=key,
+            acquisition_attempt_id="ATTEMPT_INCOMPLETE",
+            acquisition_mode=AcquisitionMode.AUTOMATED,
+            local_input_opaque_reference=self.storage.opaque_reference(
+                attempt_root / "inputs" / "automated_result.json"
+            ),
+            sha256="0" * 64,
+            **{**manifest_fields(), "validation_status": "failed"},
+        )
+        reference = self.runtime.persist_attempt_manifest(attempt_root, failed)
+        with self.assertRaisesRegex(ContractViolation, "passed"):
+            self.runtime.bind_successful_attempt(run, key, failed, reference)
+        with self.assertRaises(UnboundInputError):
+            self.runtime.consume_bound_input(run, key)
 
     def test_legacy_input_uses_not_applicable_binding(self) -> None:
         run = self.runtime.start_run(context())
@@ -387,6 +416,15 @@ class BoundaryTests(unittest.TestCase):
                 lock.acquire({"workflow_run_id": "RUN_NEW"})
             self.assertEqual(json.loads(lock.path.read_text())["workflow_run_id"], "RUN_OLD")
 
+    def test_browser_lock_scope_excludes_outlook(self) -> None:
+        self.assertEqual(
+            BROWSER_ACQUISITION_SOURCE_IDS,
+            {
+                "SRC_INTERNAL_PLATFORM_APOLLO",
+                "SRC_INTERNAL_PLATFORM_NOVABI",
+            },
+        )
+
     def test_draft_activation_gate(self) -> None:
         self.assertFalse(
             evaluate_draft_gate(
@@ -503,9 +541,19 @@ class ExplicitBindingCliTests(unittest.TestCase):
                     "run_context": context(),
                     "period_role": "current",
                     "product_parameter": "not_applicable",
-                    "dataset_version": "1.0.0",
+                    "dataset_version": "0.1.0",
                     "source_report_date": "not_applicable",
                     "source_business_data_cutoff_date": "2026-01-07",
+                    "query_parameter_bindings": {
+                        "period_start": {
+                            "authority": "locked_run_context",
+                            "field": "current_period_start_date",
+                        },
+                        "period_end": {
+                            "authority": "locked_run_context",
+                            "field": "current_period_end_date",
+                        },
+                    },
                 }
             ),
             encoding="utf-8",
@@ -547,6 +595,48 @@ class ExplicitBindingCliTests(unittest.TestCase):
     def invoke(self, args: list[str], registry: AdapterRegistry | None = None) -> int:
         return self.invoke_with_output(args, registry)[0]
 
+    @staticmethod
+    def adapter_contract(
+        *,
+        adapter_id: str = "ADP_INTERNAL_APOLLO_QUERY_V1",
+        provider_id: str = "PRV_INTERNAL_APOLLO_PLAYWRIGHT_V1",
+        source_id: str = "SRC_INTERNAL_PLATFORM_APOLLO",
+        dataset_id: str = "DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY",
+        query_asset_id: str = "QRY_APOLLO_QISHENG_EXECUTION_REVENUE",
+    ) -> QueryContract:
+        return QueryContract(
+            adapter_id=adapter_id,
+            adapter_version="1.0.0",
+            provider_id=provider_id,
+            source_id=source_id,
+            dataset_id=dataset_id,
+            query_asset_id=query_asset_id,
+            module_id="MODULE_EXACT",
+            template_id="TEMPLATE_EXACT",
+            parameters={
+                "period_start": "2026-01-01",
+                "period_end": "2026-01-07",
+            },
+            expected_columns=("date", "value"),
+            page_contract_version="PAGE_SYNTH_V1",
+        )
+
+    class FakeAdapter:
+        def __init__(self, contract: QueryContract) -> None:
+            self.contract = contract
+            self.called = False
+
+        def acquire(self) -> AdapterResult:
+            self.called = True
+            return AdapterResult(
+                normalized_parameter_readback=dict(self.contract.parameters),
+                columns=self.contract.expected_columns,
+                rows=({"date": "2026-01-01", "value": 1},),
+                session_status_code="active",
+                recovery_refresh_count=0,
+                recovery_query_count=0,
+            )
+
     def test_all_explicit_fields_validate_before_provider_block(self) -> None:
         result, _, error = self.invoke_with_output(self.args)
         self.assertEqual(result, 2)
@@ -579,13 +669,7 @@ class ExplicitBindingCliTests(unittest.TestCase):
         )
 
     def test_invalid_binding_never_calls_adapter_boundary(self) -> None:
-        class FakeAdapter:
-            called = False
-
-            def acquire(self) -> None:
-                self.called = True
-
-        adapter = FakeAdapter()
+        adapter = self.FakeAdapter(self.adapter_contract())
         registry = AdapterRegistry()
         registry.register("ADP_INTERNAL_APOLLO_QUERY_V1", adapter)
         args = list(self.args)
@@ -593,18 +677,113 @@ class ExplicitBindingCliTests(unittest.TestCase):
         self.assertEqual(self.invoke(args, registry), 2)
         self.assertFalse(adapter.called)
 
-    def test_valid_explicit_binding_calls_exact_adapter_boundary(self) -> None:
-        class FakeAdapter:
-            called = False
-
-            def acquire(self) -> None:
-                self.called = True
-
-        adapter = FakeAdapter()
+    def test_automated_acquisition_persists_binds_and_consumes(self) -> None:
+        adapter = self.FakeAdapter(self.adapter_contract())
         registry = AdapterRegistry()
         registry.register("ADP_INTERNAL_APOLLO_QUERY_V1", adapter)
-        self.assertEqual(self.invoke(self.args, registry), 0)
+        result, output, error = self.invoke_with_output(self.args, registry)
+        self.assertEqual((result, error), (0, ""))
         self.assertTrue(adapter.called)
+        response = json.loads(output)
+        manifest_path = self.runtime_root / Path(
+            *response["attempt_manifest_reference"].split("/")
+        )
+        run_manifest_path = self.runtime_root / Path(
+            *response["run_input_manifest_reference"].split("/")
+        )
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        run_manifest = json.loads(run_manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["validation_status"], "passed")
+        self.assertEqual(
+            run_manifest["entries"][0]["acquisition_attempt_binding"],
+            {
+                "acquisition_attempt_id": "ATTEMPT_CLI_001",
+                "attempt_manifest_reference": response["attempt_manifest_reference"],
+            },
+        )
+        input_path = self.runtime_root / Path(
+            *manifest["local_input_opaque_reference"].split("/")
+        )
+        self.assertTrue(input_path.is_file())
+        lock_state = json.loads(
+            (self.runtime_root / "state/global_browser_acquisition_lock.json").read_text()
+        )
+        self.assertEqual(lock_state["status"], "released")
+
+    def test_browser_lock_occupied_never_calls_adapter(self) -> None:
+        adapter = self.FakeAdapter(self.adapter_contract())
+        registry = AdapterRegistry()
+        registry.register("ADP_INTERNAL_APOLLO_QUERY_V1", adapter)
+        lock = BrowserAcquisitionLock(self.runtime_root / "state")
+        lock.acquire({"workflow_run_id": "RUN_OTHER", "acquisition_attempt_id": "OTHER"})
+        try:
+            result, _, error = self.invoke_with_output(self.args, registry)
+            self.assertEqual(result, 2)
+            self.assertIn("occupied", error)
+            self.assertFalse(adapter.called)
+        finally:
+            lock.release()
+
+    def test_query_parameter_authority_mismatch_blocks_before_adapter(self) -> None:
+        adapter = self.FakeAdapter(
+            QueryContract(
+                **{
+                    **self.adapter_contract().__dict__,
+                    "parameters": {
+                        "period_start": "2026-01-02",
+                        "period_end": "2026-01-07",
+                    },
+                }
+            )
+        )
+        registry = AdapterRegistry()
+        registry.register("ADP_INTERNAL_APOLLO_QUERY_V1", adapter)
+        result, _, error = self.invoke_with_output(self.args, registry)
+        self.assertEqual(result, 2)
+        self.assertIn("locked Context", error)
+        self.assertFalse(adapter.called)
+
+    def test_dataset_version_constraint_blocks_before_adapter(self) -> None:
+        config_path = self.runtime_root / "runtime-config/explicit.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["dataset_version"] = "1.0.0"
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        adapter = self.FakeAdapter(self.adapter_contract())
+        registry = AdapterRegistry()
+        registry.register("ADP_INTERNAL_APOLLO_QUERY_V1", adapter)
+        result, _, error = self.invoke_with_output(self.args, registry)
+        self.assertEqual(result, 2)
+        self.assertIn("dataset_version", error)
+        self.assertFalse(adapter.called)
+
+    def test_novabi_acquisition_releases_browser_lock(self) -> None:
+        config_path = self.runtime_root / "runtime-config/explicit.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["run_context"]["workflow_run_id"] = "RUN_SYNTH_NOVABI"
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        contract = self.adapter_contract(
+            adapter_id="ADP_NOVABI_QUERY_V1",
+            provider_id="PRV_NOVABI_PLAYWRIGHT_V1",
+            source_id="SRC_INTERNAL_PLATFORM_NOVABI",
+            dataset_id="DS_NOVABI_PLATFORM_DAU",
+            query_asset_id="QRY_NOVABI_DAU_QUERY",
+        )
+        adapter = self.FakeAdapter(contract)
+        registry = AdapterRegistry()
+        registry.register("ADP_NOVABI_QUERY_V1", adapter)
+        args = [
+            value.replace("RUN_SYNTH_001", "RUN_SYNTH_NOVABI")
+            .replace("ADP_INTERNAL_APOLLO_QUERY_V1", "ADP_NOVABI_QUERY_V1")
+            .replace("DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY", "DS_NOVABI_PLATFORM_DAU")
+            .replace("QRY_APOLLO_QISHENG_EXECUTION_REVENUE", "QRY_NOVABI_DAU_QUERY")
+            for value in self.args
+        ]
+        self.assertEqual(self.invoke(args, registry), 0)
+        self.assertTrue(adapter.called)
+        lock_state = json.loads(
+            (self.runtime_root / "state/global_browser_acquisition_lock.json").read_text()
+        )
+        self.assertEqual(lock_state["status"], "released")
 
 
 class CandidateCompositionTests(unittest.TestCase):
