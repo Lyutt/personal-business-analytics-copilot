@@ -1,7 +1,7 @@
 config_type: weekly_acquisition_extension_contract
 contract_id: ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1
 contract_version: 1.1.0
-status: stage2_implementation_validated_pending_draft_pr
+status: stage2_implementation_validated_draft_pr_created
 owner: WORKFLOW_OWNER
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 contains_real_business_data: false

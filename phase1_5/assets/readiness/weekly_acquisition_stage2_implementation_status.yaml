@@ -1,7 +1,7 @@
 config_type: stage2_implementation_status
 implementation_id: STAGE2_WEEKLY_ACQUISITION_RUNTIME_V1_1
 implementation_version: 1.0.0
-status: implementation_and_local_validation_completed_pending_draft_pr
+status: implementation_and_local_validation_completed_draft_pr_created
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 owner: WORKFLOW_OWNER
 implementation_start_date: 2026-08-12
@@ -48,6 +48,7 @@ implementation_units:
 git_delivery:
   branch: codex/weekly-acquisition-runtime-v1-1
   draft_pr_required: true
+  draft_pr_created: true
   direct_main_modification_allowed: false
   merge_authorized: false
 

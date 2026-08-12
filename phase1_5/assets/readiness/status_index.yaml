@@ -177,7 +177,7 @@ stage1_acquisition_design_change:
 
 stage2_acquisition_runtime_implementation:
   authorization_date: 2026-08-12
-  status: implementation_and_local_validation_completed_pending_draft_pr
+  status: implementation_and_local_validation_completed_draft_pr_created
   implementation_status_source: phase1_5/assets/readiness/weekly_acquisition_stage2_implementation_status.yaml
   authorized_runtime_bundle_candidate: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_1_CANDIDATE
   authorized_acquisition_extension_contract: ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1

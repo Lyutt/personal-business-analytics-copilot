@@ -689,6 +689,7 @@ asset_rules:
       - implementation_units[].status
       - implementation_units[].contract_sections
       - git_delivery
+      - git_delivery.draft_pr_created
       - local_validation_result
 
   - asset_type: data_capability_profile_registry
