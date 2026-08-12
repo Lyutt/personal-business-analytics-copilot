@@ -264,6 +264,8 @@ acquisition_automation_contract_binding:
   composition_role: acquisition_extension_sidecar
   runtime_contract_replacement_allowed: false
   direct_replacement_classification: not_applicable
+  stage2_implementation_authorization_source: this_acquisition_automation_binding
+  inherited_runtime_governance_code_implementation_authorized_remains: false
   inherited_runtime_contract:
     source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
     version: 1.0.0
@@ -338,4 +340,5 @@ acquisition_automation_contract_binding:
     stage2_authorized: true
     code_implementation_started: true
     runtime_code_authorized: true
+    authorization_source: acquisition_automation_contract_binding
     automatic_next_stage_allowed: false

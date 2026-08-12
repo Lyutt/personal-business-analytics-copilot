@@ -155,7 +155,7 @@ constraints:
 
 stage1_acquisition_design_change:
   decision_freeze_date: 2026-08-12
-  design_asset_modification_status: compatibility_diff_c1_c2_c3_closed_pending_stage2_owner_approval
+  design_asset_modification_status: compatibility_diff_c1_c2_c3_closed_stage2_owner_approved
   change_set_source: phase1_5/assets/readiness/weekly_acquisition_stage1_change_set_v1_1_candidate.yaml
   candidate_runtime_bundle_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml
   candidate_contract_source: phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml
@@ -169,8 +169,9 @@ stage1_acquisition_design_change:
   sidecar_compatibility: pass
   breaking_change_requiring_major: false
   compatibility_conditions: { C1: closed, C2: closed, C3: closed }
-  stage2_readiness: satisfied_pending_owner_authorization
-  code_implementation_authorized: false
+  stage2_readiness: satisfied_owner_authorized
+  code_implementation_authorized_at_stage1: false
+  superseded_by_stage2_authorization: true
   real_data_shadow_run_authorized: false
   scheduled_activation_authorized: false
   auto_send: false
@@ -181,7 +182,10 @@ stage2_acquisition_runtime_implementation:
   implementation_status_source: phase1_5/assets/readiness/weekly_acquisition_stage2_implementation_status.yaml
   authorized_runtime_bundle_candidate: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_1_CANDIDATE
   authorized_acquisition_extension_contract: ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1
+  stage2_owner_authorized: true
+  code_implementation_authorized: true
   code_implementation_started: true
+  baseline_promotion_or_refreeze_required_before: runtime_acceptance_or_cutover
   baseline_1_0_0_unchanged: true
   runtime_contract_1_0_0_unchanged: true
   scheduler_activated: false
@@ -189,7 +193,7 @@ stage2_acquisition_runtime_implementation:
   auto_send: false
   customer_workflow_changed: false
   runtime_acceptance_started: false
-  local_runtime_unit_tests: passed_13
+  local_runtime_unit_tests: passed_30
   exact_runtime_acquisition_weekly_regression: passed
   customer_workflow_regression: passed
   automatic_next_stage_allowed: false

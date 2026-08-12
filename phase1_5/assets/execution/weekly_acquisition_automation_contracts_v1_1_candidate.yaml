@@ -15,7 +15,8 @@ baseline_binding:
   current_frozen_baseline_version: 1.0.0
   target_baseline_version_if_stage2_approved: 1.1.0
   changes_current_frozen_baseline_in_stage1: false
-  stage2_refreeze_required_before_code_implementation: true
+  stage2_refreeze_required_before_code_implementation: false
+  baseline_promotion_or_refreeze_required_before: runtime_acceptance_or_cutover
   breaking_change_action: block_and_report_to_owner_without_self_assigning_major_version
 
 scope:
@@ -122,12 +123,12 @@ adapter_registry:
   - adapter_id: ADP_INTERNAL_APOLLO_QUERY_V1
     provider_id: PRV_INTERNAL_APOLLO_PLAYWRIGHT_V1
     capability: internal_apollo_query_and_result_acquisition
-    activation_status: design_only_code_not_authorized
+    activation_status: implementation_completed_pending_provider_configuration_and_cutover
     output_modes: [structured_page_result, downloaded_csv]
   - adapter_id: ADP_NOVABI_QUERY_V1
     provider_id: PRV_NOVABI_PLAYWRIGHT_V1
     capability: novabi_query_and_result_acquisition
-    activation_status: design_only_code_not_authorized
+    activation_status: implementation_completed_pending_provider_configuration_and_cutover
     output_modes: [structured_page_result]
 
 explicit_source_bindings:
@@ -168,6 +169,13 @@ explicit_source_bindings:
     explicit_binding_required: true
     source_name_similarity_binding_allowed: false
     unregistered_provider_or_adapter_action: block_affected_acquisition
+
+runtime_contract_enforcement:
+  period_role_allowed_values: [current, comparison, prior_year_comparable, previous_quarter_complete, configured_history]
+  dataset_and_query_asset_registration_required: true
+  product_scoped_dataset_ids: [DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS]
+  source_date_format: YYYY-MM-DD_or_not_applicable
+  null_required_field_action: block
 
 browser_session_contract:
   profile_management: browser_managed_local_profile
@@ -487,7 +495,9 @@ stage_authorization_boundaries:
   real_data_shadow_run_authorized: false
   runtime_acceptance_execution_authorized: false
   scheduled_activation_authorized: false
-  git_stage_commit_push_or_pr_authorized: false
+  git_stage_commit_push_or_pr_authorized: true
+  git_authorization_scope: current_branch_commit_push_and_existing_draft_pr_only
+  merge_authorized: false
   automatic_next_stage_allowed: false
 
 compatibility_closure:

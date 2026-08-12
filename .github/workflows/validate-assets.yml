@@ -28,3 +28,7 @@ jobs:
         run: python scripts/validate_asset_integrity.py
       - name: Run Phase 1.5 synthetic final acceptance
         run: python scripts/validate_final_acceptance.py
+      - name: Validate Weekly Acquisition Runtime contracts
+        run: python scripts/validate_weekly_acquisition_runtime.py
+      - name: Run Weekly Acquisition Runtime tests
+        run: python -m unittest tests.test_weekly_acquisition_runtime

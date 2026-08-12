@@ -19,6 +19,9 @@ authorized_candidate_baseline:
 implementation_authorization:
   code_implementation_started: true
   stage2_owner_authorized: true
+  code_implementation_authorized: true
+  authorization_source: acquisition_automation_contract_binding
+  baseline_promotion_or_refreeze_required_before: runtime_acceptance_or_cutover
   stage1_architecture_or_contract_redesign_authorized: false
   baseline_1_0_0_modification_authorized: false
   runtime_1_0_0_modification_authorized: false
@@ -39,7 +42,7 @@ implementation_units:
     status: implemented_unit_tests_passed
     contract_sections: [local_runtime_data_contract, browser_acquisition_lock]
   - unit_id: UNIT_PROVIDER_ADAPTER_AND_CLI
-    status: implemented_unit_tests_passed_pending_stage5_provider_configuration
+    status: implementation_completed_pending_provider_configuration_and_cutover
     contract_sections: [provider_registry, adapter_registry, runner_cli_contract]
   - unit_id: UNIT_RECOVERY_MANUAL_FALLBACK_DRAFT_GATE
     status: implemented_unit_tests_passed
@@ -49,11 +52,14 @@ git_delivery:
   branch: codex/weekly-acquisition-runtime-v1-1
   draft_pr_required: true
   draft_pr_created: true
+  current_branch_commit_authorized: true
+  current_branch_push_authorized: true
+  existing_draft_pr_update_authorized: true
   direct_main_modification_allowed: false
   merge_authorized: false
 
 local_validation_result:
-  runtime_unit_test_count: 13
+  runtime_unit_test_count: 30
   runtime_unit_tests: passed
   exact_core_interface_compatibility: 9_of_9_passed
   acquisition_contract_regression: passed

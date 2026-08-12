@@ -70,8 +70,12 @@ def main() -> int:
     assert selection["directory_order_inference_allowed"] is False
 
     binding = new["acquisition_automation_contract_binding"]
-    assert binding["extension_contract_id"] == "ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1"
+    assert binding["extension_contract_id"] == extension["contract_id"]
+    assert binding["extension_contract_version"] == extension["contract_version"]
+    assert new["workflow_id"] == extension["workflow_id"]
     assert binding["runtime_contract_replacement_allowed"] is False
+    assert binding["stage2_implementation_authorization_source"] == "this_acquisition_automation_binding"
+    assert binding["inherited_runtime_governance_code_implementation_authorized_remains"] is False
     assert extension["contract_role"]["classification"] == "acquisition_extension_sidecar"
     assert extension["contract_role"]["runtime_contract_replacement_allowed"] is False
     assert extension["acquisition_manifest_contract"]["business_association_key"] == ATTEMPT_KEY
@@ -88,6 +92,15 @@ def main() -> int:
     assert extension["acquisition_attempt_contract"]["latest_attempt_inference_allowed"] is False
     assert extension["acquisition_attempt_contract"]["latest_filename_or_timestamp_selection_allowed"] is False
     assert extension["acquisition_attempt_contract"]["directory_order_selection_allowed"] is False
+    assert extension["baseline_binding"]["stage2_refreeze_required_before_code_implementation"] is False
+    assert extension["baseline_binding"]["baseline_promotion_or_refreeze_required_before"] == "runtime_acceptance_or_cutover"
+
+    adapter_status = {
+        adapter["adapter_id"]: adapter["activation_status"]
+        for adapter in extension["adapter_registry"]
+    }
+    for adapter_id in ("ADP_INTERNAL_APOLLO_QUERY_V1", "ADP_NOVABI_QUERY_V1"):
+        assert adapter_status[adapter_id] == "implementation_completed_pending_provider_configuration_and_cutover"
 
     by_source: dict[str, set[str]] = {}
     queries_by_source: dict[str, set[str]] = {}
@@ -160,17 +173,33 @@ def main() -> int:
     authorization = stage2["implementation_authorization"]
     assert authorization["code_implementation_started"] is True
     assert authorization["stage2_owner_authorized"] is True
+    assert authorization["code_implementation_authorized"] is True
+    assert authorization["authorization_source"] == "acquisition_automation_contract_binding"
+    assert authorization["baseline_promotion_or_refreeze_required_before"] == "runtime_acceptance_or_cutover"
     assert authorization["baseline_1_0_0_modification_authorized"] is False
     assert authorization["runtime_1_0_0_modification_authorized"] is False
     assert authorization["scheduler_activation_authorized"] is False
     assert authorization["automatic_draft_activation_authorized"] is False
     assert authorization["auto_send"] is False
+    git_delivery = stage2["git_delivery"]
+    assert git_delivery["current_branch_commit_authorized"] is True
+    assert git_delivery["current_branch_push_authorized"] is True
+    assert git_delivery["existing_draft_pr_update_authorized"] is True
+    assert git_delivery["merge_authorized"] is False
+    stage_authorization = extension["stage_authorization_boundaries"]
+    assert stage_authorization["git_stage_commit_push_or_pr_authorized"] is True
+    assert stage_authorization["merge_authorized"] is False
 
     prohibited_selection_code = (ROOT / "src/weekly_acquisition_runtime/runtime.py").read_text(encoding="utf-8") + (
         ROOT / "src/weekly_acquisition_runtime/storage.py"
     ).read_text(encoding="utf-8")
     for prohibited in ("getmtime(", ".st_mtime", ".glob(", ".rglob(", ".iterdir("):
         assert prohibited not in prohibited_selection_code
+    assert "self.storage.sha256(input_path)" in prohibited_selection_code
+
+    workflow = (ROOT / ".github/workflows/validate-assets.yml").read_text(encoding="utf-8")
+    assert "python scripts/validate_weekly_acquisition_runtime.py" in workflow
+    assert "python -m unittest tests.test_weekly_acquisition_runtime" in workflow
 
     print(
         "Weekly Acquisition Runtime validation passed: 9/9 core interfaces preserved; "
