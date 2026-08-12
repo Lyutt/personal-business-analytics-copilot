@@ -170,6 +170,67 @@ class AcquisitionRuntime:
         manifest.require_passed()
         return manifest, self.persist_attempt_manifest(attempt_root, manifest)
 
+    def persist_failed_automated_attempt(
+        self,
+        *,
+        run: RuntimeRun,
+        business_key: BusinessKey,
+        attempt_id: str,
+        attempt_root: Path,
+        error_code: str,
+        started_at: str,
+        completed_at: str,
+        duration_ms: int,
+        query_contract: QueryContract | None = None,
+    ) -> tuple[AttemptManifest, str]:
+        """Persist the one immutable failed Manifest required for a created Attempt."""
+
+        entry = run.run_input_manifest.get_entry(business_key)
+        if entry.acquisition_mode is not AcquisitionMode.AUTOMATED:
+            raise ContractViolation("Failed automated Attempt requires acquisition_mode=automated")
+        registered = self.input_binding_registry.require(business_key.dataset_id)
+        expected_attempt_root = (
+            self.storage.root
+            / "runs"
+            / run.context.workflow_run_id
+            / "attempts"
+            / attempt_id
+        ).resolve()
+        if attempt_root.resolve() != expected_attempt_root:
+            raise ContractViolation("Failed Attempt path does not match the explicit Attempt ID")
+        adapter_version = (
+            query_contract.adapter_version
+            if isinstance(query_contract, QueryContract)
+            else "not_applicable"
+        )
+        page_contract_version = (
+            query_contract.page_contract_version
+            if isinstance(query_contract, QueryContract)
+            else "not_applicable"
+        )
+        manifest = AttemptManifest(
+            business_key=business_key,
+            acquisition_attempt_id=attempt_id,
+            acquisition_mode=AcquisitionMode.AUTOMATED,
+            adapter_id=registered.adapter_id,
+            adapter_version=adapter_version,
+            provider_id=registered.provider_id,
+            query_asset_id_or_not_applicable=registered.query_asset_id_or_not_applicable,
+            normalized_parameter_readback={},
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+            session_status_code="failed",
+            local_input_opaque_reference="not_applicable",
+            sha256=hashlib.sha256(b"").hexdigest(),
+            row_count_or_not_applicable="not_applicable",
+            schema_fingerprint_or_not_applicable="not_applicable",
+            page_contract_version_or_not_applicable=page_contract_version,
+            validation_status="failed",
+            error_code_or_not_applicable=error_code,
+        )
+        return manifest, self.persist_attempt_manifest(attempt_root, manifest)
+
     def bind_successful_attempt(
         self,
         run: RuntimeRun,

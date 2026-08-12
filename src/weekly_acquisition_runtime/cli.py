@@ -21,7 +21,13 @@ from .contracts import (
     RunInputEntry,
 )
 from .draft_gate import evaluate_draft_gate
-from .errors import AcquisitionError, ProviderCapabilityError
+from .errors import (
+    AcquisitionError,
+    BrowserLockOccupied,
+    PageContractDrift,
+    ProviderCapabilityError,
+    SessionRecoveryFailed,
+)
 from .runtime import AcquisitionRuntime
 from .storage import LocalRuntimeStorage
 
@@ -101,13 +107,13 @@ def _authoritative_query_parameters(
         "source_report_date": entry.source_report_date,
         "source_business_data_cutoff_date": entry.source_business_data_cutoff_date,
     }
-    config_values = local_config.get("query_parameter_values", {})
-    if not isinstance(config_values, Mapping):
-        raise ProviderCapabilityError("query_parameter_values must be an object")
+    if "query_parameter_values" in local_config:
+        raise ProviderCapabilityError(
+            "Local Runtime Config cannot provide Query parameter values"
+        )
     authorities: dict[str, Mapping[str, Any]] = {
         "locked_run_context": context.values,
         "run_input_manifest": manifest_values,
-        "local_runtime_config": config_values,
     }
     resolved: dict[str, Any] = {}
     for parameter_name in sorted(expected_names):
@@ -140,6 +146,16 @@ def _authoritative_query_parameters(
             "QueryContract.parameters do not match the locked Context and explicit Manifest/config binding"
         )
     return resolved
+
+
+def _automated_failure_code(error: Exception, default: str) -> str:
+    if isinstance(error, BrowserLockOccupied):
+        return "BROWSER_ACQUISITION_LOCK_OCCUPIED"
+    if isinstance(error, PageContractDrift):
+        return "ADAPTER_PAGE_CONTRACT_DRIFT"
+    if isinstance(error, SessionRecoveryFailed):
+        return "SESSION_RECOVERY_FAILED"
+    return default
 
 
 def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None) -> int:
@@ -227,49 +243,54 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
                     "No Stage 5 Provider is configured; fallback is prohibited"
                 )
             adapter = registry.require(args.adapter_id)
-            adapter_contract = getattr(adapter, "contract", None)
-            if not isinstance(adapter_contract, QueryContract) or any(
-                (
-                    adapter_contract.adapter_id != args.adapter_id,
-                    adapter_contract.dataset_id != args.dataset_id,
-                    adapter_contract.query_asset_id
-                    != args.query_asset_id_or_not_applicable,
-                    adapter_contract.source_id != binding.source_id,
-                )
-            ):
-                raise ProviderCapabilityError(
-                    "Configured Adapter contract does not match the explicit binding; fallback is prohibited"
-                )
-            acquire_boundary = getattr(adapter, "acquire", None)
-            if not callable(acquire_boundary):
-                raise ProviderCapabilityError(
-                    "Configured Adapter does not expose the acquisition boundary; fallback is prohibited"
-                )
             attempt_root = runtime.create_attempt(
                 run, key, args.acquisition_attempt_id
             )
-            _authoritative_query_parameters(
-                contract=adapter_contract,
-                context=run.context,
-                entry=entry,
-                local_config=local_config,
-            )
+            started = datetime.now(timezone.utc)
+            started_clock = perf_counter()
+            adapter_contract = getattr(adapter, "contract", None)
             browser_lock = None
-            if binding.source_id in BROWSER_ACQUISITION_SOURCE_IDS:
-                browser_lock = runtime.browser_lock()
-                browser_lock.acquire(
-                    {
-                        "workflow_run_id": args.workflow_run_id,
-                        "acquisition_attempt_id": args.acquisition_attempt_id,
-                        "adapter_id": args.adapter_id,
-                        "acquired_at": datetime.now(timezone.utc).isoformat(),
-                    }
-                )
+            failure_code = "ADAPTER_CONTRACT_VALIDATION_FAILED"
             try:
-                started = datetime.now(timezone.utc)
-                started_clock = perf_counter()
+                if not isinstance(adapter_contract, QueryContract) or any(
+                    (
+                        adapter_contract.adapter_id != args.adapter_id,
+                        adapter_contract.dataset_id != args.dataset_id,
+                        adapter_contract.query_asset_id
+                        != args.query_asset_id_or_not_applicable,
+                        adapter_contract.source_id != binding.source_id,
+                    )
+                ):
+                    raise ProviderCapabilityError(
+                        "Configured Adapter contract does not match the explicit binding; fallback is prohibited"
+                    )
+                acquire_boundary = getattr(adapter, "acquire", None)
+                if not callable(acquire_boundary):
+                    raise ProviderCapabilityError(
+                        "Configured Adapter does not expose the acquisition boundary; fallback is prohibited"
+                    )
+                failure_code = "QUERY_PARAMETER_AUTHORITY_VALIDATION_FAILED"
+                _authoritative_query_parameters(
+                    contract=adapter_contract,
+                    context=run.context,
+                    entry=entry,
+                    local_config=local_config,
+                )
+                if binding.source_id in BROWSER_ACQUISITION_SOURCE_IDS:
+                    browser_lock = runtime.browser_lock()
+                    failure_code = "BROWSER_ACQUISITION_LOCK_OCCUPIED"
+                    browser_lock.acquire(
+                        {
+                            "workflow_run_id": args.workflow_run_id,
+                            "acquisition_attempt_id": args.acquisition_attempt_id,
+                            "adapter_id": args.adapter_id,
+                            "acquired_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
+                failure_code = "ADAPTER_ACQUISITION_FAILED"
                 result = acquire_boundary()
                 completed = datetime.now(timezone.utc)
+                failure_code = "ADAPTER_RESULT_VALIDATION_FAILED"
                 if not isinstance(result, AdapterResult):
                     raise ProviderCapabilityError(
                         "Configured Adapter returned no valid acquisition result; fallback is prohibited"
@@ -285,6 +306,27 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
                     completed_at=completed.isoformat(),
                     duration_ms=max(0, round((perf_counter() - started_clock) * 1000)),
                 )
+            except Exception as exc:
+                completed = datetime.now(timezone.utc)
+                error_code = _automated_failure_code(exc, failure_code)
+                runtime.persist_failed_automated_attempt(
+                    run=run,
+                    business_key=key,
+                    attempt_id=args.acquisition_attempt_id,
+                    attempt_root=attempt_root,
+                    error_code=error_code,
+                    started_at=started.isoformat(),
+                    completed_at=completed.isoformat(),
+                    duration_ms=max(0, round((perf_counter() - started_clock) * 1000)),
+                    query_contract=(
+                        adapter_contract
+                        if isinstance(adapter_contract, QueryContract)
+                        else None
+                    ),
+                )
+                raise ProviderCapabilityError(
+                    f"Automated acquisition blocked with {error_code}; fallback is prohibited"
+                ) from exc
             finally:
                 if browser_lock is not None:
                     browser_lock.release()

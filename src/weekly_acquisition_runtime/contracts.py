@@ -198,6 +198,7 @@ class RegisteredInputBinding:
     query_asset_id_or_not_applicable: str
     adapter_id: str
     source_id: str
+    provider_id: str = NOT_APPLICABLE
     product_scoped: bool = False
     dataset_version_constraints: tuple[str, ...] = ()
 
@@ -207,6 +208,7 @@ class RegisteredInputBinding:
             "query_asset_id_or_not_applicable",
             "adapter_id",
             "source_id",
+            "provider_id",
         ):
             _required_text(getattr(self, name), name)
         for constraint in self.dataset_version_constraints:

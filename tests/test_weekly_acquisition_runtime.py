@@ -406,12 +406,21 @@ class BoundaryTests(unittest.TestCase):
             finally:
                 first.release()
             self.assertTrue(first.path.exists(), "normal release must not delete lock metadata")
+            metadata = json.loads(first.path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                set(metadata), {"workflow_run_id", "acquisition_attempt_id"}
+            )
+            self.assertLessEqual(set(metadata), BrowserAcquisitionLock.METADATA_ALLOWED)
+            self.assertEqual(
+                first.operational_path.read_text(encoding="utf-8"), "released"
+            )
 
     def test_stale_browser_lock_requires_manual_review(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             state = Path(temp)
             lock = BrowserAcquisitionLock(state)
-            lock.path.write_text('{"status":"held","workflow_run_id":"RUN_OLD"}', encoding="utf-8")
+            lock.path.write_text('{"workflow_run_id":"RUN_OLD"}', encoding="utf-8")
+            lock.operational_path.write_text("held", encoding="utf-8")
             with self.assertRaises(BrowserLockOccupied):
                 lock.acquire({"workflow_run_id": "RUN_NEW"})
             self.assertEqual(json.loads(lock.path.read_text())["workflow_run_id"], "RUN_OLD")
@@ -595,6 +604,18 @@ class ExplicitBindingCliTests(unittest.TestCase):
     def invoke(self, args: list[str], registry: AdapterRegistry | None = None) -> int:
         return self.invoke_with_output(args, registry)[0]
 
+    def failed_manifest(self, attempt_id: str, run_id: str = "RUN_SYNTH_001") -> dict:
+        path = (
+            self.runtime_root
+            / "runs"
+            / run_id
+            / "attempts"
+            / attempt_id
+            / "manifests"
+            / "attempt_manifest.json"
+        )
+        return json.loads(path.read_text(encoding="utf-8"))
+
     @staticmethod
     def adapter_contract(
         *,
@@ -708,7 +729,13 @@ class ExplicitBindingCliTests(unittest.TestCase):
         lock_state = json.loads(
             (self.runtime_root / "state/global_browser_acquisition_lock.json").read_text()
         )
-        self.assertEqual(lock_state["status"], "released")
+        self.assertLessEqual(set(lock_state), BrowserAcquisitionLock.METADATA_ALLOWED)
+        self.assertNotIn("status", lock_state)
+        self.assertEqual(
+            (self.runtime_root / "state/global_browser_acquisition_lock.operational")
+            .read_text(encoding="utf-8"),
+            "released",
+        )
 
     def test_browser_lock_occupied_never_calls_adapter(self) -> None:
         adapter = self.FakeAdapter(self.adapter_contract())
@@ -719,8 +746,14 @@ class ExplicitBindingCliTests(unittest.TestCase):
         try:
             result, _, error = self.invoke_with_output(self.args, registry)
             self.assertEqual(result, 2)
-            self.assertIn("occupied", error)
+            self.assertIn("BROWSER_ACQUISITION_LOCK_OCCUPIED", error)
             self.assertFalse(adapter.called)
+            manifest = self.failed_manifest("ATTEMPT_CLI_001")
+            self.assertEqual(manifest["validation_status"], "failed")
+            self.assertEqual(
+                manifest["error_code_or_not_applicable"],
+                "BROWSER_ACQUISITION_LOCK_OCCUPIED",
+            )
         finally:
             lock.release()
 
@@ -740,8 +773,64 @@ class ExplicitBindingCliTests(unittest.TestCase):
         registry.register("ADP_INTERNAL_APOLLO_QUERY_V1", adapter)
         result, _, error = self.invoke_with_output(self.args, registry)
         self.assertEqual(result, 2)
-        self.assertIn("locked Context", error)
+        self.assertIn("QUERY_PARAMETER_AUTHORITY_VALIDATION_FAILED", error)
         self.assertFalse(adapter.called)
+        manifest = self.failed_manifest("ATTEMPT_CLI_001")
+        self.assertEqual(manifest["validation_status"], "failed")
+        self.assertEqual(
+            manifest["error_code_or_not_applicable"],
+            "QUERY_PARAMETER_AUTHORITY_VALIDATION_FAILED",
+        )
+
+    def test_local_runtime_config_query_value_authority_blocks(self) -> None:
+        config_path = self.runtime_root / "runtime-config/explicit.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["query_parameter_bindings"]["period_start"] = {
+            "authority": "local_runtime_config",
+            "field": "period_start",
+        }
+        config["query_parameter_values"] = {"period_start": "2026-01-01"}
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        adapter = self.FakeAdapter(self.adapter_contract())
+        registry = AdapterRegistry()
+        registry.register("ADP_INTERNAL_APOLLO_QUERY_V1", adapter)
+        result, _, error = self.invoke_with_output(self.args, registry)
+        self.assertEqual(result, 2)
+        self.assertIn("QUERY_PARAMETER_AUTHORITY_VALIDATION_FAILED", error)
+        self.assertFalse(adapter.called)
+        manifest = self.failed_manifest("ATTEMPT_CLI_001")
+        self.assertEqual(manifest["validation_status"], "failed")
+
+    def test_adapter_and_page_contract_exceptions_persist_failed_manifest(self) -> None:
+        class FailingAdapter(self.FakeAdapter):
+            def __init__(self, contract: QueryContract, error: Exception) -> None:
+                super().__init__(contract)
+                self.error = error
+
+            def acquire(self) -> AdapterResult:
+                self.called = True
+                raise self.error
+
+        cases = (
+            ("ATTEMPT_PAGE_FAILURE", PageContractDrift("drift"), "ADAPTER_PAGE_CONTRACT_DRIFT"),
+            ("ATTEMPT_ADAPTER_FAILURE", RuntimeError("failure"), "ADAPTER_ACQUISITION_FAILED"),
+        )
+        for attempt_id, error, expected_code in cases:
+            with self.subTest(attempt_id=attempt_id):
+                adapter = FailingAdapter(self.adapter_contract(), error)
+                registry = AdapterRegistry()
+                registry.register("ADP_INTERNAL_APOLLO_QUERY_V1", adapter)
+                args = list(self.args)
+                args[args.index("ATTEMPT_CLI_001")] = attempt_id
+                result, _, message = self.invoke_with_output(args, registry)
+                self.assertEqual(result, 2)
+                self.assertIn(expected_code, message)
+                self.assertTrue(adapter.called)
+                manifest = self.failed_manifest(attempt_id)
+                self.assertEqual(manifest["validation_status"], "failed")
+                self.assertEqual(
+                    manifest["error_code_or_not_applicable"], expected_code
+                )
 
     def test_dataset_version_constraint_blocks_before_adapter(self) -> None:
         config_path = self.runtime_root / "runtime-config/explicit.json"
@@ -783,7 +872,13 @@ class ExplicitBindingCliTests(unittest.TestCase):
         lock_state = json.loads(
             (self.runtime_root / "state/global_browser_acquisition_lock.json").read_text()
         )
-        self.assertEqual(lock_state["status"], "released")
+        self.assertLessEqual(set(lock_state), BrowserAcquisitionLock.METADATA_ALLOWED)
+        self.assertNotIn("status", lock_state)
+        self.assertEqual(
+            (self.runtime_root / "state/global_browser_acquisition_lock.operational")
+            .read_text(encoding="utf-8"),
+            "released",
+        )
 
 
 class CandidateCompositionTests(unittest.TestCase):

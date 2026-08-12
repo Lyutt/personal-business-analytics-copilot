@@ -16,64 +16,87 @@ _HELD_PATHS: set[Path] = set()
 
 
 class BrowserAcquisitionLock:
-    """Persistent state file plus an OS byte lock; release never deletes the file."""
+    """Whitelisted metadata plus separate operational state and an OS byte lock."""
+
+    METADATA_ALLOWED = {
+        "workflow_run_id",
+        "acquisition_attempt_id",
+        "adapter_id",
+        "acquired_at",
+        "process_reference",
+    }
 
     def __init__(self, state_root: Path) -> None:
         self.path = (state_root / "global_browser_acquisition_lock.json").resolve()
+        self.operational_path = (
+            state_root / "global_browser_acquisition_lock.operational"
+        ).resolve()
+        self.lock_path = (state_root / "global_browser_acquisition_lock.lck").resolve()
         self._handle: IO[bytes] | None = None
 
     def acquire(self, metadata: dict[str, Any]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        unexpected = set(metadata) - self.METADATA_ALLOWED
+        if unexpected:
+            raise ValueError(f"Browser lock metadata fields are not allowed: {sorted(unexpected)}")
         with _PROCESS_GUARD:
-            if self.path in _HELD_PATHS:
+            if self.lock_path in _HELD_PATHS:
                 raise BrowserLockOccupied("Global Browser Acquisition Lock is occupied; queue is disabled")
             try:
-                handle = self.path.open("r+b")
+                handle = self.lock_path.open("r+b")
             except FileNotFoundError:
                 try:
-                    handle = self.path.open("x+b")
+                    handle = self.lock_path.open("x+b")
                 except FileExistsError:
-                    handle = self.path.open("r+b")
-            handle.seek(0)
-            existing = handle.read().decode("utf-8", errors="replace").strip()
-            if existing:
-                try:
-                    existing_state = json.loads(existing)
-                except json.JSONDecodeError:
-                    existing_state = {"status": "invalid"}
-                if existing_state.get("status") != "released":
-                    handle.close()
-                    raise BrowserLockOccupied(
-                        "Browser lock metadata is held, stale, or invalid; manual review is required"
-                    )
+                    handle = self.lock_path.open("r+b")
+            operational_state = (
+                self.operational_path.read_text(encoding="utf-8").strip()
+                if self.operational_path.exists()
+                else ""
+            )
+            if operational_state not in ("", "released"):
+                handle.close()
+                raise BrowserLockOccupied(
+                    "Browser lock operational state is held, stale, or invalid; manual review is required"
+                )
+            if not operational_state and self.path.exists():
+                handle.close()
+                raise BrowserLockOccupied(
+                    "Browser lock metadata has no clean release state; manual review is required"
+                )
             try:
                 self._lock_byte(handle)
             except OSError as exc:
                 handle.close()
                 raise BrowserLockOccupied("Global Browser Acquisition Lock is occupied; queue is disabled") from exc
-            _HELD_PATHS.add(self.path)
+            _HELD_PATHS.add(self.lock_path)
             self._handle = handle
-        self._write_state({"status": "held", **metadata})
+        self._write_operational_state("held")
+        self._write_metadata(metadata)
 
     def release(self) -> None:
         if self._handle is None:
             return
-        self._write_state({"status": "released"})
+        self._write_operational_state("released")
         handle = self._handle
         self._handle = None
         self._unlock_byte(handle)
         handle.close()
         with _PROCESS_GUARD:
-            _HELD_PATHS.discard(self.path)
+            _HELD_PATHS.discard(self.lock_path)
 
-    def _write_state(self, value: dict[str, Any]) -> None:
-        assert self._handle is not None
-        payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        self._handle.seek(0)
-        self._handle.truncate()
-        self._handle.write(payload)
-        self._handle.flush()
-        os.fsync(self._handle.fileno())
+    def _write_operational_state(self, value: str) -> None:
+        with self.operational_path.open("w", encoding="ascii", newline="\n") as handle:
+            handle.write(value)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+    def _write_metadata(self, value: dict[str, Any]) -> None:
+        payload = json.dumps(value, sort_keys=True, separators=(",", ":"))
+        with self.path.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
 
     @staticmethod
     def _lock_byte(handle: IO[bytes]) -> None:

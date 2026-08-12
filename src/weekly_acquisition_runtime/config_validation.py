@@ -139,6 +139,7 @@ def build_input_binding_registry(
                 query_asset_id_or_not_applicable=query_asset_id,
                 adapter_id=adapter_id,
                 source_id=source_id,
+                provider_id=source_binding.get("provider_id", NOT_APPLICABLE),
                 product_scoped=dataset_id in product_scoped,
                 dataset_version_constraints=tuple(
                     sorted(constraints_by_dataset.get(dataset_id, set()))

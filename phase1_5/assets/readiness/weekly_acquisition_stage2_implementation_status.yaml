@@ -59,7 +59,7 @@ git_delivery:
   merge_authorized: false
 
 local_validation_result:
-  runtime_unit_test_count: 30
+  runtime_unit_test_count: 38
   runtime_unit_tests: passed
   exact_core_interface_compatibility: 9_of_9_passed
   acquisition_contract_regression: passed

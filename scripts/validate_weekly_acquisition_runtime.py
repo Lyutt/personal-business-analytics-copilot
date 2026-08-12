@@ -181,6 +181,7 @@ def main() -> int:
     assert authorization["scheduler_activation_authorized"] is False
     assert authorization["automatic_draft_activation_authorized"] is False
     assert authorization["auto_send"] is False
+    assert stage2["local_validation_result"]["runtime_unit_test_count"] == 38
     git_delivery = stage2["git_delivery"]
     assert git_delivery["current_branch_commit_authorized"] is True
     assert git_delivery["current_branch_push_authorized"] is True
