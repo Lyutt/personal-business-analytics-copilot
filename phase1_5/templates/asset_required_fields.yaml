@@ -592,6 +592,105 @@ asset_rules:
       - workflow_completion_status
       - governance
 
+  - asset_type: weekly_acquisition_extension_contract
+    selector: { key: config_type, value: weekly_acquisition_extension_contract }
+    required_paths:
+      - config_type
+      - contract_id
+      - contract_version
+      - status
+      - owner
+      - workflow_id
+      - contract_role
+      - baseline_binding
+      - scope
+      - tool_responsibility_model
+      - adapter_activation_sequence
+      - provider_registry
+      - provider_registry[].provider_id
+      - provider_registry[].provider_type
+      - adapter_registry
+      - adapter_registry[].adapter_id
+      - adapter_registry[].provider_id
+      - explicit_source_bindings
+      - browser_session_contract
+      - browser_acquisition_lock
+      - activation_and_scheduling_contract
+      - query_execution_contract
+      - acquisition_attempt_contract
+      - acquisition_manifest_contract
+      - acquisition_lifecycle_contract
+      - local_runtime_data_contract
+      - runner_cli_contract
+      - outlook_draft_contract
+      - failure_and_notification_contract
+      - maintenance_and_change_control
+      - runtime_acceptance_technical_default
+      - stage_authorization_boundaries
+      - compatibility_closure
+
+  - asset_type: stage1_design_change_set
+    selector: { key: config_type, value: stage1_design_change_set }
+    required_paths:
+      - config_type
+      - change_set_id
+      - change_set_version
+      - status
+      - workflow_id
+      - decision_freeze_date
+      - design_modification_date
+      - owner
+      - authority_and_version_control
+      - stage1_candidate_assets
+      - stage1_candidate_assets[].path
+      - stage1_candidate_assets[].role
+      - existing_frozen_assets_intentionally_not_modified
+      - stage2_promotion_targets_if_owner_approved
+      - stage2_promotion_targets_if_owner_approved[].target
+      - stage2_promotion_targets_if_owner_approved[].proposed_change
+      - compatibility_review
+      - authorization_ledger
+
+  - asset_type: exact_compatibility_diff_record
+    selector: { key: config_type, value: exact_compatibility_diff_record }
+    required_paths:
+      - config_type
+      - diff_id
+      - status
+      - assessment_date
+      - workflow_id
+      - owner
+      - source_contract
+      - candidate_runtime_bundle
+      - acquisition_extension_contract
+      - version_and_authorization
+      - composition_result
+      - manifest_compatibility
+      - lifecycle_result
+      - coverage_and_semantic_regression
+      - activation_gate_result
+      - compatibility_conditions
+      - final_result
+
+  - asset_type: stage2_implementation_status
+    selector: { key: config_type, value: stage2_implementation_status }
+    required_paths:
+      - config_type
+      - implementation_id
+      - implementation_version
+      - status
+      - workflow_id
+      - owner
+      - implementation_start_date
+      - authorized_candidate_baseline
+      - implementation_authorization
+      - implementation_units
+      - implementation_units[].unit_id
+      - implementation_units[].status
+      - implementation_units[].contract_sections
+      - git_delivery
+      - local_validation_result
+
   - asset_type: data_capability_profile_registry
     selector: { key: config_type, value: data_capability_profile_registry }
     required_paths:

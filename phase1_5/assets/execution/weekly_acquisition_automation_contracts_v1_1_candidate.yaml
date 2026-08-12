@@ -1,0 +1,499 @@
+config_type: weekly_acquisition_extension_contract
+contract_id: ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1
+contract_version: 1.1.0
+status: stage2_implementation_validated_pending_draft_pr
+owner: WORKFLOW_OWNER
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+contains_real_business_data: false
+contract_role:
+  classification: acquisition_extension_sidecar
+  complete_runtime_contract_bundle: false
+  runtime_contract_replacement_allowed: false
+  composed_by_candidate_bundle: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_1_CANDIDATE
+baseline_binding:
+  current_frozen_baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
+  current_frozen_baseline_version: 1.0.0
+  target_baseline_version_if_stage2_approved: 1.1.0
+  changes_current_frozen_baseline_in_stage1: false
+  stage2_refreeze_required_before_code_implementation: true
+  breaking_change_action: block_and_report_to_owner_without_self_assigning_major_version
+
+scope:
+  workflow_first: WF_WEEKLY_BUSINESS_REPORT
+  customer_revenue_detail_changed: false
+  covered_capabilities:
+    - Outlook mailbox input acquisition
+    - Internal Apollo web query and result acquisition
+    - NovaBI web query and result acquisition
+    - Outlook Draft creation
+  excluded_capabilities:
+    - Email Send
+    - Generic browser task queue
+    - Automatic provider fallback
+    - Credential or MFA automation
+    - Business-rule, Metric, Result Contract, or output-semantic changes
+
+tool_responsibility_model:
+  runtime_orchestrator:
+    tool: Python local Adapter Runner CLI
+    role: Validate locked Run Context, invoke one explicitly bound Adapter, validate its output, and write Attempt-scoped audit metadata.
+    implementation_status: implemented_and_unit_validated
+  apollo_runtime_driver:
+    tool: Python Playwright
+    browser: managed Microsoft Edge
+    mode: headed_visible
+    role: Execute versioned deterministic internal Apollo Query Asset contracts.
+  novabi_runtime_driver:
+    tool: Python Playwright
+    browser: managed Microsoft Edge
+    mode: headed_visible
+    role: Execute the versioned deterministic NovaBI Query Asset contract.
+  outlook_runtime_provider:
+    tool: Outlook Email Provider
+    role: Search contract-scoped messages, retrieve matched attachments, and create Drafts when separately allowed.
+    capability_validation_stage: Stage 5
+    capability_not_yet_assumed: true
+  agent_browser_support:
+    tool: agent-browser
+    role: Exploration, diagnosis, and Adapter maintenance support only.
+    formal_runtime_decision_or_execution_allowed: false
+    automatic_fix_and_continue_allowed: false
+  codex_browser_support:
+    tools: [Codex in-app Browser, user Chrome control]
+    role: Initial interactive login and diagnosis only when separately authorized.
+    scheduled_runtime_runner_allowed: false
+  office_com_fallback:
+    status: not_selected
+    automatic_activation_allowed: false
+
+adapter_activation_sequence:
+  separate_implementation_and_cutover_approval_per_adapter_required: true
+  order:
+    - ADP_INTERNAL_APOLLO_QUERY_V1
+    - ADP_NOVABI_QUERY_V1
+    - ADP_OUTLOOK_EMAIL_INPUT_V1
+    - ADP_OUTLOOK_DRAFT_V1
+  provider_replacement_requires_owner_review: true
+
+provider_registry:
+  - provider_id: PRV_OUTLOOK_EMAIL_PRIMARY_V1
+    provider_type: Outlook Email Provider
+    source_ids: [SRC_CORP_OUTLOOK_PRIMARY_MAILBOX]
+    priority: primary
+    stage5_capability_validation_required: true
+    minimum_required_capabilities:
+      - Contract-scoped mailbox search
+      - Matched-message metadata read without changing message state
+      - Attachment download for Manifest candidates only
+      - Outlook Draft creation without Send
+    permission_policy:
+      technical_minimum_permission_required: true
+      provider_level_mailbox_search_permission_may_be_accepted_if_unavoidable: true
+      runtime_query_scope_must_remain_contract_defined: true
+      mark_read_or_change_message_state_allowed: false
+      move_delete_archive_or_reply_allowed: false
+      send_allowed: false
+    capability_failure_action:
+      action: block_affected_capability_and_report
+      automatic_fallback_allowed: false
+      prohibited_automatic_fallbacks: [Playwright, Office COM, Microsoft Graph, another Provider]
+  - provider_id: PRV_INTERNAL_APOLLO_PLAYWRIGHT_V1
+    provider_type: Local Playwright Adapter
+    source_ids: [SRC_INTERNAL_PLATFORM_APOLLO]
+    priority: primary
+    apollo_io_plugin_allowed: false
+    rationale: Apollo.io is not the internal Apollo platform.
+  - provider_id: PRV_NOVABI_PLAYWRIGHT_V1
+    provider_type: Local Playwright Adapter
+    source_ids: [SRC_INTERNAL_PLATFORM_NOVABI]
+    priority: primary
+
+adapter_registry:
+  - adapter_id: ADP_OUTLOOK_EMAIL_INPUT_V1
+    provider_id: PRV_OUTLOOK_EMAIL_PRIMARY_V1
+    capability: outlook_input_acquisition
+    activation_status: pending_stage5_provider_capability_validation
+    output_modes: [matched_message_metadata, matched_attachment_file]
+  - adapter_id: ADP_OUTLOOK_DRAFT_V1
+    provider_id: PRV_OUTLOOK_EMAIL_PRIMARY_V1
+    capability: outlook_draft_creation
+    activation_status: pending_stage5_provider_capability_validation
+    output_modes: [new_outlook_draft]
+  - adapter_id: ADP_INTERNAL_APOLLO_QUERY_V1
+    provider_id: PRV_INTERNAL_APOLLO_PLAYWRIGHT_V1
+    capability: internal_apollo_query_and_result_acquisition
+    activation_status: design_only_code_not_authorized
+    output_modes: [structured_page_result, downloaded_csv]
+  - adapter_id: ADP_NOVABI_QUERY_V1
+    provider_id: PRV_NOVABI_PLAYWRIGHT_V1
+    capability: novabi_query_and_result_acquisition
+    activation_status: design_only_code_not_authorized
+    output_modes: [structured_page_result]
+
+explicit_source_bindings:
+  SRC_CORP_OUTLOOK_PRIMARY_MAILBOX:
+    provider_id: PRV_OUTLOOK_EMAIL_PRIMARY_V1
+    input_adapter_id: ADP_OUTLOOK_EMAIL_INPUT_V1
+    draft_adapter_id: ADP_OUTLOOK_DRAFT_V1
+    automatic_alternative_provider_selection_allowed: false
+    dataset_ids:
+      - DS_REVENUE_SALES_ROLLING_DECK_QTD
+      - DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION
+      - DS_REVENUE_CTV_EXCL_PLACEMENT_QTD
+  SRC_INTERNAL_PLATFORM_APOLLO:
+    provider_id: PRV_INTERNAL_APOLLO_PLAYWRIGHT_V1
+    adapter_id: ADP_INTERNAL_APOLLO_QUERY_V1
+    automatic_alternative_provider_selection_allowed: false
+    query_asset_ids:
+      - QRY_APOLLO_QISHENG_EXECUTION_REVENUE
+      - QRY_APOLLO_INVENTORY_WEEKLY_FULL_SITE_STOCK
+      - QRY_APOLLO_INVENTORY_PATCH_STOCK
+      - QRY_APOLLO_INVENTORY_NON_PATCH_PRODUCT_STOCK
+      - QRY_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+      - QRY_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+    dataset_ids:
+      - DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+      - DS_INVENTORY_APOLLO_FULL_SITE_STOCK_SUMMARY
+      - DS_INVENTORY_APOLLO_PATCH_STOCK_SUMMARY
+      - DS_INVENTORY_APOLLO_NON_PATCH_PRODUCT_STOCK_SUMMARY
+      - DS_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION
+      - DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS
+  SRC_INTERNAL_PLATFORM_NOVABI:
+    provider_id: PRV_NOVABI_PLAYWRIGHT_V1
+    adapter_id: ADP_NOVABI_QUERY_V1
+    automatic_alternative_provider_selection_allowed: false
+    query_asset_ids: [QRY_NOVABI_DAU_QUERY]
+    dataset_ids: [DS_NOVABI_PLATFORM_DAU]
+  validation:
+    explicit_binding_required: true
+    source_name_similarity_binding_allowed: false
+    unregistered_provider_or_adapter_action: block_affected_acquisition
+
+browser_session_contract:
+  profile_management: browser_managed_local_profile
+  profile_root: ${BROWSER_PROFILE_ROOT_LOCAL_ONLY}
+  profile_root_must_be_outside_git: true
+  profile_root_must_be_outside_onedrive: true
+  separate_profiles_required:
+    SRC_INTERNAL_PLATFORM_APOLLO: ${APOLLO_BROWSER_PROFILE_LOCAL_ONLY}
+    SRC_INTERNAL_PLATFORM_NOVABI: ${NOVABI_BROWSER_PROFILE_LOCAL_ONLY}
+  application_cookie_read_allowed: false
+  application_cookie_export_allowed: false
+  token_read_or_export_allowed: false
+  storage_state_read_or_export_allowed: false
+  automatic_credential_entry_allowed: false
+  automatic_mfa_allowed: false
+  explicit_login_or_mfa_required_action: block_notify_owner_and_wait_for_manual_action
+  account_identity_mismatch_action: block_notify_owner
+  interactive_logged_in_windows_session_required: true
+  scheduled_unattended_execution_allowed: false
+  operator_must_not_use_same_profile_during_acquisition: true
+
+browser_acquisition_lock:
+  lock_id: GLOBAL_BROWSER_ACQUISITION_LOCK_V1
+  scope: all Playwright-based Apollo and NovaBI acquisition in this local runtime
+  maximum_concurrent_holders: 1
+  queue_implemented_in_mvp: false
+  later_run_when_occupied: block_or_wait_for_manual_owner_handling
+  automatic_fifo_or_priority_scheduling_allowed: false
+  apollo_novabi_parallel_execution_allowed: false
+  lock_metadata_allowed: [workflow_run_id, acquisition_attempt_id, adapter_id, acquired_at, process_reference]
+  lock_metadata_business_data_allowed: false
+  stale_lock_automatic_deletion_allowed: false
+  stale_lock_action: block_and_request_manual_review
+
+activation_and_scheduling_contract:
+  initial_execution_mode: manual_runner_cli_and_shadow_only
+  scheduler_implemented_initially: false
+  classification: activation_and_deployment_gate_only
+  runtime_supported_run_types_unchanged: [scheduled, manual, backfill]
+  scheduled_contract_support_removed_or_narrowed: false
+  later_scheduler_candidate: Windows Task Scheduler
+  later_scheduler_activation_requires_separate_owner_approval: true
+  authorization_may_be_inferred_from_runtime_acceptance: false
+  interactive_logged_in_windows_session_required: true
+  unattended_logged_out_execution_allowed: false
+  missed_run_action: notify_owner_and_require_explicit_manual_or_backfill_decision
+  guessed_automatic_catch_up_allowed: false
+
+query_execution_contract:
+  exact_registered_query_asset_required: true
+  exact_module_or_template_required: true
+  exact_parameter_binding_from_locked_context_and_manifest_required: true
+  parameter_readback_validation_required_before_query: true
+  exact_expected_result_schema_validation_required: true
+  fuzzy_matching:
+    controlled_navigation_only: true
+    query_template_field_result_column_or_business_parameter_allowed: false
+  ocr_as_formal_input_allowed: false
+  page_contract_drift:
+    error_code: ADAPTER_PAGE_CONTRACT_DRIFT
+    action: block_affected_pipeline_and_report
+    automatically_find_similar_control_allowed: false
+    agent_browser_automatic_patch_allowed: false
+  session_recovery:
+    policy_binding: QUERY_SESSION_REFRESH_AND_RETRY_POLICY_V1
+    maximum_page_refresh_count: 1
+    initial_query_count: 1
+    maximum_recovery_query_count: 1
+    required_recovery_sequence:
+      - refresh_page_once
+      - reenter_exact_module
+      - reselect_exact_query_asset_or_template
+      - restore_exact_parameters
+      - validate_parameter_readback
+      - execute_query_once
+    stale_pre_refresh_result_reuse_allowed: false
+    additional_refresh_or_query_allowed: false
+
+acquisition_attempt_contract:
+  attempt_id_field: acquisition_attempt_id
+  workflow_run_id_required: true
+  one_manifest_per_acquisition_attempt: true
+  attempt_immutability_required: true
+  new_attempt_required_for:
+    - retry after a failed acquisition attempt
+    - Owner-approved manual fallback
+    - rerun that reacquires an input
+  manual_fallback:
+    allowed: true
+    same_workflow_run_required: true
+    new_acquisition_attempt_required: true
+    new_manifest_required: true
+    acquisition_mode_value: manual_fallback
+  old_attempt_manifest_or_file_overwrite_allowed: false
+  prior_success_file_implicit_reuse_allowed: false
+  latest_attempt_inference_allowed: false
+  latest_filename_or_timestamp_selection_allowed: false
+  directory_order_selection_allowed: false
+  explicit_prior_input_reuse_allowed_only_when_existing_dataset_contract_allows: true
+  successful_attempt_binding:
+    target_manifest_id: RUN_INPUT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1
+    target_optional_entry_extension: acquisition_attempt_binding
+    explicit_binding_required_for_modes: [automated, manual_fallback]
+    legacy_prepared_local_input_binding_value: not_applicable
+    attempt_manifest_validation_status_required: passed
+    exactly_one_valid_attempt_per_run_input_manifest_entry: true
+    pipeline_may_consume_only_explicitly_bound_successful_attempt: true
+
+acquisition_manifest_contract:
+  manifest_id: ACQUISITION_ATTEMPT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1_1
+  relationship_to_current_run_input_manifest:
+    current_manifest_id: RUN_INPUT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1
+    change_type: additive_attempt_level_lineage_candidate
+    business_key_semantics_changed: false
+    stage2_promotion_required: true
+  required_fields:
+    - workflow_run_id
+    - dataset_id
+    - period_role
+    - product_parameter
+    - acquisition_attempt_id
+    - acquisition_mode
+    - adapter_id
+    - adapter_version
+    - provider_id
+    - query_asset_id_or_not_applicable
+    - normalized_parameter_readback
+    - started_at
+    - completed_at
+    - duration_ms
+    - session_status_code
+    - local_input_opaque_reference
+    - sha256
+    - row_count_or_not_applicable
+    - schema_fingerprint_or_not_applicable
+    - page_contract_version_or_not_applicable
+    - validation_status
+    - error_code_or_not_applicable
+  prohibited_fields_or_values:
+    - real mailbox address
+    - sender or recipient identity
+    - real page URL
+    - absolute local path
+    - Cookie, Token, credential, or storageState
+    - whole page text or raw email body
+  url_lineage_policy: record_registered_query_asset_id_only
+  mail_lineage_policy: opaque_message_reference_only
+  local_path_policy: opaque_reference_only
+  parameter_policy: normalized_contract_fields_only_no_sensitive_display_values
+  adapter_version_required: true
+  hash_algorithm: SHA-256
+  business_association_key: [workflow_run_id, dataset_id, period_role, product_parameter, acquisition_attempt_id]
+  run_input_manifest_binding:
+    manifest_id: RUN_INPUT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1
+    optional_entry_extension: acquisition_attempt_binding
+    attempt_manifest_reference_must_equal_bound_opaque_reference: true
+    validation_status_must_be_passed_before_binding: true
+    implicit_latest_attempt_selection_allowed: false
+
+acquisition_lifecycle_contract:
+  ordered_steps:
+    - lock_run_context
+    - create_acquisition_attempt
+    - acquire
+    - validate_attempt_manifest
+    - bind_successful_attempt_to_run_input_manifest
+    - pipeline_consume_bound_local_input
+  run_context_mutation_after_lock_allowed: false
+  attempt_manifest_must_pass_before_run_input_manifest_binding: true
+  failed_or_old_attempt_manifest_or_file_overwrite_allowed: false
+  multiple_attempts_per_workflow_run_allowed: true
+  exactly_one_valid_attempt_binding_per_run_input_manifest_entry: true
+  pipeline_unbound_or_ambiguous_attempt_action: block_affected_pipeline
+
+local_runtime_data_contract:
+  root: ${LOCAL_WORKFLOW_DATA_ROOT_LOCAL_ONLY}
+  must_be_outside_git: true
+  must_be_outside_onedrive: true
+  required_subdirectories:
+    - runtime-config
+    - browser-profiles
+    - runs/{workflow_run_id}/attempts/{acquisition_attempt_id}/manifests
+    - runs/{workflow_run_id}/attempts/{acquisition_attempt_id}/inputs
+    - runs/{workflow_run_id}/attempts/{acquisition_attempt_id}/intermediate
+    - runs/{workflow_run_id}/attempts/{acquisition_attempt_id}/outputs
+    - runs/{workflow_run_id}/attempts/{acquisition_attempt_id}/diagnostics
+    - state
+    - logs
+  file_write_policy: create_new_never_overwrite
+  raw_input_retention:
+    automatic_delete_cleanup_or_overwrite_allowed: false
+    extra_raw_input_backup_created_by_mvp: false
+    retention_period: owner_confirmation_required_before_any_future_cleanup_policy
+  diagnostics:
+    success_screenshot_video_or_trace_saved: false
+    failure_diagnostic_capture_requires_owner_confirmation: true
+    trace_containing_unsanitized_business_data_allowed: false
+  metadata_backup:
+    raw_input_included: false
+    strategy: owner_confirmation_required_before_scheduled_activation
+
+runner_cli_contract:
+  implementation_language: Python
+  implementation_status: implemented_pending_stage5_provider_configuration
+  interface_name: weekly-acquisition-runner
+  allowed_command_intents:
+    - validate-config
+    - acquire-one-explicit-binding
+    - validate-attempt
+    - request-draft-creation
+  generic_cross-workflow_task_queue_allowed: false
+  required_invocation_fields:
+    - workflow_id
+    - workflow_run_id
+    - acquisition_attempt_id
+    - adapter_id
+    - dataset_id
+    - query_asset_id_or_not_applicable
+    - local_runtime_config_reference
+  secrets_or_absolute_paths_in_command_history_allowed: false
+  unknown_or_ambiguous_binding_action: block
+
+outlook_draft_contract:
+  provider_id: PRV_OUTLOOK_EMAIL_PRIMARY_V1
+  adapter_id: ADP_OUTLOOK_DRAFT_V1
+  draft_only: true
+  auto_send: false
+  send_capability_may_be_invoked: false
+  blocked_workflow_draft_creation_allowed: false
+  partial_draft_allowed: true
+  partial_draft_warning_preface_required: true
+  before_runtime_acceptance:
+    human_confirmation_before_each_draft_creation_required: true
+    classification: activation_and_deployment_gate_only
+    workflow_completion_status_semantics_changed: false
+    draft_capability_removed_or_narrowed: false
+  after_runtime_acceptance:
+    automatic_draft_creation_allowed: false
+    separate_explicit_owner_approval_required: true
+    authorization_may_be_inferred_from_runtime_acceptance: false
+  rerun_behavior: create_new_versioned_draft
+  update_or_overwrite_existing_draft_allowed: false
+
+failure_and_notification_contract:
+  notification_channels: [Codex task update, local exception record]
+  automatic_external_email_or_message_notification_allowed: false
+  missed_scheduled_run_action: notify_and_require_manual_or_backfill_decision
+  guessed_catch_up_run_allowed: false
+  provider_capability_insufficient_action: block_and_report
+  provider_or_adapter_switch_without_owner_approval_allowed: false
+  schema_or_page_contract_drift_action: block_affected_pipeline_and_report
+  weekly_outlook_input_not_found:
+    initial_wait_minutes: 30
+    maximum_recheck_count: 1
+    after_recheck_action: block_affected_weekly_input_and_report
+  customer_revenue_detail_non_regression:
+    customer_contract_changed_by_this_asset: false
+    current_qtd_recheck_semantics_preserved: unlimited_30_minute_rechecks_after_single_notification_until_owner_cancels
+    weekly_outlook_retry_policy_must_not_be_inherited_by_customer_workflow: true
+
+maintenance_and_change_control:
+  pure_selector_change:
+    confirmation_authority: TECHNICAL_MAINTAINER
+    adapter_version_increment_required: true
+    baseline_review_required: false
+    condition: no query template, parameter, result schema, permission, or business behavior changes
+  semantic_or_security_change:
+    confirmation_authority: WORKFLOW_OWNER
+    baseline_impact_review_required: true
+    applies_to:
+      - query template or module identity
+      - parameter semantics
+      - result schema or interpretation
+      - provider permissions or capabilities
+      - retry, fallback, retention, Draft, or scheduling behavior
+  browser_or_provider_version_drift:
+    automatic_unreviewed_upgrade_assumption_allowed: false
+    incompatible_runtime_action: block_and_report
+
+runtime_acceptance_technical_default:
+  business_baseline_semantics: false
+  ci_uses_synthetic_or_sanitized_inputs_only: true
+  real_session_shadow_requires_separate_owner_authorization_per_platform: true
+  owner_may_reduce_period_only_with_separate_explicit_confirmation: true
+  apollo_required_weekly_cycles: 4
+  novabi_required_weekly_cycles: 4
+  technical_backfill_required: true
+  outlook_input_coverage_required:
+    - regular weekly email selection
+    - quarter-close email selection
+    - CTV email selection
+  outlook_draft_validation:
+    draft_only: true
+    compare_with_approved_expected_rendering: true
+    send_allowed: false
+  exact_query_asset_template_and_parameter_match_rate: 1.0
+  unexplained_data_difference_allowed: false
+  negative_scenarios_required:
+    - login expiration or MFA required
+    - page timeout
+    - download failure
+    - schema drift
+    - page contract drift
+    - lock occupied
+    - Outlook Provider capability insufficient
+  cutover: adapter_by_adapter
+  rollback: return_to_manual_input_and_mark_manifest_acquisition_mode_manual_fallback
+
+stage_authorization_boundaries:
+  stage1_design_asset_change_authorized: true
+  stage2_baseline_version_change_authorized: false
+  stage2_owner_authorized: true
+  code_implementation_authorized: true
+  code_implementation_started: true
+  tool_installation_authorized: false
+  real_account_access_authorized: false
+  real_data_shadow_run_authorized: false
+  runtime_acceptance_execution_authorized: false
+  scheduled_activation_authorized: false
+  git_stage_commit_push_or_pr_authorized: false
+  automatic_next_stage_allowed: false
+
+compatibility_closure:
+  c1_extension_composition: closed
+  c2_manifest_bridge_and_lifecycle: closed
+  c3_activation_and_deployment_gates: closed
+  direct_replacement: not_applicable
+  sidecar_compatibility: pass
+  breaking_change_requiring_major: false

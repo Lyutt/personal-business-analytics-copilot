@@ -1,0 +1,64 @@
+config_type: stage2_implementation_status
+implementation_id: STAGE2_WEEKLY_ACQUISITION_RUNTIME_V1_1
+implementation_version: 1.0.0
+status: implementation_and_local_validation_completed_pending_draft_pr
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+owner: WORKFLOW_OWNER
+implementation_start_date: 2026-08-12
+
+authorized_candidate_baseline:
+  runtime_bundle_id: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_1_CANDIDATE
+  runtime_bundle_version: 1.1.0
+  runtime_bundle_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml
+  acquisition_extension_id: ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1
+  acquisition_extension_version: 1.1.0
+  acquisition_extension_source: phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml
+  exact_compatibility_diff: phase1_5/assets/readiness/weekly_runtime_v1_0_to_v1_1_exact_compatibility_diff.yaml
+  sidecar_mode_required: true
+
+implementation_authorization:
+  code_implementation_started: true
+  stage2_owner_authorized: true
+  stage1_architecture_or_contract_redesign_authorized: false
+  baseline_1_0_0_modification_authorized: false
+  runtime_1_0_0_modification_authorized: false
+  customer_workflow_modification_authorized: false
+  scheduler_activation_authorized: false
+  automatic_draft_activation_authorized: false
+  auto_send: false
+  real_account_or_data_access_authorized: false
+  stage5_provider_capability_validation_authorized: false
+  runtime_acceptance_execution_authorized: false
+  automatic_next_stage_allowed: false
+
+implementation_units:
+  - unit_id: UNIT_RUNTIME_CORE_MANIFEST_BRIDGE
+    status: implemented_unit_tests_passed
+    contract_sections: [workflow_run_context, run_input_manifest, acquisition_lifecycle_contract]
+  - unit_id: UNIT_LOCAL_STORAGE_AND_BROWSER_LOCK
+    status: implemented_unit_tests_passed
+    contract_sections: [local_runtime_data_contract, browser_acquisition_lock]
+  - unit_id: UNIT_PROVIDER_ADAPTER_AND_CLI
+    status: implemented_unit_tests_passed_pending_stage5_provider_configuration
+    contract_sections: [provider_registry, adapter_registry, runner_cli_contract]
+  - unit_id: UNIT_RECOVERY_MANUAL_FALLBACK_DRAFT_GATE
+    status: implemented_unit_tests_passed
+    contract_sections: [query_execution_contract, acquisition_attempt_contract, outlook_draft_contract]
+
+git_delivery:
+  branch: codex/weekly-acquisition-runtime-v1-1
+  draft_pr_required: true
+  direct_main_modification_allowed: false
+  merge_authorized: false
+
+local_validation_result:
+  runtime_unit_test_count: 13
+  runtime_unit_tests: passed
+  exact_core_interface_compatibility: 9_of_9_passed
+  acquisition_contract_regression: passed
+  weekly_workflow_regression: passed
+  customer_workflow_regression: passed
+  repository_safety_validation: passed
+  real_business_data_used: false
+  external_side_effects_executed: false
+  runtime_acceptance_executed: false

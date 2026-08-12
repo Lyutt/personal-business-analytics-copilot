@@ -152,3 +152,44 @@ constraints:
   runtime_acceptance_requires_metric_store_bootstrap: true
   auto_send_allowed: false
   auto_merge_allowed: false
+
+stage1_acquisition_design_change:
+  decision_freeze_date: 2026-08-12
+  design_asset_modification_status: compatibility_diff_c1_c2_c3_closed_pending_stage2_owner_approval
+  change_set_source: phase1_5/assets/readiness/weekly_acquisition_stage1_change_set_v1_1_candidate.yaml
+  candidate_runtime_bundle_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml
+  candidate_contract_source: phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml
+  candidate_acceptance_source: phase1_5/tests/weekly_acquisition_automation_acceptance_scenarios_v1_1_candidate.yaml
+  exact_compatibility_diff_source: phase1_5/assets/readiness/weekly_runtime_v1_0_to_v1_1_exact_compatibility_diff.yaml
+  current_baseline_version_remains: 1.0.0
+  target_baseline_version_after_stage2_owner_approval: 1.1.0
+  baseline_version_modified_in_stage1: false
+  candidate_composition: complete_runtime_bundle_plus_acquisition_extension_sidecar
+  direct_replacement: not_applicable
+  sidecar_compatibility: pass
+  breaking_change_requiring_major: false
+  compatibility_conditions: { C1: closed, C2: closed, C3: closed }
+  stage2_readiness: satisfied_pending_owner_authorization
+  code_implementation_authorized: false
+  real_data_shadow_run_authorized: false
+  scheduled_activation_authorized: false
+  auto_send: false
+
+stage2_acquisition_runtime_implementation:
+  authorization_date: 2026-08-12
+  status: implementation_and_local_validation_completed_pending_draft_pr
+  implementation_status_source: phase1_5/assets/readiness/weekly_acquisition_stage2_implementation_status.yaml
+  authorized_runtime_bundle_candidate: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_1_CANDIDATE
+  authorized_acquisition_extension_contract: ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1
+  code_implementation_started: true
+  baseline_1_0_0_unchanged: true
+  runtime_contract_1_0_0_unchanged: true
+  scheduler_activated: false
+  automatic_draft_activated: false
+  auto_send: false
+  customer_workflow_changed: false
+  runtime_acceptance_started: false
+  local_runtime_unit_tests: passed_13
+  exact_runtime_acquisition_weekly_regression: passed
+  customer_workflow_regression: passed
+  automatic_next_stage_allowed: false

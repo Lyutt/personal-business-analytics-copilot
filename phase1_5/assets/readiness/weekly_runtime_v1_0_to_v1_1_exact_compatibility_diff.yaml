@@ -1,0 +1,101 @@
+config_type: exact_compatibility_diff_record
+diff_id: EXACT_COMPATIBILITY_DIFF_WEEKLY_RUNTIME_V1_0_TO_V1_1_CANDIDATE
+status: passed_stage1_c1_c2_c3_closed
+assessment_date: 2026-08-12
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+owner: WORKFLOW_OWNER
+source_contract: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+candidate_runtime_bundle: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml
+acquisition_extension_contract: phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml
+
+version_and_authorization:
+  current_baseline_version: 1.0.0
+  candidate_target_version: 1.1.0
+  baseline_modified: false
+  stage2_authorized: false
+  code_implementation_started: false
+  runtime_code_authorized: false
+
+composition_result:
+  direct_replacement: not_applicable
+  sidecar_compatibility: pass
+  acquisition_extension_is_runtime_replacement: false
+  breaking_change_requiring_major: false
+  preserved_core_top_level_interfaces:
+    workflow_run_context: exact
+    run_input_manifest: exact_plus_backward_compatible_optional_entry_extension
+    canonical_context_field_contracts: exact
+    canonical_rule_context_bindings: exact
+    pipeline_scoped_rule_context_bindings: exact
+    parameterized_result_contract_instance_selection: exact
+    result_field_consumption: exact
+    workflow_completion_status: exact
+    governance: exact
+
+manifest_compatibility:
+  manifest_id: RUN_INPUT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1
+  one_manifest_per_workflow_run: true
+  original_entry_business_key: [workflow_run_id, dataset_id, period_role, product_parameter]
+  candidate_entry_business_key: [workflow_run_id, dataset_id, period_role, product_parameter]
+  optional_entry_extension: acquisition_attempt_binding
+  extension_fields: [acquisition_attempt_id, attempt_manifest_reference]
+  required_for_acquisition_modes: [automated, manual_fallback]
+  legacy_prepared_local_input_value: not_applicable
+  pipeline_consumption_requires_explicit_passed_attempt_binding: true
+  latest_attempt_inference_allowed: false
+  file_timestamp_inference_allowed: false
+  directory_order_inference_allowed: false
+  attempt_business_association_key: [workflow_run_id, dataset_id, period_role, product_parameter, acquisition_attempt_id]
+
+lifecycle_result:
+  ordered_steps:
+    - lock_run_context
+    - create_acquisition_attempt
+    - acquire
+    - validate_attempt_manifest
+    - bind_successful_attempt_to_run_input_manifest
+    - pipeline_consume_bound_local_input
+  failed_or_old_attempt_manifest_or_file_overwrite_allowed: false
+  multiple_attempts_per_workflow_run_allowed: true
+  exactly_one_valid_attempt_binding_per_run_input_manifest_entry: true
+
+coverage_and_semantic_regression:
+  outlook_dataset_count: { source: 3, candidate: 3, result: exact }
+  apollo_dataset_count: { source: 6, candidate: 6, result: exact }
+  apollo_query_asset_count: { source: 6, candidate: 6, result: exact }
+  novabi_dataset_count: { source: 1, candidate: 1, result: exact }
+  novabi_query_asset_count: { source: 1, candidate: 1, result: exact }
+  weekly_pipeline_count: { source: 12, candidate_scope_affected: 10, result: expected_no_regression }
+  result_field_consumption: exact
+  workflow_completion_status: exact
+  outlook_selection_rules: exact_unchanged
+  customer_workflow: zero_regression
+
+activation_gate_result:
+  draft_before_runtime_acceptance:
+    classification: activation_and_deployment_gate_only
+    runtime_completion_status_or_draft_capability_changed: false
+    auto_send: false
+  automatic_draft_after_runtime_acceptance:
+    activated: false
+    separate_owner_approval_required: true
+  scheduler_initial_mvp:
+    classification: activation_and_deployment_gate_only
+    activated: false
+    supported_run_types_unchanged: [scheduled, manual, backfill]
+  scheduler_after_runtime_acceptance:
+    activated: false
+    separate_owner_approval_required: true
+
+compatibility_conditions:
+  C1: closed
+  C2: closed
+  C3: closed
+  new_blocking_issues: []
+
+final_result:
+  direct_replacement: not_applicable
+  sidecar_compatibility: pass
+  breaking_change_requiring_major: false
+  stage2_readiness: satisfied_pending_explicit_owner_authorization
+  automatic_stage2_entry_allowed: false
