@@ -2435,8 +2435,8 @@ def validate_customer_analysis_narrative_mapping(
         "mvp_execution_mode": "sequential",
         "mvp_recovery_mode": "rerun_pipeline_from_start",
         "development_complexity_reduction": True,
-        "code_implementation_owner_approved": False,
-        "code_implementation_start": "wait_for_explicit_owner_approval",
+        "code_implementation_owner_approved": True,
+        "code_implementation_start": "stage2_acquisition_runtime_implementation_completed",
         "initial_mvp_pipeline_count_with_sequential_execution": 12,
         "initial_mvp_pipeline_count_with_rerun_from_start": 12,
         "customer_analysis_qualified_zero_row_contract_mode": "product_context_with_empty_customer_record_set",
@@ -2446,8 +2446,8 @@ def validate_customer_analysis_narrative_mapping(
     for key, expected in expected_status.items():
         if status_scope.get(key) != expected:
             errors.append(f"{status_file}:scope_boundaries.{key}: expected {expected!r}")
-    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-09":
-        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-09")
+    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-12":
+        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-12")
 
     output_gate_file = (
         "phase1_5/assets/output_mappings/"

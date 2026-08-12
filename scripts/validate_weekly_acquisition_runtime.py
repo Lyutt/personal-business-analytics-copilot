@@ -16,6 +16,7 @@ EXTENSION = ROOT / "phase1_5/assets/execution/weekly_acquisition_automation_cont
 DATASETS = ROOT / "phase1_5/assets/datasets/dataset_inventory.yaml"
 PIPELINES = ROOT / "phase1_5/assets/pipelines/pipeline_registry.yaml"
 STAGE2 = ROOT / "phase1_5/assets/readiness/weekly_acquisition_stage2_implementation_status.yaml"
+STATUS_INDEX = ROOT / "phase1_5/assets/readiness/status_index.yaml"
 
 CORE_INTERFACES = [
     "workflow_run_context",
@@ -45,6 +46,7 @@ def main() -> int:
     datasets = load(DATASETS)
     pipelines = load(PIPELINES)
     stage2 = load(STAGE2)
+    status_index = load(STATUS_INDEX)
 
     assert set(new) == set(old) | {"acquisition_automation_contract_binding"}
     for interface in CORE_INTERFACES:
@@ -182,6 +184,35 @@ def main() -> int:
     assert authorization["automatic_draft_activation_authorized"] is False
     assert authorization["auto_send"] is False
     assert stage2["local_validation_result"]["runtime_unit_test_count"] == 38
+    stage2_index = status_index["stage2_acquisition_runtime_implementation"]
+    assert status_index["phase_status"]["code_implementation"] == (
+        "stage2_owner_authorized_and_implementation_completed"
+    )
+    assert status_index["scope_boundaries"]["code_implementation_owner_approved"] is True
+    assert status_index["implementation_baseline"]["baseline_version"] == "1.0.0"
+    assert status_index["implementation_baseline"]["record_scope"] == (
+        "stable_1_0_0_baseline_not_promoted_or_refrozen_by_stage2"
+    )
+    for field_name in (
+        "stage2_owner_authorized",
+        "code_implementation_authorized",
+        "code_implementation_started",
+    ):
+        assert stage2_index[field_name] == authorization[field_name] is True
+    assert stage2_index["local_runtime_unit_tests"] == stage2["local_validation_result"][
+        "runtime_unit_test_count"
+    ]
+    for field_name in (
+        "scheduler_activation_authorized",
+        "automatic_draft_activation_authorized",
+        "stage5_provider_capability_validation_authorized",
+    ):
+        assert stage2_index[field_name] == authorization[field_name] is False
+    assert stage2_index["scheduler_activated"] is False
+    assert stage2_index["automatic_draft_activated"] is False
+    assert stage2_index["auto_send"] == authorization["auto_send"] is False
+    assert stage2_index["runtime_acceptance_started"] is False
+    assert authorization["runtime_acceptance_execution_authorized"] is False
     git_delivery = stage2["git_delivery"]
     assert git_delivery["current_branch_commit_authorized"] is True
     assert git_delivery["current_branch_push_authorized"] is True

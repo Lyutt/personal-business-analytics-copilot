@@ -2,16 +2,16 @@ config_type: business_asset_status_index
 index_version: 1.0.0
 status: synchronized
 assessment_date: 2026-08-03
-last_semantic_sync_date: 2026-08-09
+last_semantic_sync_date: 2026-08-12
 design_asset_closure_review_date: 2026-08-09
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-current_stage: Phase 1.5 Final Acceptance Passed - Awaiting Explicit Owner Code Implementation Approval
+current_stage: Stage 2 Acquisition Runtime Implementation Completed - Draft PR Awaiting Owner Merge Authorization
 
 phase_status:
   phase_1: completed_and_retained_as_historical_design_baseline
   phase_1_5_business_asset_initialization: completed_for_weekly_workflow_p0_scope
   phase_1_5_final_acceptance: passed
-  code_implementation: awaiting_explicit_owner_approval
+  code_implementation: stage2_owner_authorized_and_implementation_completed
   end_to_end_runtime_acceptance: conditional
 
 asset_stage_gates:
@@ -59,6 +59,7 @@ asset_stage_gates:
     asset_stage: Code Implementation Readiness
     status: ready_awaiting_explicit_owner_approval
     source_artifact: phase1_5/assets/readiness/code_implementation_readiness_gate.yaml
+    record_scope: historical_pre_stage2_authorization
 
 implementation_baseline:
   baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
@@ -69,6 +70,7 @@ implementation_baseline:
   freeze_date: 2026-08-08
   last_refreeze_date: 2026-08-09
   freeze_revision_status: refrozen_after_design_contract_closure
+  record_scope: stable_1_0_0_baseline_not_promoted_or_refrozen_by_stage2
 
 scope_boundaries:
   weekly_business_report_p0_assets: complete
@@ -96,8 +98,8 @@ scope_boundaries:
   initial_mvp_pipeline_count_with_sequential_execution: 12
   initial_mvp_pipeline_count_with_rerun_from_start: 12
   development_complexity_reduction: true
-  code_implementation_owner_approved: false
-  code_implementation_start: wait_for_explicit_owner_approval
+  code_implementation_owner_approved: true
+  code_implementation_start: stage2_acquisition_runtime_implementation_completed
   customer_analysis_qualified_zero_row_contract_mode: product_context_with_empty_customer_record_set
   shared_metric_store_schema_status: confirmed_runtime_not_initialized
   inventory_commentary_template_anchor_binding_status: confirmed_runtime_validation_required
@@ -189,11 +191,14 @@ stage2_acquisition_runtime_implementation:
   baseline_1_0_0_unchanged: true
   runtime_contract_1_0_0_unchanged: true
   scheduler_activated: false
+  scheduler_activation_authorized: false
   automatic_draft_activated: false
+  automatic_draft_activation_authorized: false
   auto_send: false
+  stage5_provider_capability_validation_authorized: false
   customer_workflow_changed: false
   runtime_acceptance_started: false
-  local_runtime_unit_tests: passed_30
+  local_runtime_unit_tests: 38
   exact_runtime_acquisition_weekly_regression: passed
   customer_workflow_regression: passed
   automatic_next_stage_allowed: false
