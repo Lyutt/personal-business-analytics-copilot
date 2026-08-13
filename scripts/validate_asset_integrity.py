@@ -2446,7 +2446,7 @@ def validate_customer_analysis_narrative_mapping(
         "mvp_recovery_mode": "rerun_pipeline_from_start",
         "development_complexity_reduction": True,
         "code_implementation_owner_approved": True,
-        "code_implementation_start": "stage2_acquisition_runtime_implementation_completed",
+        "code_implementation_start": "stage2_acquisition_runtime_foundation_completed_and_merged",
         "initial_mvp_pipeline_count_with_sequential_execution": 12,
         "initial_mvp_pipeline_count_with_rerun_from_start": 12,
         "customer_analysis_qualified_zero_row_contract_mode": "product_context_with_empty_customer_record_set",
@@ -2456,8 +2456,8 @@ def validate_customer_analysis_narrative_mapping(
     for key, expected in expected_status.items():
         if status_scope.get(key) != expected:
             errors.append(f"{status_file}:scope_boundaries.{key}: expected {expected!r}")
-    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-12":
-        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-12")
+    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-13":
+        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-13")
 
     output_gate_file = (
         "phase1_5/assets/output_mappings/"
@@ -2483,10 +2483,14 @@ def validate_customer_analysis_narrative_mapping(
 
     code_gate_file = "phase1_5/assets/readiness/code_implementation_readiness_gate.yaml"
     code_gate = documents.get(code_gate_file, {})
+    if code_gate.get("record_scope") != "historical_pre_stage2_authorization" or code_gate.get(
+        "current_state_classification"
+    ) != "superseded_as_current_operational_status":
+        errors.append(f"{code_gate_file}: historical Gate scope must be explicit")
     if code_gate.get("scope", {}).get("code_implementation_started") is not False or code_gate.get(
         "implementation_entry_decision", {}
     ).get("code_implementation_may_start") is not False:
-        errors.append(f"{code_gate_file}: code implementation must remain unauthorized")
+        errors.append(f"{code_gate_file}: original pre-Stage 2 authorization judgment must remain unchanged")
     if code_gate.get("governance", {}).get("outlook_auto_send") is not False:
         errors.append(f"{code_gate_file}: outlook_auto_send must remain false")
     entry = code_gate.get("implementation_entry_decision", {})

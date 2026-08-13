@@ -200,9 +200,11 @@ def main() -> int:
     assert authorization["auto_send"] is False
     assert stage2["local_validation_result"]["runtime_unit_test_count"] == 38
     stage2_index = status_index["stage2_acquisition_runtime_implementation"]
+    assert status_index["current_stage"] == "Stage 2.5 Governance and Implementation Boundary Sync"
     assert status_index["phase_status"]["code_implementation"] == (
-        "stage2_owner_authorized_and_implementation_completed"
+        "stage2_acquisition_runtime_foundation_completed_and_merged"
     )
+    assert status_index["phase_status"]["stage_2_5_governance_sync"] == "synchronized"
     assert status_index["scope_boundaries"]["code_implementation_owner_approved"] is True
     assert status_index["implementation_baseline"]["baseline_version"] == "1.0.0"
     assert status_index["implementation_baseline"]["record_scope"] == (
@@ -229,10 +231,30 @@ def main() -> int:
     assert stage2_index["runtime_acceptance_started"] is False
     assert authorization["runtime_acceptance_execution_authorized"] is False
     git_delivery = stage2["git_delivery"]
-    assert git_delivery["current_branch_commit_authorized"] is True
-    assert git_delivery["current_branch_push_authorized"] is True
-    assert git_delivery["existing_draft_pr_update_authorized"] is True
-    assert git_delivery["merge_authorized"] is False
+    assert stage2["status"] == stage2_index["status"] == "completed_and_merged"
+    assert git_delivery["status"] == "completed_and_merged"
+    assert git_delivery["pull_request"] == 8
+    assert git_delivery["merge_completed"] is True
+    assert git_delivery["merge_commit_sha"] == "7412d09bcb544061beec69471684b2a246bff6a0"
+    historical_git_delivery = git_delivery["historical_pre_merge_record"]
+    assert historical_git_delivery["record_scope"] == "historical_record"
+    assert historical_git_delivery["current_branch_commit_authorized"] is True
+    assert historical_git_delivery["current_branch_push_authorized"] is True
+    assert historical_git_delivery["existing_draft_pr_update_authorized"] is True
+    assert historical_git_delivery["merge_authorized"] is False
+    stage2_5 = status_index["stage2_5_governance_and_implementation_boundary_sync"]
+    assert stage2_5["status"] == "governance_synchronized"
+    assert stage2_5["next_candidate_stage"] == "Data Engine / Business Execution Implementation"
+    assert stage2_5["next_candidate_stage_status"] == (
+        "not_started_requires_independent_owner_authorization"
+    )
+    assert stage2_5["real_data_calculation_status"] == "not_started"
+    assert stage2_5["provider_capability_validation_status"] == "not_started"
+    assert stage2_5["runtime_acceptance_status"] == "not_started"
+    assert stage2_5["scheduler_status"] == "inactive_not_authorized"
+    assert stage2_5["automatic_draft_status"] == "inactive_not_authorized"
+    assert stage2_5["auto_send"] is False
+    assert stage2_5["automatic_next_stage_allowed"] is False
     stage_authorization = extension["stage_authorization_boundaries"]
     assert stage_authorization["git_stage_commit_push_or_pr_authorized"] is True
     assert stage_authorization["merge_authorized"] is False

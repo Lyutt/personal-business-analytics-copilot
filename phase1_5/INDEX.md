@@ -19,17 +19,19 @@
 - Metric Library Initialization：已完成并通过Readiness Gate。
 - Result Contract Initialization：12个正式Contract已完成并通过Readiness Gate；
   48个Metric Variant已显式绑定Contract Field。
-- 当前收口点：Weekly的Phase 1.5 Final Acceptance已通过；Weekly与Customer Revenue Detail各自的Implementation Baseline 1.0.0已于2026-08-09完成设计合同影响审查并按同版本refreeze，分别等待Owner明确批准代码实现。Weekly保留本地Metric Store Runtime Bootstrap条件，Customer Workflow的运行验收尚未开始。
+- 当前收口点：Weekly的Phase 1.5 Final Acceptance已通过；Weekly与Customer Revenue Detail各自的Implementation Baseline 1.0.0继续作为冻结历史基线。Weekly Stage 2 Acquisition Runtime Foundation已在PR #8完成并合并；Customer仍保持独立未授权状态。
 - 统一状态入口：[Status Index](assets/readiness/status_index.yaml)。
-- 最终实现入口：[Code Implementation Readiness Gate](assets/readiness/code_implementation_readiness_gate.yaml)。
+- 历史实现入口：[Code Implementation Readiness Gate](assets/readiness/code_implementation_readiness_gate.yaml)，记录pre-Stage 2审查结论；当前状态以Status Index为准。
 - 冻结实现基线：[Implementation Baseline 1.0.0](assets/readiness/implementation_baseline.yaml)。
 - 历史基线：[Phase 1.5 Baseline Closure — 2026-07-31](BASELINE_CLOSURE_2026-07-31.md)。
 - 当前 Output Mapping：[Output Mapping 资产索引](assets/output_mappings/INDEX.md)。
 - Weekly Output Mapping Gate：[weekly_report_output_mapping_readiness_gate.yaml](assets/output_mappings/weekly_report_output_mapping_readiness_gate.yaml)。
 - Weekly Workflow 收口归档：[Weekly_Business_Report_Workflow_Closure_2026-08-02.md](Weekly_Business_Report_Workflow_Closure_2026-08-02.md)。
 - 整体 Personal Business Analytics Copilot 架构：不变。
-- 代码实现：未开始且不得启动；等待Owner明确批准冻结Baseline ID和版本。
-- 端到端MVP运行验收：Conditional，需先完成Inventory、User Analytics与Advertising Metric Store本地Bootstrap。
+- Stage 2：Acquisition Runtime Foundation已完成并合并；Stage 2.5仅同步治理和实施边界。
+- 下一候选实施阶段：Data Engine / Business Execution，从确定性本地输入和首条业务Pipeline开始；尚未启动且需要Owner独立授权。
+- Real-data calculation、Provider capability validation与Runtime Acceptance均未开始；端到端MVP运行验收保持Conditional。
+- Scheduler与Automatic Draft未激活、未授权；`auto_send=false`。
 
 ## 已确认架构
 
