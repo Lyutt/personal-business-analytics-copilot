@@ -365,6 +365,19 @@ local_runtime_data_contract:
     - state
     - logs
   file_write_policy: create_new_never_overwrite
+  file_write_policy_scope:
+    immutable_business_or_audit_artifacts:
+      - acquisition_attempt
+      - acquisition_attempt_manifest
+      - attempt_input
+      - attempt_intermediate
+      - attempt_output
+      - attempt_diagnostic
+    browser_lock_operational_state_in_state_directory:
+      classification: controlled_runtime_operational_state
+      included_in_create_new_never_overwrite_scope: false
+      controlled_overwrite_allowed: true
+      append_only_lock_framework_required: false
   raw_input_retention:
     automatic_delete_cleanup_or_overwrite_allowed: false
     extra_raw_input_backup_created_by_mvp: false

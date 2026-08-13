@@ -94,6 +94,22 @@ def main() -> int:
     assert extension["acquisition_attempt_contract"]["latest_attempt_inference_allowed"] is False
     assert extension["acquisition_attempt_contract"]["latest_filename_or_timestamp_selection_allowed"] is False
     assert extension["acquisition_attempt_contract"]["directory_order_selection_allowed"] is False
+    local_runtime_data = extension["local_runtime_data_contract"]
+    assert local_runtime_data["file_write_policy"] == "create_new_never_overwrite"
+    write_scope = local_runtime_data["file_write_policy_scope"]
+    assert write_scope["immutable_business_or_audit_artifacts"] == [
+        "acquisition_attempt",
+        "acquisition_attempt_manifest",
+        "attempt_input",
+        "attempt_intermediate",
+        "attempt_output",
+        "attempt_diagnostic",
+    ]
+    operational_state = write_scope["browser_lock_operational_state_in_state_directory"]
+    assert operational_state["classification"] == "controlled_runtime_operational_state"
+    assert operational_state["included_in_create_new_never_overwrite_scope"] is False
+    assert operational_state["controlled_overwrite_allowed"] is True
+    assert operational_state["append_only_lock_framework_required"] is False
     assert extension["baseline_binding"]["stage2_refreeze_required_before_code_implementation"] is False
     assert extension["baseline_binding"]["baseline_promotion_or_refreeze_required_before"] == "runtime_acceptance_or_cutover"
 
