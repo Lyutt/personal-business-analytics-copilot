@@ -10,6 +10,14 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from .errors import AmbiguousBindingError, ContractViolation, UnboundInputError
+from .pydantic_models import (
+    validate_acquisition_attempt_binding,
+    validate_attempt_manifest,
+    validate_business_key,
+    validate_in_parallel,
+    validate_locked_run_context,
+    validate_run_input_entry,
+)
 
 
 NOT_APPLICABLE = "not_applicable"
@@ -112,10 +120,25 @@ class BusinessKey:
     product_parameter: str
 
     def __post_init__(self) -> None:
-        for name in self.__dataclass_fields__:
-            _required_text(getattr(self, name), name)
-        if self.period_role not in PERIOD_ROLES:
-            raise ContractViolation(f"period_role must be one of {sorted(PERIOD_ROLES)}")
+        def legacy_validator() -> None:
+            for name in self.__dataclass_fields__:
+                _required_text(getattr(self, name), name)
+            if self.period_role not in PERIOD_ROLES:
+                raise ContractViolation(f"period_role must be one of {sorted(PERIOD_ROLES)}")
+
+        validate_in_parallel(
+            scope="BusinessKey",
+            legacy_validator=legacy_validator,
+            pydantic_validator=lambda: validate_business_key(
+                {
+                    "workflow_run_id": self.workflow_run_id,
+                    "dataset_id": self.dataset_id,
+                    "period_role": self.period_role,
+                    "product_parameter": self.product_parameter,
+                },
+                period_roles=PERIOD_ROLES,
+            ),
+        )
 
     def as_tuple(self) -> tuple[str, str, str, str]:
         return (
@@ -165,26 +188,39 @@ class LockedRunContext:
 
     @classmethod
     def lock(cls, values: Mapping[str, Any]) -> "LockedRunContext":
-        missing = sorted(cls.REQUIRED_FIELDS - set(values))
-        if missing:
-            raise ContractViolation(f"Run Context missing required fields: {missing}")
-        for name in cls.REQUIRED_FIELDS - cls.DATE_FIELDS:
-            _required_text(values[name], f"Run Context {name}")
-        for name in cls.DATE_FIELDS:
-            _iso_date_or_not_applicable(values[name], f"Run Context {name}")
-            if values[name] == NOT_APPLICABLE:
-                raise ContractViolation(f"Run Context {name} cannot be not_applicable")
-        if values["run_type"] not in cls.RUN_TYPES:
-            raise ContractViolation("run_type must be scheduled, manual, or backfill")
-        if values["timezone"] != "Asia/Shanghai":
-            raise ContractViolation("timezone must be Asia/Shanghai")
-        for start_name, end_name in (
-            ("reporting_period_start_date", "reporting_period_end_date"),
-            ("current_period_start_date", "current_period_end_date"),
-            ("comparison_period_start_date", "comparison_period_end_date"),
-        ):
-            if values[start_name] > values[end_name]:
-                raise ContractViolation(f"Run Context {start_name} cannot be after {end_name}")
+        def legacy_validator() -> None:
+            missing = sorted(cls.REQUIRED_FIELDS - set(values))
+            if missing:
+                raise ContractViolation(f"Run Context missing required fields: {missing}")
+            for name in cls.REQUIRED_FIELDS - cls.DATE_FIELDS:
+                _required_text(values[name], f"Run Context {name}")
+            for name in cls.DATE_FIELDS:
+                _iso_date_or_not_applicable(values[name], f"Run Context {name}")
+                if values[name] == NOT_APPLICABLE:
+                    raise ContractViolation(f"Run Context {name} cannot be not_applicable")
+            if values["run_type"] not in cls.RUN_TYPES:
+                raise ContractViolation("run_type must be scheduled, manual, or backfill")
+            if values["timezone"] != "Asia/Shanghai":
+                raise ContractViolation("timezone must be Asia/Shanghai")
+            for start_name, end_name in (
+                ("reporting_period_start_date", "reporting_period_end_date"),
+                ("current_period_start_date", "current_period_end_date"),
+                ("comparison_period_start_date", "comparison_period_end_date"),
+            ):
+                if values[start_name] > values[end_name]:
+                    raise ContractViolation(
+                        f"Run Context {start_name} cannot be after {end_name}"
+                    )
+
+        validate_in_parallel(
+            scope="LockedRunContext",
+            legacy_validator=legacy_validator,
+            pydantic_validator=lambda: validate_locked_run_context(
+                values,
+                run_types=cls.RUN_TYPES,
+                timezone="Asia/Shanghai",
+            ),
+        )
         return cls(MappingProxyType(dict(values)))
 
     @property
@@ -269,6 +305,18 @@ class AcquisitionAttemptBinding:
     attempt_manifest_reference: str
 
     def __post_init__(self) -> None:
+        validate_in_parallel(
+            scope="AcquisitionAttemptBinding",
+            legacy_validator=lambda: self._validate_legacy(),
+            pydantic_validator=lambda: validate_acquisition_attempt_binding(
+                {
+                    "acquisition_attempt_id": self.acquisition_attempt_id,
+                    "attempt_manifest_reference": self.attempt_manifest_reference,
+                }
+            ),
+        )
+
+    def _validate_legacy(self) -> None:
         _required_text(self.acquisition_attempt_id, "acquisition_attempt_id")
         _required_text(self.attempt_manifest_reference, "attempt_manifest_reference")
 
@@ -304,6 +352,16 @@ class AttemptManifest:
     error_code_or_not_applicable: str = NOT_APPLICABLE
 
     def __post_init__(self) -> None:
+        validate_in_parallel(
+            scope="AttemptManifest",
+            legacy_validator=self._validate_legacy,
+            pydantic_validator=lambda: validate_attempt_manifest(
+                self._validation_payload(),
+                acquisition_mode_type=AcquisitionMode,
+            ),
+        )
+
+    def _validate_legacy(self) -> None:
         for name in (
             "acquisition_attempt_id",
             "adapter_id",
@@ -331,6 +389,29 @@ class AttemptManifest:
             raise ContractViolation("duration_ms cannot be negative")
         if not isinstance(self.normalized_parameter_readback, Mapping):
             raise ContractViolation("normalized_parameter_readback must be a mapping")
+
+    def _validation_payload(self) -> dict[str, Any]:
+        return {
+            "business_key": self.business_key,
+            "acquisition_attempt_id": self.acquisition_attempt_id,
+            "acquisition_mode": self.acquisition_mode,
+            "adapter_id": self.adapter_id,
+            "adapter_version": self.adapter_version,
+            "provider_id": self.provider_id,
+            "query_asset_id_or_not_applicable": self.query_asset_id_or_not_applicable,
+            "normalized_parameter_readback": self.normalized_parameter_readback,
+            "started_at": self.started_at,
+            "completed_at": self.completed_at,
+            "duration_ms": self.duration_ms,
+            "session_status_code": self.session_status_code,
+            "local_input_opaque_reference": self.local_input_opaque_reference,
+            "sha256": self.sha256,
+            "row_count_or_not_applicable": self.row_count_or_not_applicable,
+            "schema_fingerprint_or_not_applicable": self.schema_fingerprint_or_not_applicable,
+            "page_contract_version_or_not_applicable": self.page_contract_version_or_not_applicable,
+            "validation_status": self.validation_status,
+            "error_code_or_not_applicable": self.error_code_or_not_applicable,
+        }
 
     @property
     def association_key(self) -> tuple[str, str, str, str, str]:
@@ -396,6 +477,30 @@ class RunInputEntry:
         *,
         require_attempt_binding: bool = True,
     ) -> None:
+        validate_in_parallel(
+            scope="RunInputEntry",
+            legacy_validator=lambda: self._validate_legacy(
+                registry,
+                require_attempt_binding=require_attempt_binding,
+            ),
+            pydantic_validator=lambda: validate_run_input_entry(
+                self._validation_payload(),
+                registry=registry,
+                require_attempt_binding=require_attempt_binding,
+                query_binding_statuses=QUERY_BINDING_STATUSES,
+                not_applicable=NOT_APPLICABLE,
+                automated_mode=AcquisitionMode.AUTOMATED,
+                manual_fallback_mode=AcquisitionMode.MANUAL_FALLBACK,
+                legacy_mode=AcquisitionMode.LEGACY_PREPARED_LOCAL_INPUT,
+            ),
+        )
+
+    def _validate_legacy(
+        self,
+        registry: InputBindingRegistry | None = None,
+        *,
+        require_attempt_binding: bool = True,
+    ) -> None:
         _required_text(self.dataset_version, "dataset_version")
         _required_text(self.local_input_reference, "local_input_reference")
         if not isinstance(self.query_asset_binding, Mapping):
@@ -435,6 +540,18 @@ class RunInputEntry:
             and self.acquisition_attempt_binding is not None
         ):
             raise ContractViolation("Legacy prepared local input must use not_applicable Attempt binding")
+
+    def _validation_payload(self) -> dict[str, Any]:
+        return {
+            "business_key": self.business_key,
+            "dataset_version": self.dataset_version,
+            "query_asset_binding": self.query_asset_binding,
+            "local_input_reference": self.local_input_reference,
+            "source_report_date": self.source_report_date,
+            "source_business_data_cutoff_date": self.source_business_data_cutoff_date,
+            "acquisition_mode": self.acquisition_mode,
+            "acquisition_attempt_binding": self.acquisition_attempt_binding,
+        }
 
     def as_dict(self) -> dict[str, Any]:
         self.validate()

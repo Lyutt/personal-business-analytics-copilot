@@ -28,6 +28,7 @@
 
 ## 当前硬性边界
 
+- PBAC Contract 决定“什么是正确的”，第三方库只负责“更省代码地执行和验证这个正确性”。任何第三方库均不得成为或改变 PBAC 业务合同、规则、指标、Workflow、Manifest、Runtime 状态及完成语义的权威。
 - Skill 保持为 Analytics Core、Data Engine、Calculation Engine、Output Engine。
 - 具体业务场景通过 Workflow 扩展。
 - 邮件仅创建 Outlook Draft，不自动发送。

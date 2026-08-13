@@ -9,6 +9,10 @@ class ContractViolation(AcquisitionError):
     """A frozen contract invariant was violated."""
 
 
+class ValidatorParityError(ContractViolation):
+    """Legacy and Pydantic validators disagreed on PASS versus BLOCK."""
+
+
 class AmbiguousBindingError(ContractViolation):
     """More than one explicit candidate exists for one business key."""
 
