@@ -50,6 +50,23 @@ def _quarter_start(value: date) -> date:
     return date(value.year, month, 1)
 
 
+def _previous_calendar_quarter(value: str) -> str:
+    try:
+        year = int(value[:4])
+        quarter = int(value[-1])
+    except (TypeError, ValueError) as exc:
+        raise Stage3AError(
+            "CTV_TARGET_QUARTER_INVALID", "target_fiscal_quarter must be YYYYQ[1-4]"
+        ) from exc
+    if len(value) != 6 or value[4] != "Q" or quarter not in {1, 2, 3, 4}:
+        raise Stage3AError(
+            "CTV_TARGET_QUARTER_INVALID", "target_fiscal_quarter must be YYYYQ[1-4]"
+        )
+    if quarter == 1:
+        return f"{year - 1}Q4"
+    return f"{year}Q{quarter - 1}"
+
+
 def _inclusive_days(start: date, end: date) -> int:
     if end < start:
         raise Stage3AError("CTV_PERIOD_INVALID", "Revenue cutoff precedes quarter start")
@@ -133,6 +150,12 @@ def validate_revenue_context(values: Mapping[str, object]) -> RevenueExecutionCo
             "CTV_REVENUE_CUTOFF_ALIAS_MISMATCH",
             "target_revenue_cutoff_date must exactly equal current_revenue_cutoff_date",
         )
+    expected_previous_quarter = _previous_calendar_quarter(target_quarter)
+    if str(values["target_previous_calendar_quarter"]) != expected_previous_quarter:
+        raise Stage3AError(
+            "CTV_PREVIOUS_CALENDAR_QUARTER_MISMATCH",
+            "target_previous_calendar_quarter must be the immediately preceding Gregorian quarter",
+        )
     return RevenueExecutionContext(
         reporting_date,
         previous_reporting_date,
@@ -149,6 +172,7 @@ def calculate_ctv_metrics(
     frame: pd.DataFrame,
     *,
     prior_year_performance: Decimal,
+    prior_year_business_cutoff_date: date | None,
     context: RevenueExecutionContext,
 ) -> CtvMetricCalculation:
     """Execute only the three formulas registered for PL_REVENUE_CTV_WEEKLY."""
@@ -167,9 +191,8 @@ def calculate_ctv_metrics(
     current_days = Decimal(
         _inclusive_days(_quarter_start(context.current_revenue_cutoff_date), context.current_revenue_cutoff_date)
     )
-    prior_days = Decimal(_inclusive_days(_quarter_start(target_prior_date), target_prior_date))
     warnings: list[ExecutionWarning] = []
-    if prior_year_performance <= 0:
+    if prior_year_performance <= 0 or prior_year_business_cutoff_date is None:
         yoy: Decimal | None = None
         yoy_status = ResultValueStatus.MISSING
         warnings.append(
@@ -179,6 +202,18 @@ def calculate_ctv_metrics(
             )
         )
     else:
+        expected_prior_quarter = f"{context.workflow_year - 1}{context.target_fiscal_quarter[4:]}"
+        if _quarter(prior_year_business_cutoff_date) != expected_prior_quarter:
+            raise Stage3AError(
+                "CTV_PRIOR_BUSINESS_CUTOFF_QUARTER_MISMATCH",
+                "Prior-year business cutoff is outside the comparable quarter",
+            )
+        prior_days = Decimal(
+            _inclusive_days(
+                _quarter_start(prior_year_business_cutoff_date),
+                prior_year_business_cutoff_date,
+            )
+        )
         yoy = (performance / current_days) / (prior_year_performance / prior_days) - Decimal("1")
         yoy_status = ResultValueStatus.VALID_VALUE
     if performance <= 0:

@@ -289,9 +289,12 @@ class AcquisitionRuntime:
     def _validate_source_date_binding(self, run: RuntimeRun, entry: RunInputEntry) -> None:
         registered = self.input_binding_registry.require(entry.business_key.dataset_id)
         if registered.source_id == "SRC_CORP_OUTLOOK_PRIMARY_MAILBOX":
-            if entry.source_report_date != run.context.values["workflow_reporting_date"]:
+            if (
+                entry.business_key.period_role == "current"
+                and entry.source_report_date != run.context.values["workflow_reporting_date"]
+            ):
                 raise ContractViolation(
-                    "Outlook source_report_date must equal the locked workflow_reporting_date"
+                    "Current Outlook source_report_date must equal the locked workflow_reporting_date"
                 )
             if entry.source_business_data_cutoff_date == "not_applicable":
                 raise ContractViolation(

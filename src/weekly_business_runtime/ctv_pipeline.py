@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
-from typing import Iterable
 
 from weekly_acquisition_runtime.contracts import BusinessKey
 from weekly_acquisition_runtime.errors import AcquisitionError
@@ -13,8 +13,13 @@ from .assets import (
     BUSINESS_CONTEXT_ID,
     CTV_VARIANT_IDS,
     CURRENT_DATASET_ID,
+    CURRENT_MAPPING_ID,
     PIPELINE_ID,
+    PREVIOUS_QUARTER_FALLBACK_DATASET_ID,
+    PREVIOUS_QUARTER_FALLBACK_MAPPING_ID,
+    PREVIOUS_QUARTER_RULE_ID,
     PRIOR_DATASET_ID,
+    PRIOR_MAPPING_ID,
     STORE_ASSET_ID,
     STORE_ID,
     WORKFLOW_ID,
@@ -33,8 +38,12 @@ from .models import (
     PipelineExecutionResult,
     PipelineExecutionStatus,
     ResultFieldValue,
+    ResultValueStatus,
 )
 from .store import MetricStorePort, MetricStoreRecord, StoreReadKey
+
+REPORT_MODE_RULE_ID = "BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1"
+PRIOR_YEAR_RULE_ID = "BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1"
 
 
 class CtvPipelineExecutor:
@@ -61,6 +70,8 @@ class CtvPipelineExecutor:
         current_input_key: BusinessKey,
         prior_year_input_key: BusinessKey,
         generated_at: str,
+        previous_quarter_primary_input_key: BusinessKey | None = None,
+        previous_quarter_fallback_input_key: BusinessKey | None = None,
     ) -> PipelineExecutionResult:
         input_references: tuple[str, ...] = ()
         try:
@@ -71,17 +82,53 @@ class CtvPipelineExecutor:
             current_path = self.acquisition_runtime.consume_bound_input(run, current_input_key)
             input_references = (current_entry.local_input_reference,)
             current = self.loader.load_current(current_path, current_entry.local_input_reference)
+            consumed_mapping_ids = [CURRENT_MAPPING_ID]
+            evaluated_rule_ids = [REPORT_MODE_RULE_ID, PRIOR_YEAR_RULE_ID]
+            rule_lineage = self._rule_authority_lineage()
+            rule_lineage.append(f"rule-evaluated://{REPORT_MODE_RULE_ID}")
+            if context.report_mode == "quarter_transition_week":
+                selected = self._select_previous_quarter_source(
+                    run,
+                    context.target_previous_calendar_quarter,
+                    previous_quarter_primary_input_key,
+                    previous_quarter_fallback_input_key,
+                )
+                input_references = (*input_references, selected.input_reference)
+                consumed_mapping_ids.append(
+                    PRIOR_MAPPING_ID
+                    if selected.selected_source_role == "primary"
+                    else PREVIOUS_QUARTER_FALLBACK_MAPPING_ID
+                )
+                evaluated_rule_ids.append(PREVIOUS_QUARTER_RULE_ID)
+                rule_lineage.extend(
+                    (
+                        f"rule-evaluated://{PREVIOUS_QUARTER_RULE_ID}",
+                        f"source-consumed://previous_quarter_{selected.selected_source_role}/"
+                        f"{selected.input_reference}",
+                    )
+                )
             target_prior_date = derive_prior_year_date(context)
             prior_value = Decimal("0")
+            prior_business_cutoff: date | None = None
             prior_warnings: list[ExecutionWarning] = []
+            rule_lineage.append(f"rule-evaluated://{PRIOR_YEAR_RULE_ID}")
             try:
                 prior_entry = run.run_input_manifest.get_entry(prior_year_input_key)
                 prior_path = self.acquisition_runtime.consume_bound_input(run, prior_year_input_key)
-                if prior_entry.source_business_data_cutoff_date != target_prior_date.isoformat():
+                if prior_entry.source_report_date != target_prior_date.isoformat():
                     raise DatasetValidationError(
                         "CTV_PRIOR_INPUT_DATE_MISMATCH",
-                        "Prior input cutoff does not match the exact frozen prior-year date",
+                        "Prior input source_report_date does not match the exact frozen source date",
                     )
+                try:
+                    prior_business_cutoff = date.fromisoformat(
+                        prior_entry.source_business_data_cutoff_date
+                    )
+                except ValueError as exc:
+                    raise DatasetValidationError(
+                        "CTV_PRIOR_BUSINESS_CUTOFF_INVALID",
+                        "Prior input business cutoff must be a valid date",
+                    ) from exc
                 prior = self.loader.load_prior_comparable(
                     prior_path,
                     target_quarter=f"{context.workflow_year - 1}{context.target_fiscal_quarter[4:]}",
@@ -89,6 +136,10 @@ class CtvPipelineExecutor:
                 )
                 prior_value = prior.value
                 input_references = (*input_references, prior_entry.local_input_reference)
+                consumed_mapping_ids.append(PRIOR_MAPPING_ID)
+                rule_lineage.append(
+                    f"source-consumed://prior_year_comparable/{prior_entry.local_input_reference}"
+                )
             except (AcquisitionError, DatasetValidationError) as exc:
                 prior_warnings.append(
                     ExecutionWarning(
@@ -100,19 +151,24 @@ class CtvPipelineExecutor:
             calculation = calculate_ctv_metrics(
                 current.frame,
                 prior_year_performance=prior_value,
+                prior_year_business_cutoff_date=prior_business_cutoff,
                 context=context,
             )
+            field_lineage = (*input_references, *historical_lineage, *rule_lineage)
             result = self.assembler.assemble(
                 workflow_run_id=run.context.workflow_run_id,
                 pipeline_run_id=pipeline_run_id,
                 context=context,
                 dataset_instance_ids=input_references,
+                consumed_mapping_profile_ids=tuple(dict.fromkeys(consumed_mapping_ids)),
+                evaluated_rule_ids=tuple(dict.fromkeys(evaluated_rule_ids)),
+                field_lineage_references=field_lineage,
                 calculation=calculation,
                 generated_at=generated_at,
             )
             warnings = list(current.warnings) + prior_warnings + list(calculation.warnings)
             store_lineage = self._persist_validated_result(result.fields, result, warnings)
-            lineage = (*input_references, *historical_lineage, *store_lineage)
+            lineage = (*field_lineage, *store_lineage)
             status = (
                 PipelineExecutionStatus.COMPLETED_WITH_WARNING
                 if warnings
@@ -204,24 +260,64 @@ class CtvPipelineExecutor:
                 BUSINESS_CONTEXT_ID,
             )
             record = self.metric_store.read_exact(key)
+            self._validate_historical_record(record, key)
             lineage.append(f"metric-store://{record.result_id}")
         return tuple(lineage)
 
+    def _validate_historical_record(
+        self, record: MetricStoreRecord, key: StoreReadKey
+    ) -> None:
+        field_contracts = {
+            item["source_metric_variant_id"]: item
+            for item in self.assets.result_contract["contract_fields"]
+        }
+        expected = field_contracts[key.metric_variant_id]
+        constraints = expected["numeric_constraints"]
+        if any(
+            (
+                record.read_key != key,
+                record.store_id != STORE_ID,
+                record.store_asset_id != STORE_ASSET_ID,
+                record.business_context_id != BUSINESS_CONTEXT_ID,
+                record.metric_variant_id != key.metric_variant_id,
+                record.validation_status != "passed",
+                record.value_status != "valid_value",
+                not isinstance(record.value, Decimal),
+                record.numeric_semantics != constraints["numeric_semantics"],
+                record.unit != constraints["unit"],
+                record.precision != constraints["precision"],
+                not record.lineage_references,
+            )
+        ):
+            raise MetricStoreError(
+                "STORE_HISTORICAL_RESULT_INELIGIBLE",
+                "Exact historical Metric Result does not satisfy frozen consumption semantics",
+            )
+
     def _persist_validated_result(
         self,
-        fields: Iterable[ResultFieldValue],
+        fields: tuple[ResultFieldValue, ...],
         result,
         warnings: list[ExecutionWarning],
     ) -> tuple[str, ...]:
-        references: list[str] = []
         contracts = {
             field["field_id"]: field for field in self.assets.result_contract["contract_fields"]
         }
+        if any(
+            field.value is None or field.value_status is not ResultValueStatus.VALID_VALUE
+            for field in fields
+        ):
+            warnings.append(
+                ExecutionWarning(
+                    "STORE_WRITE_SET_INCOMPLETE",
+                    "Revenue Store completeness gate blocked partial Result Contract persistence",
+                )
+            )
+            return ()
+        records: list[MetricStoreRecord] = []
         for field in fields:
-            if field.value is None or field.value_status.value != "valid_value":
-                continue
             contract = contracts[field.field_id]
-            record = MetricStoreRecord(
+            records.append(MetricStoreRecord(
                 result_id=f"{result.result_id}:{field.metric_variant_id}",
                 workflow_id=WORKFLOW_ID,
                 workflow_run_id=result.workflow_run_id,
@@ -243,18 +339,86 @@ class CtvPipelineExecutor:
                 validation_status=result.validation_status,
                 generated_at=result.generated_at,
                 lineage_references=field.lineage_references,
+            ))
+        try:
+            plan = self.metric_store.preflight_write(tuple(records))
+            receipt = self.metric_store.write_validated(plan)
+            if not self.metric_store.verify_write(receipt):
+                raise MetricStoreError(
+                    "STORE_WRITE_VERIFICATION_FAILED",
+                    "Post-write verification did not verify the complete Result Contract set",
+                )
+            return tuple(f"metric-store://{result_id}" for result_id in receipt.result_ids)
+        except MetricStoreError as exc:
+            warnings.append(ExecutionWarning(exc.code, str(exc)))
+            return ()
+
+    def _select_previous_quarter_source(
+        self,
+        run: RuntimeRun,
+        target_quarter: str,
+        primary_key: BusinessKey | None,
+        fallback_key: BusinessKey | None,
+    ):
+        primary_error: Exception | None = None
+        if primary_key is not None:
+            self._validate_previous_quarter_key(
+                run, primary_key, PRIOR_DATASET_ID, "primary"
             )
             try:
-                receipt = self.metric_store.write_validated(record)
-                if not self.metric_store.verify_write(receipt):
-                    raise MetricStoreError(
-                        "STORE_WRITE_VERIFICATION_FAILED",
-                        "Post-write verification did not match the validated result",
-                    )
-                references.append(f"metric-store://{record.result_id}")
-            except MetricStoreError as exc:
-                warnings.append(ExecutionWarning(exc.code, str(exc)))
-        return tuple(references)
+                entry = run.run_input_manifest.get_entry(primary_key)
+                path = self.acquisition_runtime.consume_bound_input(run, primary_key)
+                return self.loader.load_previous_quarter_primary(
+                    path,
+                    target_quarter=target_quarter,
+                    input_reference=entry.local_input_reference,
+                )
+            except (AcquisitionError, DatasetValidationError) as exc:
+                primary_error = exc
+        if fallback_key is not None:
+            self._validate_previous_quarter_key(
+                run, fallback_key, PREVIOUS_QUARTER_FALLBACK_DATASET_ID, "fallback"
+            )
+            try:
+                entry = run.run_input_manifest.get_entry(fallback_key)
+                path = self.acquisition_runtime.consume_bound_input(run, fallback_key)
+                return self.loader.load_previous_quarter_fallback(
+                    path,
+                    target_quarter=target_quarter,
+                    input_reference=entry.local_input_reference,
+                )
+            except (AcquisitionError, DatasetValidationError) as exc:
+                raise Stage3AError(
+                    "CTV_PREVIOUS_QUARTER_SOURCE_UNAVAILABLE",
+                    "Neither explicitly bound previous-quarter source is eligible",
+                ) from exc
+        raise Stage3AError(
+            "CTV_PREVIOUS_QUARTER_SOURCE_UNAVAILABLE",
+            "No eligible explicitly bound previous-quarter source exists"
+            + (f": {primary_error}" if primary_error else ""),
+        )
+
+    @staticmethod
+    def _validate_previous_quarter_key(
+        run: RuntimeRun, key: BusinessKey, dataset_id: str, role: str
+    ) -> None:
+        if key.workflow_run_id != run.context.workflow_run_id:
+            raise Stage3AError("CTV_CONTEXT_MISMATCH", f"{role} input belongs to another Run")
+        if (
+            key.dataset_id != dataset_id
+            or key.period_role != "previous_quarter_complete"
+            or key.product_parameter != "not_applicable"
+        ):
+            raise Stage3AError(
+                "CTV_PREVIOUS_QUARTER_INPUT_KEY_INVALID",
+                f"Previous-quarter {role} business key mismatch",
+            )
+
+    def _rule_authority_lineage(self) -> list[str]:
+        return [
+            f"rule-authority://{rule_id}@{self.assets.business_rules[rule_id]['version']}"
+            for rule_id in self.assets.pipeline["execution"]["ordered_rule_set_ids"]
+        ]
 
     @staticmethod
     def _business_context(context) -> dict[str, object]:

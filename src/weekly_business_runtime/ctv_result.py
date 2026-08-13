@@ -25,6 +25,9 @@ class CtvResultContractAssembler:
         pipeline_run_id: str,
         context: RevenueExecutionContext,
         dataset_instance_ids: tuple[str, ...],
+        consumed_mapping_profile_ids: tuple[str, ...],
+        evaluated_rule_ids: tuple[str, ...],
+        field_lineage_references: tuple[str, ...],
         calculation: CtvMetricCalculation,
         generated_at: str,
     ) -> CtvResultContractInstance:
@@ -50,7 +53,7 @@ class CtvResultContractAssembler:
                     value=metric.value,
                     value_status=metric.value_status,
                     unit=field_contract["numeric_constraints"]["unit"],
-                    lineage_references=dataset_instance_ids,
+                    lineage_references=field_lineage_references,
                 )
             )
         result_id = self._result_id(
@@ -61,7 +64,7 @@ class CtvResultContractAssembler:
         )
         rule_versions = {
             rule_id: str(self.assets.business_rules[rule_id]["version"])
-            for rule_id in self.assets.pipeline["execution"]["ordered_rule_set_ids"]
+            for rule_id in evaluated_rule_ids
         }
         variant_versions = {
             variant_id: str(self.assets.metric_variants[variant_id]["version"])
@@ -79,12 +82,8 @@ class CtvResultContractAssembler:
             report_mode=context.report_mode,
             dataset_instance_ids=dataset_instance_ids,
             mapping_profile_versions={
-                self.assets.current_mapping["mapping_profile_id"]: str(
-                    self.assets.current_mapping["version"]
-                ),
-                self.assets.prior_mapping["mapping_profile_id"]: str(
-                    self.assets.prior_mapping["version"]
-                ),
+                mapping_id: str(self._mapping_by_id(mapping_id)["version"])
+                for mapping_id in consumed_mapping_profile_ids
             },
             business_rule_versions=rule_versions,
             metric_variant_versions=variant_versions,
@@ -95,6 +94,20 @@ class CtvResultContractAssembler:
         )
         self.validate(instance)
         return instance
+
+    def _mapping_by_id(self, mapping_id: str) -> Mapping[str, object]:
+        mappings = (
+            self.assets.current_mapping,
+            self.assets.prior_mapping,
+            self.assets.previous_quarter_fallback_mapping,
+        )
+        matches = [item for item in mappings if item.get("mapping_profile_id") == mapping_id]
+        if len(matches) != 1:
+            raise ResultContractError(
+                "CTV_RESULT_MAPPING_LINEAGE_INVALID",
+                f"Mapping Profile {mapping_id} is not an exact loaded authority",
+            )
+        return matches[0]
 
     def validate(self, instance: CtvResultContractInstance) -> None:
         contract = self.assets.result_contract

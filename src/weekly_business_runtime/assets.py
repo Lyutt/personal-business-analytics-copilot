@@ -14,8 +14,15 @@ WORKFLOW_ID = "WF_WEEKLY_BUSINESS_REPORT"
 PIPELINE_ID = "PL_REVENUE_CTV_WEEKLY"
 CURRENT_DATASET_ID = "DS_REVENUE_CTV_EXCL_PLACEMENT_QTD"
 PRIOR_DATASET_ID = "DS_REVENUE_SALES_ROLLING_DECK_QTD"
+PREVIOUS_QUARTER_FALLBACK_DATASET_ID = (
+    "DS_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_CONFIRMATION"
+)
 CURRENT_MAPPING_ID = "MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1"
 PRIOR_MAPPING_ID = "MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1"
+PREVIOUS_QUARTER_FALLBACK_MAPPING_ID = (
+    "MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1"
+)
+PREVIOUS_QUARTER_RULE_ID = "BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1"
 RESULT_CONTRACT_ID = "RC_REVENUE_CTV_WEEKLY"
 STORE_ID = "STORE_WEEKLY_REVENUE_HISTORICAL"
 STORE_ASSET_ID = "STORE_ASSET_WEEKLY_REVENUE_CTV"
@@ -50,9 +57,11 @@ class CtvAssetBundle:
     repository_root: Path
     current_dataset: Mapping[str, Any]
     prior_dataset: Mapping[str, Any]
+    previous_quarter_fallback_dataset: Mapping[str, Any]
     pipeline: Mapping[str, Any]
     current_mapping: Mapping[str, Any]
     prior_mapping: Mapping[str, Any]
+    previous_quarter_fallback_mapping: Mapping[str, Any]
     metric_variants: Mapping[str, Mapping[str, Any]]
     result_contract: Mapping[str, Any]
     store: Mapping[str, Any]
@@ -73,6 +82,12 @@ class CtvAssetBundle:
         prior_dataset = _require_one(
             dataset_inventory.get("datasets"), "dataset_id", PRIOR_DATASET_ID, "Dataset Inventory"
         )
+        previous_quarter_fallback_dataset = _require_one(
+            dataset_inventory.get("datasets"),
+            "dataset_id",
+            PREVIOUS_QUARTER_FALLBACK_DATASET_ID,
+            "Dataset Inventory",
+        )
         pipeline_registry = _read_yaml(assets / "pipelines" / "pipeline_registry.yaml")
         pipeline = _require_one(
             pipeline_registry.get("pipelines"), "pipeline_id", PIPELINE_ID, "Pipeline Registry"
@@ -84,6 +99,11 @@ class CtvAssetBundle:
             assets
             / "field_mappings"
             / "MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1.yaml"
+        )
+        previous_quarter_fallback_mapping = _read_yaml(
+            assets
+            / "field_mappings"
+            / "MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1.yaml"
         )
         metric_library = _read_yaml(
             assets / "metrics" / "metric_library_revenue_technical_ctv_v1.yaml"
@@ -124,9 +144,11 @@ class CtvAssetBundle:
             root,
             current_dataset,
             prior_dataset,
+            previous_quarter_fallback_dataset,
             pipeline,
             current_mapping,
             prior_mapping,
+            previous_quarter_fallback_mapping,
             variants,
             result_contract,
             store,
@@ -146,6 +168,13 @@ class CtvAssetBundle:
             raise AssetContractError("CTV_ASSET_IDENTITY_MISMATCH", "Dataset Mapping binding mismatch")
         if self.prior_dataset.get("dataset_id") != PRIOR_DATASET_ID:
             raise AssetContractError("CTV_ASSET_IDENTITY_MISMATCH", "Prior Dataset mismatch")
+        if (
+            self.previous_quarter_fallback_dataset.get("dataset_id")
+            != PREVIOUS_QUARTER_FALLBACK_DATASET_ID
+        ):
+            raise AssetContractError(
+                "CTV_ASSET_IDENTITY_MISMATCH", "Previous-quarter fallback Dataset mismatch"
+            )
         if self.pipeline.get("business_context_id") != BUSINESS_CONTEXT_ID:
             raise AssetContractError("CTV_ASSET_IDENTITY_MISMATCH", "CTV business context mismatch")
         execution = self.pipeline.get("execution", {})
@@ -168,6 +197,16 @@ class CtvAssetBundle:
             raise AssetContractError("CTV_ASSET_IDENTITY_MISMATCH", "Prior Mapping identity mismatch")
         if self.prior_mapping.get("dataset_id") != PRIOR_DATASET_ID:
             raise AssetContractError("CTV_ASSET_IDENTITY_MISMATCH", "Prior Dataset binding mismatch")
+        if (
+            self.previous_quarter_fallback_mapping.get("mapping_profile_id")
+            != PREVIOUS_QUARTER_FALLBACK_MAPPING_ID
+            or self.previous_quarter_fallback_mapping.get("dataset_id")
+            != PREVIOUS_QUARTER_FALLBACK_DATASET_ID
+        ):
+            raise AssetContractError(
+                "CTV_ASSET_IDENTITY_MISMATCH",
+                "Previous-quarter fallback Mapping binding mismatch",
+            )
         if set(self.metric_variants) != set(CTV_VARIANT_IDS):
             raise AssetContractError("CTV_ASSET_IDENTITY_MISMATCH", "CTV Metric Variants incomplete")
         if self.result_contract.get("result_contract_id") != RESULT_CONTRACT_ID:
@@ -187,6 +226,48 @@ class CtvAssetBundle:
                 raise AssetContractError(
                     "CTV_ASSET_IDENTITY_MISMATCH", f"{rule_id} Pipeline binding mismatch"
                 )
+        conditional_mappings = {
+            item.get("mapping_profile_id")
+            for item in execution.get("conditional_mapping_profile_ids", ())
+            if isinstance(item, dict)
+        }
+        if conditional_mappings != {
+            PRIOR_MAPPING_ID,
+            PREVIOUS_QUARTER_FALLBACK_MAPPING_ID,
+        }:
+            raise AssetContractError(
+                "CTV_ASSET_IDENTITY_MISMATCH",
+                "CTV conditional Mapping Profile set mismatch",
+            )
+        previous_quarter_rule = self.business_rules.get(PREVIOUS_QUARTER_RULE_ID, {})
+        source_priority = previous_quarter_rule.get("source_priority", {})
+        if (
+            source_priority.get("primary", {}).get("dataset_id") != PRIOR_DATASET_ID
+            or source_priority.get("fallback", {}).get("dataset_id")
+            != PREVIOUS_QUARTER_FALLBACK_DATASET_ID
+        ):
+            raise AssetContractError(
+                "CTV_ASSET_IDENTITY_MISMATCH",
+                "Previous-quarter primary/fallback Dataset authority mismatch",
+            )
+        historical = self.pipeline.get("historical_input_dependencies", ())
+        prior_dependencies = [
+            item
+            for item in historical
+            if isinstance(item, dict) and item.get("dataset_id") == PRIOR_DATASET_ID
+        ]
+        store_dependencies = [
+            item
+            for item in historical
+            if isinstance(item, dict)
+            and item.get("store_id") == STORE_ID
+            and item.get("store_asset_id") == STORE_ASSET_ID
+        ]
+        if len(prior_dependencies) != 1 or len(store_dependencies) != 1:
+            raise AssetContractError(
+                "CTV_ASSET_IDENTITY_MISMATCH",
+                "CTV prior-year or historical Store dependency mismatch",
+            )
         for runtime in (self.runtime_contract_v1, self.runtime_contract_candidate):
             if runtime.get("workflow_id") != WORKFLOW_ID:
                 raise AssetContractError("CTV_ASSET_IDENTITY_MISMATCH", "Runtime Workflow mismatch")

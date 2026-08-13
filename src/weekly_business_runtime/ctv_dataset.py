@@ -4,19 +4,23 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Mapping
 
 import pandas as pd
 import pandera.pandas as pa
-from pandera.errors import SchemaError
+from pandera.errors import SchemaError, SchemaErrors
 
 from .assets import CtvAssetBundle
 from .errors import DatasetValidationError
 from .models import ExecutionWarning
 
 _SOURCE_QUARTER = re.compile(r"(?P<year>\d{2})Q(?P<quarter>[1-4])\Z")
+_PERIOD_RANGE = re.compile(
+    r"(?P<start>\d{4}/\d{1,2}/\d{1,2})\s*[—–-]\s*(?P<end>\d{4}/\d{1,2}/\d{1,2})\Z"
+)
 
 
 @dataclass(frozen=True)
@@ -30,6 +34,14 @@ class LoadedCtvDataset:
 class PriorComparableValue:
     value: Decimal
     target_quarter: str
+    input_reference: str
+
+
+@dataclass(frozen=True)
+class PreviousQuarterSourceValue:
+    value: Decimal
+    target_quarter: str
+    selected_source_role: str
     input_reference: str
 
 
@@ -184,7 +196,7 @@ class CtvDatasetLoader:
         )
         try:
             schema.validate(frame, lazy=True)
-        except SchemaError as exc:
+        except (SchemaError, SchemaErrors) as exc:
             raise DatasetValidationError(
                 "CTV_PANDERA_BOUNDARY_INVALID", "CTV standardized DataFrame failed validation"
             ) from exc
@@ -242,6 +254,11 @@ class CtvDatasetLoader:
         prior_frame = pd.DataFrame(
             {"revenue_business_line": ["CTV"], "fiscal_quarter": [target_quarter], "value": [value]}
         )
+        self._validate_prior_boundary(prior_frame, target_quarter)
+        return PriorComparableValue(value, target_quarter, input_reference)
+
+    @staticmethod
+    def _validate_prior_boundary(frame: pd.DataFrame, target_quarter: str) -> None:
         schema = pa.DataFrameSchema(
             {
                 "revenue_business_line": pa.Column(str, checks=pa.Check.eq("CTV")),
@@ -258,13 +275,136 @@ class CtvDatasetLoader:
             strict=True,
         )
         try:
-            schema.validate(prior_frame, lazy=True)
-        except SchemaError as exc:
+            schema.validate(frame, lazy=True)
+        except (SchemaError, SchemaErrors) as exc:
             raise DatasetValidationError(
                 "CTV_PRIOR_PANDERA_BOUNDARY_INVALID",
                 "Prior comparable DataFrame failed validation",
             ) from exc
-        return PriorComparableValue(value, target_quarter, input_reference)
+
+    def load_previous_quarter_primary(
+        self, path: Path, *, target_quarter: str, input_reference: str
+    ) -> PreviousQuarterSourceValue:
+        loaded = self.load_prior_comparable(
+            path,
+            target_quarter=target_quarter,
+            input_reference=input_reference,
+        )
+        return PreviousQuarterSourceValue(
+            loaded.value,
+            target_quarter,
+            "primary",
+            input_reference,
+        )
+
+    def load_previous_quarter_fallback(
+        self, path: Path, *, target_quarter: str, input_reference: str
+    ) -> PreviousQuarterSourceValue:
+        mapping = self.assets.previous_quarter_fallback_mapping
+        sheet_name = str(mapping["scope"]["source_object_or_sheet_pattern"])
+        try:
+            raw = pd.read_excel(path, sheet_name=sheet_name, header=None, dtype=object)
+        except (OSError, ValueError, ImportError) as exc:
+            raise DatasetValidationError(
+                "CTV_PREVIOUS_QUARTER_FALLBACK_UNREADABLE",
+                "Cannot load the bound previous-quarter fallback workbook",
+            ) from exc
+        if raw.shape[0] < 8 or raw.shape[1] < 7:
+            raise DatasetValidationError(
+                "CTV_PREVIOUS_QUARTER_FALLBACK_SHAPE_INVALID",
+                "Fallback workbook does not contain the registered B8/G layout",
+            )
+        period_value = raw.iat[7, 1]
+        match = _PERIOD_RANGE.fullmatch(str(period_value).strip())
+        if match is None:
+            raise DatasetValidationError(
+                "CTV_PREVIOUS_QUARTER_PERIOD_INVALID",
+                "Fallback source period range is not an exact registered period",
+            )
+        try:
+            period_start = datetime.strptime(match.group("start"), "%Y/%m/%d").date()
+            period_end = datetime.strptime(match.group("end"), "%Y/%m/%d").date()
+        except ValueError as exc:
+            raise DatasetValidationError(
+                "CTV_PREVIOUS_QUARTER_PERIOD_INVALID",
+                "Fallback source period range contains an invalid date",
+            ) from exc
+        year = int(target_quarter[:4])
+        quarter = int(target_quarter[-1])
+        start_month = (quarter - 1) * 3 + 1
+        expected_start = date(year, start_month, 1)
+        if quarter == 4:
+            expected_end = date(year, 12, 31)
+        else:
+            expected_end = date(year, start_month + 3, 1) - timedelta(days=1)
+        if period_start != expected_start or period_end != expected_end:
+            raise DatasetValidationError(
+                "CTV_PREVIOUS_QUARTER_PERIOD_MISMATCH",
+                "Fallback source must represent the complete target previous quarter",
+            )
+        labels = raw.iloc[8:, 1].map(
+            lambda value: isinstance(value, str) and value.strip() == "CTV"
+        )
+        if int(labels.sum()) != 1:
+            raise DatasetValidationError(
+                "CTV_PREVIOUS_QUARTER_FALLBACK_CTV_NOT_UNIQUE",
+                "Fallback workbook must contain exactly one CTV business-line result",
+            )
+        row_index = labels[labels].index[0]
+        value = _decimal_or_zero(raw.loc[row_index, 6], "当季执行收入")
+        if value <= 0:
+            raise DatasetValidationError(
+                "CTV_PREVIOUS_QUARTER_FALLBACK_VALUE_INVALID",
+                "Fallback CTV complete-quarter value must be greater than zero",
+            )
+        frame = pd.DataFrame(
+            {
+                "source_period_range": [str(period_value).strip()],
+                "period_start_date": [period_start],
+                "period_end_date": [period_end],
+                "revenue_business_line": ["CTV"],
+                "performance_revenue_amount": [value],
+                "executed_revenue_amount": [value],
+            }
+        )
+        schema = pa.DataFrameSchema(
+            {
+                "source_period_range": pa.Column(str, nullable=False),
+                "period_start_date": pa.Column(object, checks=pa.Check.eq(expected_start)),
+                "period_end_date": pa.Column(object, checks=pa.Check.eq(expected_end)),
+                "revenue_business_line": pa.Column(str, checks=pa.Check.eq("CTV")),
+                "performance_revenue_amount": pa.Column(
+                    object,
+                    checks=pa.Check(
+                        lambda series: series.map(
+                            lambda item: isinstance(item, Decimal) and item > 0
+                        )
+                    ),
+                ),
+                "executed_revenue_amount": pa.Column(
+                    object,
+                    checks=pa.Check(
+                        lambda series: series.map(
+                            lambda item: isinstance(item, Decimal) and item > 0
+                        )
+                    ),
+                ),
+            },
+            strict=True,
+        )
+        try:
+            schema.validate(frame, lazy=True)
+        except (SchemaError, SchemaErrors) as exc:
+            raise DatasetValidationError(
+                "CTV_PREVIOUS_QUARTER_FALLBACK_PANDERA_BOUNDARY_INVALID",
+                "Previous-quarter fallback DataFrame failed validation",
+            ) from exc
+        return PreviousQuarterSourceValue(
+            value,
+            target_quarter,
+            "fallback",
+            input_reference,
+        )
 
     @staticmethod
     def _normalize_source_quarter(value: object) -> str | None:
