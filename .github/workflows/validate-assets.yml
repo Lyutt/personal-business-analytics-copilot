@@ -32,3 +32,5 @@ jobs:
         run: python scripts/validate_weekly_acquisition_runtime.py
       - name: Run Weekly Acquisition Runtime tests
         run: python -m unittest tests.test_weekly_acquisition_runtime
+      - name: Run Pydantic integration parity tests
+        run: python -m unittest tests.test_pydantic_integration
