@@ -36,3 +36,5 @@ jobs:
         run: python -m unittest tests.test_weekly_acquisition_runtime
       - name: Run Pydantic integration parity tests
         run: python -m unittest tests.test_pydantic_integration
+      - name: Run Ruff Phase 2A regression tests
+        run: python -m unittest tests.test_ruff_phase2_regression
