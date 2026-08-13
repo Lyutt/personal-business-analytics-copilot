@@ -769,48 +769,48 @@ def validate_result_contract_semantics(
         contract_record_sets[contract_id] = record_sets
 
         def declared_dimension_ids(
-            dimensions: Any, location: str
+            dimensions: Any, location: str, source_file: str
         ) -> set[str]:
             dimension_ids: set[str] = set()
             if dimensions is None:
                 return dimension_ids
             if not isinstance(dimensions, list):
-                errors.append(f"{file}:{location}: expected list")
+                errors.append(f"{source_file}:{location}: expected list")
                 return dimension_ids
             for index, dimension in enumerate(dimensions):
                 if not isinstance(dimension, dict) or not isinstance(
                     dimension.get("dimension_id"), str
                 ):
                     errors.append(
-                        f"{file}:{location}[{index}].dimension_id: missing or invalid"
+                        f"{source_file}:{location}[{index}].dimension_id: missing or invalid"
                     )
                     continue
                 dimension_id = dimension["dimension_id"]
                 if dimension_id in dimension_ids:
                     errors.append(
-                        f"{file}:{location}[{index}].dimension_id: duplicate "
+                        f"{source_file}:{location}[{index}].dimension_id: duplicate "
                         f"dimension {dimension_id}"
                     )
                 dimension_ids.add(dimension_id)
             return dimension_ids
 
         def validate_grain(
-            grain: Any, allowed: set[str], location: str
+            grain: Any, allowed: set[str], location: str, source_file: str
         ) -> None:
             nonlocal record_grains_checked
             record_grains_checked += 1
             if not isinstance(grain, list) or not grain:
-                errors.append(f"{file}:{location}: expected non-empty list")
+                errors.append(f"{source_file}:{location}: expected non-empty list")
                 return
             for item in grain:
                 if not isinstance(item, str) or item not in allowed:
                     errors.append(
-                        f"{file}:{location}: grain item {item!r} is not a "
+                        f"{source_file}:{location}: grain item {item!r} is not a "
                         "declared field or dimension"
                     )
 
         top_dimensions = declared_dimension_ids(
-            document.get("contract_dimensions"), "contract_dimensions"
+            document.get("contract_dimensions"), "contract_dimensions", file
         )
         if "record_grain" in document:
             top_fields = {
@@ -820,6 +820,7 @@ def validate_result_contract_semantics(
                 document.get("record_grain"),
                 top_fields | top_dimensions,
                 "record_grain",
+                file,
             )
         for set_index, record_set in enumerate(document.get("record_sets", [])):
             if not isinstance(record_set, dict) or "record_grain" not in record_set:
@@ -828,11 +829,13 @@ def validate_result_contract_semantics(
             set_dimensions = declared_dimension_ids(
                 record_set.get("record_dimensions"),
                 f"record_sets[{set_index}].record_dimensions",
+                file,
             )
             validate_grain(
                 record_set.get("record_grain"),
                 record_sets.get(record_set_id, set()) | set_dimensions,
                 f"record_sets[{set_index}].record_grain",
+                file,
             )
         required_fields = document.get("validation", {}).get("required_fields", [])
         for field_id in required_fields:
@@ -1129,23 +1132,27 @@ def validate_result_contract_semantics(
         if not isinstance(document, dict) or document.get("config_type") != "output_mapping":
             continue
 
-        def walk_output(value: Any, path: str = "") -> None:
+        def walk_output(value: Any, source_file: str, path: str = "") -> None:
             nonlocal explicit_output_fields, display_tbd_checked
             if isinstance(value, dict):
                 if "metric_variant_ids" in value:
-                    errors.append(f"{file}:{path}.metric_variant_ids: parallel list is prohibited")
+                    errors.append(
+                        f"{source_file}:{path}.metric_variant_ids: parallel list is prohibited"
+                    )
                 if isinstance(value.get("display_fields"), list):
-                    errors.append(f"{file}:{path}.display_fields: parallel list is prohibited")
+                    errors.append(
+                        f"{source_file}:{path}.display_fields: parallel list is prohibited"
+                    )
                 if value.get("display_fields") == "TBD":
                     display_tbd_checked += 1
                     errors.append(
-                        f"{file}:{path}.display_fields: TBD is prohibited in all active MVP outputs"
+                        f"{source_file}:{path}.display_fields: TBD is prohibited in all active MVP outputs"
                     )
                 output_fields = value.get("output_fields")
                 if isinstance(output_fields, list):
                     seen_output_ids: set[str] = set()
                     for index, output_field in enumerate(output_fields):
-                        location = f"{file}:{path}.output_fields[{index}]"
+                        location = f"{source_file}:{path}.output_fields[{index}]"
                         if not isinstance(output_field, dict):
                             errors.append(f"{location}: expected mapping")
                             continue
@@ -1171,15 +1178,19 @@ def validate_result_contract_semantics(
                     record_set_id = record_binding.get("record_set_id")
                     if record_set_id not in contract_record_sets.get(contract_id, {}):
                         errors.append(
-                            f"{file}:{path}.result_record_set_binding: unknown record set"
+                            f"{source_file}:{path}.result_record_set_binding: unknown record set"
                         )
                 for key, child in value.items():
-                    walk_output(child, f"{path}.{key}" if path else str(key))
+                    walk_output(
+                        child,
+                        source_file,
+                        f"{path}.{key}" if path else str(key),
+                    )
             elif isinstance(value, list):
                 for index, child in enumerate(value):
-                    walk_output(child, f"{path}[{index}]")
+                    walk_output(child, source_file, f"{path}[{index}]")
 
-        walk_output(document)
+        walk_output(document, file)
 
     for contract_id, targets in dependency_graph.items():
         if contract_id in targets:
@@ -1498,7 +1509,6 @@ def validate_configured_display_value_policy(
             )
 
     baseline_file = "phase1_5/assets/readiness/implementation_baseline.yaml"
-    revenue_metric_file = "phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml"
     baseline = documents.get(baseline_file, {})
     frozen_versions = (
         baseline.get("frozen_asset_versions", {})
@@ -2500,7 +2510,6 @@ def validate_phase1_5_final_closure(
     """Validate the final Phase 1.5 runtime, persistence, and ad-hoc contracts."""
     checked = 0
     runtime_file = "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
-    revenue_metric_file = "phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml"
     store_file = "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
     scenarios_file = "phase1_5/tests/final_acceptance_scenarios.yaml"
     registry_file = "phase1_5/assets/pipelines/pipeline_registry.yaml"
@@ -2513,7 +2522,6 @@ def validate_phase1_5_final_closure(
     outlook_file = "phase1_5/assets/output_mappings/OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1.yaml"
     external_file = "phase1_5/assets/external_asset_references.yaml"
     store_file = "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
-    store_readiness_file = "phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml"
     display_policy_file = "phase1_5/assets/policies/POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1.yaml"
     dcp_file = "phase1_5/assets/analysis/dcp_registry_v1.yaml"
     arc_file = "phase1_5/templates/analysis_request_contract.template.yaml"
@@ -3611,7 +3619,6 @@ def validate_implementation_baseline(
     explicit_validation_base = bool(re.fullmatch(r"[0-9a-fA-F]{40}", base_sha))
     if not explicit_validation_base:
         base_sha = ""
-    changed_asset_paths: set[str] = set()
     if base_sha:
         changed_result = subprocess.run(
             ["git", "diff", "--name-only", base_sha, "--"],
@@ -3621,13 +3628,7 @@ def validate_implementation_baseline(
             text=True,
             encoding="utf-8",
         )
-        if changed_result.returncode == 0:
-            changed_asset_paths = {
-                path.strip().replace("\\", "/")
-                for path in changed_result.stdout.splitlines()
-                if path.strip()
-            }
-        else:
+        if changed_result.returncode != 0:
             errors.append(
                 f"cannot enumerate assets changed from Base SHA {base_sha}"
             )
