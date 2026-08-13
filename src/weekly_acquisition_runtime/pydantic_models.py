@@ -12,10 +12,16 @@ from collections.abc import Callable, Mapping
 from datetime import date, datetime
 from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from .errors import ValidatorParityError
-
 
 NOT_APPLICABLE = "not_applicable"
 _DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}\Z")
@@ -108,11 +114,11 @@ def validate_in_parallel(
     pydantic_error: Exception | None = None
     try:
         legacy_validator()
-    except Exception as exc:  # PBAC outcome comparison intentionally includes all blocks.
+    except Exception as exc:  # noqa: BLE001 - parity must compare every validator block.
         legacy_error = exc
     try:
         pydantic_validator()
-    except Exception as exc:  # Pydantic ValidationError and integration failures both block.
+    except Exception as exc:  # noqa: BLE001 - integration failures must fail closed.
         pydantic_error = exc
 
     if (legacy_error is None) != (pydantic_error is None):

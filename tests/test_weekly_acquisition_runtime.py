@@ -14,22 +14,24 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from weekly_acquisition_runtime.adapters import (  # noqa: E402
-    ApolloQueryAdapter,
-    AdapterResult,
+from weekly_acquisition_runtime.adapters import (
     AdapterRegistry,
+    AdapterResult,
+    ApolloQueryAdapter,
     QueryContract,
     SessionExpired,
     validate_outlook_provider,
 )
-from weekly_acquisition_runtime.browser_lock import BrowserAcquisitionLock  # noqa: E402
-from weekly_acquisition_runtime.config_validation import load_yaml, validate_composition  # noqa: E402
-from weekly_acquisition_runtime.cli import (  # noqa: E402
+from weekly_acquisition_runtime.browser_lock import BrowserAcquisitionLock
+from weekly_acquisition_runtime.cli import (
     BROWSER_ACQUISITION_SOURCE_IDS,
     build_parser,
+)
+from weekly_acquisition_runtime.cli import (
     main as cli_main,
 )
-from weekly_acquisition_runtime.contracts import (  # noqa: E402
+from weekly_acquisition_runtime.config_validation import load_yaml, validate_composition
+from weekly_acquisition_runtime.contracts import (
     AcquisitionMode,
     AttemptManifest,
     BusinessKey,
@@ -38,8 +40,8 @@ from weekly_acquisition_runtime.contracts import (  # noqa: E402
     RegisteredInputBinding,
     RunInputEntry,
 )
-from weekly_acquisition_runtime.draft_gate import evaluate_draft_gate  # noqa: E402
-from weekly_acquisition_runtime.errors import (  # noqa: E402
+from weekly_acquisition_runtime.draft_gate import evaluate_draft_gate
+from weekly_acquisition_runtime.errors import (
     AmbiguousBindingError,
     BrowserLockOccupied,
     ContractViolation,
@@ -49,8 +51,8 @@ from weekly_acquisition_runtime.errors import (  # noqa: E402
     StorageBoundaryError,
     UnboundInputError,
 )
-from weekly_acquisition_runtime.runtime import AcquisitionRuntime  # noqa: E402
-from weekly_acquisition_runtime.storage import LocalRuntimeStorage  # noqa: E402
+from weekly_acquisition_runtime.runtime import AcquisitionRuntime
+from weekly_acquisition_runtime.storage import LocalRuntimeStorage
 
 
 def context(run_id: str = "RUN_SYNTH_001") -> dict[str, str]:

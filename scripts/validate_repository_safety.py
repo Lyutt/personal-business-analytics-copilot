@@ -9,7 +9,6 @@ import sys
 import zipfile
 from pathlib import Path
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 ALLOWED_XLSX = {

@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from .errors import ContractViolation
 
-
 COMPLETION_STATUSES = {"complete_draft", "partial_draft", "blocked"}
 
 

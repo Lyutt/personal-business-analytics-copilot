@@ -12,7 +12,11 @@ from time import perf_counter
 from typing import Any, Mapping
 
 from .adapters import AdapterRegistry, AdapterResult, QueryContract
-from .config_validation import build_input_binding_registry, load_yaml, validate_composition
+from .config_validation import (
+    build_input_binding_registry,
+    load_yaml,
+    validate_composition,
+)
 from .contracts import (
     AcquisitionMode,
     AttemptManifest,
@@ -30,7 +34,6 @@ from .errors import (
 )
 from .runtime import AcquisitionRuntime
 from .storage import LocalRuntimeStorage
-
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RUNTIME_BUNDLE = (

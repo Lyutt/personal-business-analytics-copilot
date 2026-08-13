@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any, ClassVar, Mapping
 
 from .errors import AmbiguousBindingError, ContractViolation, UnboundInputError
 from .pydantic_models import (
@@ -18,7 +18,6 @@ from .pydantic_models import (
     validate_locked_run_context,
     validate_run_input_entry,
 )
-
 
 NOT_APPLICABLE = "not_applicable"
 PASSED = "passed"
@@ -158,7 +157,7 @@ class LockedRunContext:
 
     values: Mapping[str, Any]
 
-    REQUIRED_FIELDS = {
+    REQUIRED_FIELDS: ClassVar[set[str]] = {
         "workflow_run_id",
         "run_type",
         "workflow_execution_date",
@@ -173,8 +172,8 @@ class LockedRunContext:
         "cutoff_date",
         "timezone",
     }
-    RUN_TYPES = {"scheduled", "manual", "backfill"}
-    DATE_FIELDS = {
+    RUN_TYPES: ClassVar[set[str]] = {"scheduled", "manual", "backfill"}
+    DATE_FIELDS: ClassVar[set[str]] = {
         "workflow_execution_date",
         "workflow_reporting_date",
         "reporting_period_start_date",
