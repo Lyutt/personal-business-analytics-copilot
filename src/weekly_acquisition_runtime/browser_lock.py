@@ -6,10 +6,9 @@ import json
 import os
 import threading
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, Any, ClassVar
 
 from .errors import BrowserLockOccupied
-
 
 _PROCESS_GUARD = threading.Lock()
 _HELD_PATHS: set[Path] = set()
@@ -18,7 +17,7 @@ _HELD_PATHS: set[Path] = set()
 class BrowserAcquisitionLock:
     """Whitelisted metadata plus separate operational state and an OS byte lock."""
 
-    METADATA_ALLOWED = {
+    METADATA_ALLOWED: ClassVar[set[str]] = {
         "workflow_run_id",
         "acquisition_attempt_id",
         "adapter_id",

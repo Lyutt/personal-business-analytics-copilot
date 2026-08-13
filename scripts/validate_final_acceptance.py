@@ -3,15 +3,14 @@
 
 from __future__ import annotations
 
-import re
 import math
-from datetime import date, timedelta
+import re
 from collections import Counter, defaultdict
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
 import yaml
-
 
 ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS = ROOT / "phase1_5/tests/final_acceptance_scenarios.yaml"

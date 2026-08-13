@@ -11,7 +11,7 @@ from pydantic import ValidationError
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from weekly_acquisition_runtime.contracts import (  # noqa: E402
+from weekly_acquisition_runtime.contracts import (
     AcquisitionAttemptBinding,
     AcquisitionMode,
     AttemptManifest,
@@ -21,11 +21,11 @@ from weekly_acquisition_runtime.contracts import (  # noqa: E402
     RegisteredInputBinding,
     RunInputEntry,
 )
-from weekly_acquisition_runtime.errors import (  # noqa: E402
+from weekly_acquisition_runtime.errors import (
     ContractViolation,
     ValidatorParityError,
 )
-from weekly_acquisition_runtime.pydantic_models import (  # noqa: E402
+from weekly_acquisition_runtime.pydantic_models import (
     AcquisitionAttemptBindingModel,
     AttemptManifestModel,
     BusinessKeyModel,

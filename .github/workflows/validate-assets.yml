@@ -38,3 +38,5 @@ jobs:
         run: python -m unittest tests.test_pydantic_integration
       - name: Run Ruff Phase 2A regression tests
         run: python -m unittest tests.test_ruff_phase2_regression
+      - name: Run Ruff Phase 2B regression tests
+        run: python -m unittest tests.test_ruff_phase2b_regression

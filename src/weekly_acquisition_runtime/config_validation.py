@@ -8,9 +8,8 @@ from typing import Any
 
 import yaml
 
+from .contracts import NOT_APPLICABLE, InputBindingRegistry, RegisteredInputBinding
 from .errors import ContractViolation
-from .contracts import InputBindingRegistry, NOT_APPLICABLE, RegisteredInputBinding
-
 
 CORE_INTERFACES = {
     "workflow_run_context",

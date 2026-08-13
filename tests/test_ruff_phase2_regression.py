@@ -7,7 +7,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts" / "validate_asset_integrity.py"
 SPEC = importlib.util.spec_from_file_location("validate_asset_integrity_phase2", MODULE_PATH)
