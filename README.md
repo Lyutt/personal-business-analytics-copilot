@@ -17,16 +17,25 @@ contract.
 6. [Weekly Business Report Workflow v2](phase1_5/workflows/weekly_business_report/WORKFLOW_v2.md)
 7. [Customer Revenue Detail Workflow v1](phase1_5/workflows/customer_revenue_detail/WORKFLOW_v1.md)
 
-The Weekly and Customer Revenue Detail implementation baselines are frozen for
-Owner review. Code Implementation has not started and must not start until the
-Owner explicitly approves the applicable baseline ID and version. Automated
+The Weekly Acquisition Runtime Foundation completed Stage 2 and was merged in
+PR #8. Pydantic V2 validation parity and Ruff Phases 1, 2A, and 2B were also
+merged in PRs #9-#12. Stage 2.5 synchronizes governance and implementation
+boundaries only; it does not change the frozen Weekly Baseline 1.0.0 or any
+business contract.
+
+The next candidate implementation stage is Data Engine / Business Execution,
+starting with deterministic local input and the first business Pipeline. It has
+not started and requires separate Owner authorization. Real-data calculation,
+Provider capability validation, Runtime Acceptance, Scheduler activation, and
+automatic Draft activation have not started and are not authorized. Automated
 checks, readiness Gates, synthetic acceptance, and merge status do not grant
-that approval.
+any later-stage approval.
 
 The two Workflows remain isolated: they may reuse registered source and Mapping
 assets, but neither consumes the other Workflow's files or outputs. The initial
-MVP remains sequential and design-only; no runtime Workflow Engine has been
-implemented.
+MVP remains sequential. The Acquisition Runtime Foundation exists, while the
+Data Engine, Business Execution, Output Engine, and end-to-end Workflow runtime
+remain unimplemented.
 
 Local business data, customer rows, emails, templates, recipients, credentials,
 paths, resolved External Asset versions, and content fingerprints must remain

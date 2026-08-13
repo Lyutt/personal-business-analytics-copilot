@@ -2,16 +2,18 @@ config_type: business_asset_status_index
 index_version: 1.0.0
 status: synchronized
 assessment_date: 2026-08-03
-last_semantic_sync_date: 2026-08-12
+last_semantic_sync_date: 2026-08-13
 design_asset_closure_review_date: 2026-08-09
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-current_stage: Stage 2 Acquisition Runtime Implementation Completed - Draft PR Awaiting Owner Merge Authorization
+current_stage: Stage 2.5 Governance and Implementation Boundary Sync
 
 phase_status:
   phase_1: completed_and_retained_as_historical_design_baseline
   phase_1_5_business_asset_initialization: completed_for_weekly_workflow_p0_scope
   phase_1_5_final_acceptance: passed
-  code_implementation: stage2_owner_authorized_and_implementation_completed
+  code_implementation: stage2_acquisition_runtime_foundation_completed_and_merged
+  stage_2_5_governance_sync: synchronized
+  data_engine_business_execution: not_started_next_candidate_stage_requires_owner_authorization
   end_to_end_runtime_acceptance: conditional
 
 asset_stage_gates:
@@ -99,7 +101,7 @@ scope_boundaries:
   initial_mvp_pipeline_count_with_rerun_from_start: 12
   development_complexity_reduction: true
   code_implementation_owner_approved: true
-  code_implementation_start: stage2_acquisition_runtime_implementation_completed
+  code_implementation_start: stage2_acquisition_runtime_foundation_completed_and_merged
   customer_analysis_qualified_zero_row_contract_mode: product_context_with_empty_customer_record_set
   shared_metric_store_schema_status: confirmed_runtime_not_initialized
   inventory_commentary_template_anchor_binding_status: confirmed_runtime_validation_required
@@ -180,7 +182,7 @@ stage1_acquisition_design_change:
 
 stage2_acquisition_runtime_implementation:
   authorization_date: 2026-08-12
-  status: implementation_and_local_validation_completed_draft_pr_created
+  status: completed_and_merged
   implementation_status_source: phase1_5/assets/readiness/weekly_acquisition_stage2_implementation_status.yaml
   authorized_runtime_bundle_candidate: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_1_CANDIDATE
   authorized_acquisition_extension_contract: ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1
@@ -201,4 +203,34 @@ stage2_acquisition_runtime_implementation:
   local_runtime_unit_tests: 38
   exact_runtime_acquisition_weekly_regression: passed
   customer_workflow_regression: passed
+  automatic_next_stage_allowed: false
+  merge_record:
+    pull_request: 8
+    merge_status: completed
+    merge_commit_sha: 7412d09bcb544061beec69471684b2a246bff6a0
+    merged_to: main
+    merged_at: 2026-08-13T10:31:59+08:00
+
+stage2_5_governance_and_implementation_boundary_sync:
+  status: governance_synchronized
+  synchronization_date: 2026-08-13
+  synchronization_base_main_sha: bf3d5571c4971c089cd41075c044a397b16f9bd6
+  completed_merged_work:
+    - { scope: Stage 2 Weekly Acquisition Runtime Foundation, pull_request: 8, merge_commit_sha: 7412d09bcb544061beec69471684b2a246bff6a0 }
+    - { scope: Pydantic V2 validation parity, pull_request: 9, merge_commit_sha: 427c6d5ac3d892095b59e68afe4f6c5ddfd11164 }
+    - { scope: Ruff Phase 1 quality gate, pull_request: 10, merge_commit_sha: 9e111f89cb91e29e3244595e9abf101eddcea133 }
+    - { scope: Ruff Phase 2A, pull_request: 11, merge_commit_sha: 78cdb2839664077bbb347ae16c2415cb7ace8862 }
+    - { scope: Ruff Phase 2B, pull_request: 12, merge_commit_sha: bf3d5571c4971c089cd41075c044a397b16f9bd6 }
+  main_ci_at_synchronization_base: passed
+  frozen_baseline_1_0_0_modified: false
+  business_contract_modified: false
+  runtime_behavior_modified: false
+  next_candidate_stage: Data Engine / Business Execution Implementation
+  next_candidate_stage_status: not_started_requires_independent_owner_authorization
+  real_data_calculation_status: not_started
+  provider_capability_validation_status: not_started
+  runtime_acceptance_status: not_started
+  scheduler_status: inactive_not_authorized
+  automatic_draft_status: inactive_not_authorized
+  auto_send: false
   automatic_next_stage_allowed: false

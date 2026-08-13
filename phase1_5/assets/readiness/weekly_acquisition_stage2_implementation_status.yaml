@@ -1,10 +1,11 @@
 config_type: stage2_implementation_status
 implementation_id: STAGE2_WEEKLY_ACQUISITION_RUNTIME_V1_1
 implementation_version: 1.0.0
-status: implementation_and_local_validation_completed_draft_pr_created
+status: completed_and_merged
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
 owner: WORKFLOW_OWNER
 implementation_start_date: 2026-08-12
+implementation_completion_date: 2026-08-13
 
 authorized_candidate_baseline:
   runtime_bundle_id: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_1_CANDIDATE
@@ -49,14 +50,22 @@ implementation_units:
     contract_sections: [query_execution_contract, acquisition_attempt_contract, outlook_draft_contract]
 
 git_delivery:
+  status: completed_and_merged
   branch: codex/weekly-acquisition-runtime-v1-1
   draft_pr_required: true
   draft_pr_created: true
-  current_branch_commit_authorized: true
-  current_branch_push_authorized: true
-  existing_draft_pr_update_authorized: true
-  direct_main_modification_allowed: false
-  merge_authorized: false
+  pull_request: 8
+  merge_completed: true
+  merge_commit_sha: 7412d09bcb544061beec69471684b2a246bff6a0
+  merged_to: main
+  merged_at: 2026-08-13T10:31:59+08:00
+  historical_pre_merge_record:
+    record_scope: historical_record
+    current_branch_commit_authorized: true
+    current_branch_push_authorized: true
+    existing_draft_pr_update_authorized: true
+    direct_main_modification_allowed: false
+    merge_authorized: false
 
 local_validation_result:
   runtime_unit_test_count: 38
@@ -69,3 +78,21 @@ local_validation_result:
   real_business_data_used: false
   external_side_effects_executed: false
   runtime_acceptance_executed: false
+
+post_stage2_quality_integrations:
+  - { scope: Pydantic V2 validation parity, pull_request: 9, status: completed_and_merged, merge_commit_sha: 427c6d5ac3d892095b59e68afe4f6c5ddfd11164 }
+  - { scope: Ruff Phase 1 quality gate, pull_request: 10, status: completed_and_merged, merge_commit_sha: 9e111f89cb91e29e3244595e9abf101eddcea133 }
+  - { scope: Ruff Phase 2A, pull_request: 11, status: completed_and_merged, merge_commit_sha: 78cdb2839664077bbb347ae16c2415cb7ace8862 }
+  - { scope: Ruff Phase 2B, pull_request: 12, status: completed_and_merged, merge_commit_sha: bf3d5571c4971c089cd41075c044a397b16f9bd6 }
+
+next_stage_boundary:
+  current_governance_stage: Stage 2.5 Governance and Implementation Boundary Sync
+  next_candidate_stage: Data Engine / Business Execution Implementation
+  data_engine_status: not_started
+  real_data_calculation_status: not_started
+  stage5_provider_capability_validation_status: not_started
+  runtime_acceptance_status: not_started
+  scheduler_status: inactive_not_authorized
+  automatic_draft_status: inactive_not_authorized
+  auto_send: false
+  automatic_next_stage_allowed: false
