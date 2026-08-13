@@ -1,0 +1,108 @@
+config_type: stage1_design_change_set
+change_set_id: STAGE1_WEEKLY_ACQUISITION_AUTOMATION_V1_1_CANDIDATE
+change_set_version: 1.0.0
+status: compatibility_diff_c1_c2_c3_closed_pending_stage2_owner_approval
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+decision_freeze_date: 2026-08-12
+design_modification_date: 2026-08-12
+owner: WORKFLOW_OWNER
+
+authority_and_version_control:
+  current_authoritative_baseline_id: IMPLEMENTATION_BASELINE_WF_WEEKLY_BUSINESS_REPORT_V1
+  current_authoritative_baseline_version: 1.0.0
+  current_baseline_file_modified_by_stage1: false
+  target_baseline_version: 1.1.0
+  baseline_version_change_stage: Stage 2 after exact diff Owner approval
+  breaking_change_review_required: true
+  major_version_may_be_selected_without_owner_decision: false
+
+stage1_candidate_assets:
+  - path: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml
+    role: Complete 1.1.0 Runtime Bundle Candidate preserving all 1.0.0 core interfaces and composing the Acquisition Extension Contract
+  - path: phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml
+    role: Acquisition Extension Contract sidecar; never a Runtime Contract replacement
+  - path: phase1_5/tests/weekly_acquisition_automation_acceptance_scenarios_v1_1_candidate.yaml
+    role: Synthetic contract tests and separately authorized runtime acceptance plan
+  - path: phase1_5/assets/readiness/weekly_acquisition_stage1_change_set_v1_1_candidate.yaml
+    role: Stage boundary and Stage 2 promotion impact register
+  - path: phase1_5/assets/readiness/weekly_runtime_v1_0_to_v1_1_exact_compatibility_diff.yaml
+    role: Exact compatibility evidence and C1-C3 closure record
+
+existing_frozen_assets_intentionally_not_modified:
+  - phase1_5/assets/readiness/implementation_baseline.yaml
+  - phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+  - phase1_5/assets/data_sources/data_source_inventory.yaml
+  - phase1_5/assets/datasets/dataset_inventory.yaml
+  - phase1_5/assets/pipelines/pipeline_registry.yaml
+  - phase1_5/assets/output_mappings/OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1.yaml
+  - phase1_5/tests/final_acceptance_scenarios.yaml
+
+stage2_promotion_targets_if_owner_approved:
+  - target: phase1_5/assets/readiness/implementation_baseline.yaml
+    proposed_change: Increment Baseline to 1.1.0 and register the promoted acquisition contract versions.
+  - target: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml
+    proposed_change: Promote the separately reviewed 1.1.0 Runtime Bundle while preserving the 1.0.0 source artifact and all core interface semantics; do not delete or overwrite the 1.0.0 file.
+  - target: phase1_5/assets/data_sources/data_source_inventory.yaml
+    proposed_change: Replace manual-default acquisition descriptions for Weekly scope with explicit Provider and Adapter bindings while retaining manual_fallback.
+  - target: phase1_5/assets/datasets/dataset_inventory.yaml
+    proposed_change: Add explicit automated acquisition modes and Adapter bindings to the affected Outlook, Apollo, and NovaBI datasets and Query Assets.
+  - target: phase1_5/assets/pipelines/pipeline_registry.yaml
+    proposed_change: Bind affected Weekly Pipelines to the acquisition contract, global Browser Acquisition Lock, and attempt-scoped Manifest rules.
+  - target: phase1_5/assets/output_mappings/OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1.yaml
+    proposed_change: Add pre-acceptance human confirmation and post-acceptance separate Owner approval controls without changing auto_send=false.
+  - target: phase1_5/tests/final_acceptance_scenarios.yaml
+    proposed_change: Add promoted synthetic acquisition scenarios; keep real multi-cycle technical acceptance outside business Baseline semantics.
+  - target: phase1_5/assets/readiness/code_implementation_readiness_gate.yaml
+    proposed_change: Reopen and re-evaluate implementation readiness against the promoted 1.1.0 acquisition contracts; do not grant code authorization automatically.
+  - target: phase1_5/assets/readiness/status_index.yaml
+    proposed_change: Record Stage 2 review outcome, promoted Baseline version, and the unchanged separation of code/runtime/scheduling approvals.
+
+compatibility_review:
+  expected_change_class: additive_runtime_acquisition_and_security_behavior
+  current_assessment: target_minor_version_candidate
+  confirmed_non_changes:
+    - Workflow business purpose
+    - Business Rule formulas and decision semantics
+    - Metric definitions and Metric Variant identities
+    - Result Contract fields and business output semantics
+    - Weekly period and Revenue cutoff authorities
+    - Sequential Pipeline execution
+    - auto_send=false
+    - Customer Revenue Detail Baseline and runtime contracts
+  composition:
+    runtime_bundle_candidate: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_1_CANDIDATE
+    acquisition_extension_contract: ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1
+    acquisition_extension_is_runtime_replacement: false
+    direct_replacement: not_applicable
+  manifest_bridge:
+    original_manifest_id: RUN_INPUT_MANIFEST_WF_WEEKLY_BUSINESS_REPORT_V1
+    original_business_key_unchanged: [workflow_run_id, dataset_id, period_role, product_parameter]
+    optional_entry_extension: acquisition_attempt_binding
+    implicit_latest_attempt_file_time_or_directory_order_allowed: false
+  activation_gates:
+    pre_acceptance_draft_confirmation_changes_completion_or_draft_capability_semantics: false
+    scheduler_initially_inactive_changes_supported_run_types: false
+    post_acceptance_automatic_draft_requires_separate_owner_approval: true
+    post_acceptance_scheduler_requires_separate_owner_approval: true
+  exact_compatibility_diff_result:
+    direct_replacement: not_applicable
+    sidecar_compatibility: pass
+    breaking_change_requiring_major: false
+    c1: closed
+    c2: closed
+    c3: closed
+    new_blocking_issue_count: 0
+
+authorization_ledger:
+  stage0_decision_freeze: approved_complete
+  stage1_design_asset_modification: approved_complete
+  exact_compatibility_diff: passed_c1_c2_c3_closed
+  stage2_baseline_refreeze: not_authorized
+  code_implementation: not_authorized
+  tool_installation_or_environment_change: not_authorized
+  real_account_access: not_authorized
+  real_data_shadow_run: not_authorized
+  runtime_acceptance_execution: not_authorized
+  scheduled_activation: not_authorized
+  git_stage_commit_push_pr_or_merge: not_authorized
+  deletion_cleanup_overwrite_or_extra_raw_backup: not_authorized

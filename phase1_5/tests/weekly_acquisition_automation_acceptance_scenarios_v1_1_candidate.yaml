@@ -1,0 +1,136 @@
+config_type: weekly_acquisition_automation_acceptance_scenarios
+suite_id: WEEKLY_ACQUISITION_AUTOMATION_ACCEPTANCE_V1_1_CANDIDATE
+suite_version: 1.1.0-stage1-candidate
+status: stage1_design_complete_pending_exact_diff_review
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+runtime_bundle_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml
+contract_source: phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml
+contains_real_business_data: false
+external_side_effects_allowed: false
+runtime_execution_authorized: false
+
+synthetic_contract_scenarios:
+  - scenario_id: runtime_bundle_composes_extension_without_replacement
+    synthetic_input: { inherited_runtime_version: 1.0.0, acquisition_extension_bound: true }
+    expected_result: { nine_core_interfaces_preserved: true, direct_replacement: not_applicable, sidecar_compatibility: pass }
+  - scenario_id: run_input_manifest_backward_compatible_attempt_binding
+    synthetic_input: { acquisition_mode: automated, passed_attempt_count: 1, explicit_attempt_binding: true }
+    expected_result: { original_business_key_changed: false, pipeline_consumption_allowed: true }
+  - scenario_id: legacy_prepared_local_input
+    synthetic_input: { acquisition_mode: legacy_prepared_local_input, acquisition_attempt_binding: not_applicable }
+    expected_result: { manifest_entry_valid: true, original_business_key_changed: false }
+  - scenario_id: implicit_latest_attempt_is_prohibited
+    synthetic_input: { passed_attempt_count: 2, explicit_attempt_binding: false, newest_attempt_available: true }
+    expected_result: { pipeline_consumption_allowed: false, latest_attempt_selected: false }
+  - scenario_id: activation_gates_preserve_runtime_semantics
+    synthetic_input: { scheduler_activated: false, pre_acceptance_draft_confirmation: true }
+    expected_result: { supported_run_types: [scheduled, manual, backfill], completion_statuses: [complete_draft, partial_draft, blocked], auto_send: false }
+  - scenario_id: outlook_provider_capability_insufficient
+    synthetic_input: { mailbox_search: true, attachment_download: false, draft_create: true }
+    expected_result: { status: blocked, automatic_fallback: false, report_to_owner: true }
+  - scenario_id: provider_permission_broader_than_runtime_query_scope
+    synthetic_input: { provider_permission: mailbox_search, requested_query_scope: unregistered_mail_search }
+    expected_result: { status: blocked, query_executed: false }
+  - scenario_id: browser_profile_session_is_managed_but_not_exported
+    synthetic_input: { browser_session_available: true, application_requests_storage_state_export: true }
+    expected_result: { status: blocked, cookie_token_or_storage_state_exported: false }
+  - scenario_id: explicit_login_or_mfa_required
+    synthetic_input: { authenticated_session: false, mfa_prompt: true }
+    expected_result: { status: blocked, automatic_credential_entry: false, owner_action_required: true }
+  - scenario_id: account_identity_mismatch
+    synthetic_input: { expected_profile_role: registered_business_account, observed_profile_role: different_account }
+    expected_result: { status: blocked, query_executed: false, owner_notified: true }
+  - scenario_id: global_browser_lock_occupied
+    synthetic_input: { current_holder: APOLLO_ATTEMPT_001, later_attempt: NOVABI_ATTEMPT_002 }
+    expected_result: { later_attempt_status: blocked_or_manual_wait, queued: false, parallel_execution: false }
+  - scenario_id: scheduler_not_activated_in_initial_mvp
+    synthetic_input: { manual_cli_available: true, scheduled_trigger_received: true, scheduled_activation_owner_approved: false }
+    expected_result: { scheduled_run_started: false, generic_queue_created: false }
+  - scenario_id: stale_lock_detected
+    synthetic_input: { lock_owner_process_available: false, lock_age_exceeds_operator_expectation: true }
+    expected_result: { automatic_lock_deletion: false, status: blocked_pending_manual_review }
+  - scenario_id: exact_query_binding_required
+    synthetic_input: { dataset_id: DS_NOVABI_PLATFORM_DAU, query_asset_id: QRY_UNREGISTERED_SIMILAR_DAU }
+    expected_result: { status: blocked, fuzzy_query_asset_selection: false }
+  - scenario_id: parameter_readback_mismatch
+    synthetic_input: { configured_period: 2026-01-01_to_2026-01-07, observed_period: 2026-01-02_to_2026-01-07 }
+    expected_result: { status: blocked, query_result_consumed: false }
+  - scenario_id: single_refresh_and_recovery_query
+    synthetic_input: { first_query_session_expired: true, refresh_count: 1, recovery_query_count: 1 }
+    expected_result: { allowed: true, stale_result_reused: false, additional_refresh_allowed: false }
+  - scenario_id: second_refresh_requested
+    synthetic_input: { refresh_count: 2 }
+    expected_result: { status: blocked, additional_refresh_executed: false }
+  - scenario_id: page_contract_drift
+    synthetic_input: { registered_page_contract_matches: false, similar_button_available: true }
+    expected_result: { error_code: ADAPTER_PAGE_CONTRACT_DRIFT, status: blocked, automatic_similar_button_use: false }
+  - scenario_id: manual_fallback_creates_new_attempt
+    synthetic_input: { workflow_run_id: RUN_SYNTH_001, failed_attempt_id: ATTEMPT_001, fallback_mode: manual_fallback }
+    expected_result:
+      workflow_run_id: RUN_SYNTH_001
+      new_attempt_required: true
+      new_manifest_required: true
+      old_attempt_overwritten: false
+  - scenario_id: latest_file_guessing_prohibited
+    synthetic_input: { candidate_files: [opaque_ref_A, opaque_ref_B], explicit_manifest_binding: false }
+    expected_result: { status: blocked, newest_file_selected: false }
+  - scenario_id: manifest_sensitive_metadata_prohibited
+    synthetic_input: { contains_absolute_path: true, contains_real_url: true, contains_mailbox_address: true }
+    expected_result: { manifest_validation: failed, persisted: false }
+  - scenario_id: runtime_root_inside_onedrive_or_git
+    synthetic_input: { outside_git: true, outside_onedrive: false }
+    expected_result: { status: blocked_before_business_data_write }
+  - scenario_id: existing_attempt_file_collision
+    synthetic_input: { target_opaque_reference_exists: true }
+    expected_result: { overwrite_allowed: false, status: blocked_or_new_attempt_required }
+  - scenario_id: success_diagnostics_minimization
+    synthetic_input: { acquisition_status: passed }
+    expected_result: { screenshot_saved: false, video_saved: false, trace_saved: false }
+  - scenario_id: failure_trace_contains_unsanitized_business_data
+    synthetic_input: { owner_diagnostic_confirmation: true, trace_can_be_sanitized: false }
+    expected_result: { trace_saved: false }
+  - scenario_id: draft_before_runtime_acceptance
+    synthetic_input: { workflow_status: complete_draft, runtime_acceptance_passed: false, human_confirmation: false }
+    expected_result: { draft_created: false, send_attempted: false }
+  - scenario_id: partial_draft_after_human_confirmation
+    synthetic_input: { workflow_status: partial_draft, human_confirmation: true }
+    expected_result: { new_draft_created: true, warning_preface: required, send_attempted: false }
+  - scenario_id: blocked_workflow_draft
+    synthetic_input: { workflow_status: blocked, human_confirmation: true }
+    expected_result: { draft_created: false, send_attempted: false }
+  - scenario_id: rerun_draft_does_not_overwrite
+    synthetic_input: { existing_draft_reference: opaque_draft_001, rerun_requested: true }
+    expected_result: { new_draft_created: true, existing_draft_updated_or_overwritten: false }
+  - scenario_id: post_acceptance_auto_draft_without_new_owner_approval
+    synthetic_input: { runtime_acceptance_passed: true, separate_auto_draft_owner_approval: false }
+    expected_result: { automatic_draft_created: false, auto_send: false }
+  - scenario_id: weekly_outlook_input_single_recheck
+    synthetic_input: { initial_match_count: 0, recheck_after_minutes: 30, recheck_match_count: 0 }
+    expected_result: { recheck_count: 1, affected_weekly_input_status: blocked, additional_recheck: false }
+  - scenario_id: customer_recheck_contract_is_not_inherited_from_weekly
+    synthetic_input: { workflow_id: WF_CUSTOMER_REVENUE_DETAIL, current_qtd_still_missing: true, owner_cancelled: false }
+    expected_result: { weekly_single_recheck_policy_applied: false, customer_existing_contract_changed: false }
+
+runtime_acceptance_plan:
+  classification: technical_release_acceptance_default_not_business_baseline_semantics
+  execution_status: not_started_not_authorized
+  real_data_or_session_use_requires_separate_owner_authorization: true
+  required_observation:
+    apollo_weekly_cycles: 4
+    novabi_weekly_cycles: 4
+    technical_backfill: 1
+    outlook_input_cases: [regular_weekly, quarter_close, ctv]
+    outlook_draft: draft_only_no_send
+  reduction_requires_separate_owner_confirmation: true
+  exact_query_asset_template_and_parameter_match_rate: 1.0
+  unexplained_data_difference_allowed: false
+  required_failure_tests:
+    - login_expiration_or_mfa
+    - timeout
+    - download_failure
+    - schema_drift
+    - page_contract_drift
+    - global_lock_occupied
+    - outlook_provider_capability_insufficient
+  cutover_unit: one_adapter_at_a_time
+  rollback_mode: manual_fallback_with_new_attempt_and_manifest
