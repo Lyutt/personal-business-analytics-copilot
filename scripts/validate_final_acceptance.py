@@ -23,6 +23,7 @@ CUSTOMER_POLICY = ROOT / "phase1_5/assets/policies/PL_CUSTOMER_REVENUE_DETAIL_PO
 CUSTOMER_OUTPUT = ROOT / "phase1_5/assets/output_mappings/OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1.yaml"
 TECHNICAL_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1.yaml"
 WEEKLY_COMPARABLE_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml"
+CTV_PRIOR_YEAR_STORE_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1.yaml"
 WEEKLY_PREVIOUS_QUARTER_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1.yaml"
 WEEKLY_QTD_HISTORY_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1.yaml"
 WEEKLY_EMAIL_CLASSIFICATION_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1.yaml"
@@ -354,6 +355,7 @@ def main() -> int:
     customer_output = load(CUSTOMER_OUTPUT)
     technical_rule = load(TECHNICAL_RULE)
     weekly_comparable_rule = load(WEEKLY_COMPARABLE_RULE)
+    ctv_prior_year_store_rule = load(CTV_PRIOR_YEAR_STORE_RULE)
     weekly_previous_quarter_rule = load(WEEKLY_PREVIOUS_QUARTER_RULE)
     weekly_qtd_history_rule = load(WEEKLY_QTD_HISTORY_RULE)
     weekly_email_classification_rule = load(WEEKLY_EMAIL_CLASSIFICATION_RULE)
@@ -612,21 +614,22 @@ def main() -> int:
 
     pipeline_by_id = {item["pipeline_id"]: item for item in pipeline_registry["pipelines"]}
     expected_pipeline_business_lines = {
-        "PL_REVENUE_TECHNICAL_WEEKLY": ("Technical", {weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}),
-        "PL_REVENUE_CTV_WEEKLY": ("CTV", {weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}),
-        "PL_REVENUE_SMART_SPEAKER_WEEKLY": ("Smart Speaker", {weekly_qtd_history_rule["rule_id"]}),
-        "PL_REVENUE_FAST_VERSION_WEEKLY": ("Fast Version", {weekly_qtd_history_rule["rule_id"]}),
+        "PL_REVENUE_TECHNICAL_WEEKLY": ("Technical", {weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}, {weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}),
+        "PL_REVENUE_CTV_WEEKLY": ("CTV", {ctv_prior_year_store_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}, {weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}),
+        "PL_REVENUE_SMART_SPEAKER_WEEKLY": ("Smart Speaker", {weekly_qtd_history_rule["rule_id"]}, {weekly_qtd_history_rule["rule_id"]}),
+        "PL_REVENUE_FAST_VERSION_WEEKLY": ("Fast Version", {weekly_qtd_history_rule["rule_id"]}, {weekly_qtd_history_rule["rule_id"]}),
     }
     assert "target_business_line" not in context["required_fields"]
     scoped_runtime_bindings = runtime["pipeline_scoped_rule_context_bindings"]
     assert set(scoped_runtime_bindings) - {"validation"} == set(expected_pipeline_business_lines)
-    for pipeline_id, (expected_value, expected_rule_ids) in expected_pipeline_business_lines.items():
+    for pipeline_id, (expected_value, expected_rule_ids, baseline_rule_ids) in expected_pipeline_business_lines.items():
         pipeline = pipeline_by_id[pipeline_id]
         registry_binding = pipeline["pipeline_rule_context_bindings"]["target_business_line"]
         runtime_binding = scoped_runtime_bindings[pipeline_id]["target_business_line"]
         assert registry_binding["scope"] == "pipeline"
         assert registry_binding["value"] == runtime_binding["value"] == expected_value
-        assert set(registry_binding["applicable_rule_ids"]) == set(runtime_binding["applies_to_rule_ids"]) == expected_rule_ids
+        assert set(registry_binding["applicable_rule_ids"]) == expected_rule_ids
+        assert set(runtime_binding["applies_to_rule_ids"]) == baseline_rule_ids
         assert registry_binding["display_name_inference_allowed"] is False
         if pipeline_id in {"PL_REVENUE_SMART_SPEAKER_WEEKLY", "PL_REVENUE_FAST_VERSION_WEEKLY"}:
             assert registry_binding["value_source"] == "exact_registered_pipeline_business_line"

@@ -69,7 +69,8 @@
 | `BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1` | 细分业务线QTD历史累计承接资格规则 | Approved v1.0.0 |
 | `BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1` | Rolling Deck周度与季度结算邮件分类 | Approved v1.0.0 |
 | `BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1` | 季度切换首周上季度完整收入结果来源选择 | Approved v1.0.0 |
-| `BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1` | 2026年技术线与CTV同期收入文件匹配 | Approved v1.0.0 |
+| `BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1` | 2026年技术线同期收入文件匹配 | Approved v1.0.0; CTV binding superseded |
+| `BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1` | CTV去年同期历史Store精确日期选择 | Approved v1.0.0 |
 
 ## 通用执行策略
 

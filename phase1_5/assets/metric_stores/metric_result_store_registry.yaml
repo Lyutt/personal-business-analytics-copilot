@@ -252,18 +252,42 @@ metric_result_stores:
           通常为周三，但不将星期三硬编码为固定规则。
         business_date_uniqueness: >
           同一工作簿内不应因补充当周缺失数据而新增相同截止日期记录；
-          其他重复日期场景的处理规则仍为TBD。
+          exact business-date read要求唯一匹配；重复日期不得自动选择。
+        prior_year_yoy_exact_read:
+          rule_id: BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1
+          target_business_date_semantics: >
+            current_revenue_cutoff_date向前移动一个calendar year，再加一个calendar day。
+          value_field: QTD签单执行金额
+          source_metric_variant_id: MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+          exact_single_row_required: true
+          verified_result_required: true
+          prohibited_fallbacks:
+            - nearest_date
+            - previous_row
+            - latest_row
+            - worksheet_row_order
+            - mtime
+            - current_year_prior_year_columns
+            - prior_year_email
+            - prior_year_rolling_deck
+          missing_or_invalid_action: >
+            仅将qtd_performance_revenue_yoy标记为missing并产生warning；
+            当前qtd_performance_revenue与qtd_executed_revenue继续有效。
         observed_column_count: 6
         current_write_mode: >
           Append a new occurred-week row at the end of the current-quarter
           sequence, using validated base values plus configured Excel formulas.
         pre_write_completeness_gate:
-          regular_week_required_range: A:F
+          regular_week_required_base_range: A:C
+          calculated_yoy_output_column: F
+          current_year_prior_year_reference_columns: D:E
+          current_year_prior_year_reference_columns_may_be_blank: true
+          current_year_prior_year_reference_columns_runtime_backfill_allowed: false
           pass_condition: >
-            普通周A:F全部字段均具备有效数值或已确认公式，
-            且不存在公式计算错误。
+            普通周A:C具备有效业务日期、QTD签单执行金额和QTD已执行金额；
+            F列仅在已验证YoY结果可用时写入。D:E允许为空，Runtime不得自动回填。
           failure_action: >
-            任一字段为空、公式未配置或出现计算错误时，
+            任一必需基础字段为空或出现计算错误时，
             暂停写入并通知用户。
         historical_anomaly_handling:
           corrected_items:
@@ -354,6 +378,19 @@ metric_result_stores:
         更早数据作为Legacy History保留，
         不参与Workflow读取、同比或环比计算，
         且不阻塞当前Readiness Gate。
+      scope_clarification: >
+        本边界继续适用于regular-week previous historical result read，
+        不适用于BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1定义的
+        CTV YoY exact target_prior_year_business_date read。
+    ctv_prior_year_yoy_exact_read_exception:
+      store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
+      rule_id: BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1
+      allowed_business_date_scope: exact rule-derived 2026 prior-year comparable business date
+      examples:
+        - 2025-07-02
+        - 2025-08-13
+      nearby_or_latest_fallback_allowed: false
+      owner_reconfirmation_required_for_workflow_year_2027_or_later: true
     new_weekly_store_asset_history:
       applicable_store_assets:
         - STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER

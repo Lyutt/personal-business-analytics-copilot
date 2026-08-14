@@ -11,6 +11,7 @@ from weekly_acquisition_runtime.runtime import AcquisitionRuntime, RuntimeRun
 
 from .assets import (
     BUSINESS_CONTEXT_ID,
+    CTV_PRIOR_YEAR_STORE_RULE_ID,
     CTV_VARIANT_IDS,
     CURRENT_DATASET_ID,
     CURRENT_MAPPING_ID,
@@ -40,10 +41,14 @@ from .models import (
     ResultFieldValue,
     ResultValueStatus,
 )
-from .store import MetricStorePort, MetricStoreRecord, StoreReadKey
+from .store import (
+    MetricStorePort,
+    MetricStoreRecord,
+    StoreBusinessDateReadKey,
+    StoreReadKey,
+)
 
 REPORT_MODE_RULE_ID = "BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1"
-PRIOR_YEAR_RULE_ID = "BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1"
 
 
 class CtvPipelineExecutor:
@@ -68,14 +73,13 @@ class CtvPipelineExecutor:
         run: RuntimeRun,
         pipeline_run_id: str,
         current_input_key: BusinessKey,
-        prior_year_input_key: BusinessKey,
         generated_at: str,
         previous_quarter_primary_input_key: BusinessKey | None = None,
         previous_quarter_fallback_input_key: BusinessKey | None = None,
     ) -> PipelineExecutionResult:
         input_references: tuple[str, ...] = ()
         try:
-            self._validate_identity(run, pipeline_run_id, current_input_key, prior_year_input_key)
+            self._validate_identity(run, pipeline_run_id, current_input_key)
             context = validate_revenue_context(run.context.values)
             current_entry = run.run_input_manifest.get_entry(current_input_key)
             self._validate_current_manifest_context(current_entry, context)
@@ -83,7 +87,7 @@ class CtvPipelineExecutor:
             input_references = (current_entry.local_input_reference,)
             current = self.loader.load_current(current_path, current_entry.local_input_reference)
             consumed_mapping_ids = [CURRENT_MAPPING_ID]
-            evaluated_rule_ids = [REPORT_MODE_RULE_ID, PRIOR_YEAR_RULE_ID]
+            evaluated_rule_ids = [REPORT_MODE_RULE_ID, CTV_PRIOR_YEAR_STORE_RULE_ID]
             rule_lineage = self._rule_authority_lineage()
             rule_lineage.append(f"rule-evaluated://{REPORT_MODE_RULE_ID}")
             if context.report_mode == "quarter_transition_week":
@@ -107,47 +111,14 @@ class CtvPipelineExecutor:
                         f"{selected.input_reference}",
                     )
                 )
-            target_prior_date = derive_prior_year_date(context)
-            prior_value = Decimal("0")
-            prior_business_cutoff: date | None = None
-            prior_warnings: list[ExecutionWarning] = []
-            rule_lineage.append(f"rule-evaluated://{PRIOR_YEAR_RULE_ID}")
-            try:
-                prior_entry = run.run_input_manifest.get_entry(prior_year_input_key)
-                prior_path = self.acquisition_runtime.consume_bound_input(run, prior_year_input_key)
-                if prior_entry.source_report_date != target_prior_date.isoformat():
-                    raise DatasetValidationError(
-                        "CTV_PRIOR_INPUT_DATE_MISMATCH",
-                        "Prior input source_report_date does not match the exact frozen source date",
-                    )
-                try:
-                    prior_business_cutoff = date.fromisoformat(
-                        prior_entry.source_business_data_cutoff_date
-                    )
-                except ValueError as exc:
-                    raise DatasetValidationError(
-                        "CTV_PRIOR_BUSINESS_CUTOFF_INVALID",
-                        "Prior input business cutoff must be a valid date",
-                    ) from exc
-                prior = self.loader.load_prior_comparable(
-                    prior_path,
-                    target_quarter=f"{context.workflow_year - 1}{context.target_fiscal_quarter[4:]}",
-                    input_reference=prior_entry.local_input_reference,
-                )
-                prior_value = prior.value
-                input_references = (*input_references, prior_entry.local_input_reference)
-                consumed_mapping_ids.append(PRIOR_MAPPING_ID)
-                rule_lineage.append(
-                    f"source-consumed://prior_year_comparable/{prior_entry.local_input_reference}"
-                )
-            except (AcquisitionError, DatasetValidationError) as exc:
-                prior_warnings.append(
-                    ExecutionWarning(
-                        "CTV_PRIOR_YEAR_INPUT_UNAVAILABLE",
-                        f"Prior-year input was not eligible for YoY: {exc}",
-                    )
-                )
-            historical_lineage = self._read_required_history(context)
+            rule_lineage.append(f"rule-evaluated://{CTV_PRIOR_YEAR_STORE_RULE_ID}")
+            (
+                prior_value,
+                prior_business_cutoff,
+                prior_warnings,
+                prior_year_lineage,
+            ) = self._read_prior_year_performance(context)
+            historical_lineage = (*self._read_required_history(context), *prior_year_lineage)
             calculation = calculate_ctv_metrics(
                 current.frame,
                 prior_year_performance=prior_value,
@@ -217,22 +188,15 @@ class CtvPipelineExecutor:
         run: RuntimeRun,
         pipeline_run_id: str,
         current_key: BusinessKey,
-        prior_key: BusinessKey,
     ) -> None:
         if not pipeline_run_id.strip():
             raise Stage3AError("CTV_PIPELINE_RUN_ID_INVALID", "pipeline_run_id is required")
         if current_key.workflow_run_id != run.context.workflow_run_id:
             raise Stage3AError("CTV_CONTEXT_MISMATCH", "Current input belongs to another Run")
-        if prior_key.workflow_run_id != run.context.workflow_run_id:
-            raise Stage3AError("CTV_CONTEXT_MISMATCH", "Prior input belongs to another Run")
         if current_key.dataset_id != CURRENT_DATASET_ID or current_key.period_role != "current":
             raise Stage3AError("CTV_CURRENT_INPUT_KEY_INVALID", "Current CTV business key mismatch")
-        if prior_key.dataset_id != PRIOR_DATASET_ID or prior_key.period_role != "prior_year_comparable":
-            raise Stage3AError("CTV_PRIOR_INPUT_KEY_INVALID", "Prior-year business key mismatch")
         if current_key.product_parameter != "not_applicable":
             raise Stage3AError("CTV_PRODUCT_CONTEXT_INVALID", "CTV input is not product-scoped")
-        if prior_key.product_parameter != "not_applicable":
-            raise Stage3AError("CTV_PRODUCT_CONTEXT_INVALID", "CTV prior input is not product-scoped")
 
     @staticmethod
     def _validate_current_manifest_context(current_entry, context) -> None:
@@ -263,6 +227,73 @@ class CtvPipelineExecutor:
             self._validate_historical_record(record, key)
             lineage.append(f"metric-store://{record.result_id}")
         return tuple(lineage)
+
+    def _read_prior_year_performance(
+        self, context
+    ) -> tuple[Decimal, date | None, list[ExecutionWarning], tuple[str, ...]]:
+        target_date = derive_prior_year_date(context)
+        key = StoreBusinessDateReadKey(
+            STORE_ID,
+            STORE_ASSET_ID,
+            CTV_VARIANT_IDS[0],
+            target_date.isoformat(),
+            BUSINESS_CONTEXT_ID,
+        )
+        try:
+            record = self.metric_store.read_exact_business_date(key)
+            self._validate_prior_year_record(record, key)
+            return (
+                record.value,
+                target_date,
+                [],
+                (
+                    f"metric-store-business-date://{STORE_ID}/{STORE_ASSET_ID}/"
+                    f"{target_date.isoformat()}/{record.result_id}",
+                ),
+            )
+        except MetricStoreError as exc:
+            return (
+                Decimal("0"),
+                None,
+                [
+                    ExecutionWarning(
+                        "CTV_PRIOR_YEAR_STORE_RESULT_UNAVAILABLE",
+                        f"Prior-year Store Result was not eligible for YoY: {exc}",
+                    )
+                ],
+                (),
+            )
+
+    def _validate_prior_year_record(
+        self, record: MetricStoreRecord, key: StoreBusinessDateReadKey
+    ) -> None:
+        field_contract = next(
+            item
+            for item in self.assets.result_contract["contract_fields"]
+            if item["source_metric_variant_id"] == CTV_VARIANT_IDS[0]
+        )
+        constraints = field_contract["numeric_constraints"]
+        valid_positive_decimal = isinstance(record.value, Decimal) and record.value > 0
+        if any(
+            (
+                record.business_date_read_key != key,
+                record.store_id != STORE_ID,
+                record.store_asset_id != STORE_ASSET_ID,
+                record.business_context_id != BUSINESS_CONTEXT_ID,
+                record.metric_variant_id != CTV_VARIANT_IDS[0],
+                record.validation_status != "passed",
+                record.value_status != "valid_value",
+                not valid_positive_decimal,
+                record.numeric_semantics != constraints["numeric_semantics"],
+                record.unit != constraints["unit"],
+                record.precision != constraints["precision"],
+                not record.lineage_references,
+            )
+        ):
+            raise MetricStoreError(
+                "STORE_PRIOR_YEAR_RESULT_INELIGIBLE",
+                "Exact prior-year Metric Result does not satisfy CTV Store consumption semantics",
+            )
 
     def _validate_historical_record(
         self, record: MetricStoreRecord, key: StoreReadKey

@@ -1,0 +1,138 @@
+config_type: business_rule
+rule_id: BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1
+rule_name: CTV prior-year Historical Metric Store exact business-date selection
+rule_category: Revenue Historical Metric Result Selection
+business_domains:
+  - Revenue
+applicable_workflow_ids:
+  - WF_WEEKLY_BUSINESS_REPORT
+applicable_pipeline_ids:
+  - PL_REVENUE_CTV_WEEKLY
+business_context_ids:
+  - CTX_REVENUE_CTV_WEEKLY
+owner: WORKFLOW_OWNER
+business_approver: WORKFLOW_OWNER
+version: 1.0.0
+approval_status: approved
+effective_from: 2026-08-14
+
+purpose: >
+  Select the CTV prior-year QTD Performance Revenue from the CTV Historical
+  Metric Result Store by one exact business date. This Rule does not select,
+  consume, or fall back to a prior-year email, attachment, or Rolling Deck.
+
+inputs:
+  required_context_fields:
+    - target_business_line
+    - current_revenue_cutoff_date
+    - workflow_year
+  required_source_assets:
+    - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
+  required_standard_fields: []
+  required_result_contract_ids:
+    - RC_REVENUE_CTV_WEEKLY
+
+conditions:
+  eligible_when_all:
+    - workflow_year equals 2026
+    - exactly one verified Store Result matches target_prior_year_business_date
+    - QTD Performance Revenue value is numeric and greater than zero
+  ineligible_when_any:
+    - target business-date result is missing or duplicated
+    - QTD Performance Revenue value is blank, non-numeric, zero, or negative
+    - Store Result validation or value status is not eligible
+
+authority:
+  store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+  store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
+  physical_workbook_name: CTV线历史整体数据存档.xlsx
+  worksheet_name: tv
+  business_date_field: 数据当周最后一天
+  value_field: QTD签单执行金额
+  source_metric_variant_id: MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+  physical_asset_identity: Metric Result Store Asset
+  raw_dataset_or_run_input_registration_allowed: false
+
+date_relationship:
+  applicable_workflow_year: 2026
+  target_prior_year_business_date_semantics: >
+    Move current_revenue_cutoff_date back one calendar year, then add one
+    calendar day.
+  examples:
+    - current_revenue_cutoff_date: 2026-08-12
+      target_prior_year_business_date: 2025-08-13
+    - current_revenue_cutoff_date: 2026-07-01
+      target_prior_year_business_date: 2025-07-02
+  same_natural_quarter_required: true
+  workflow_year_2027_or_later_behavior: request_owner_reconfirmation_before_use
+
+selection:
+  match_type: exact_business_date
+  exactly_one_historical_result_required: true
+  selected_value_field: QTD签单执行金额
+  selected_value_semantics: prior-year QTD Performance Revenue
+  prohibited_selection_methods:
+    - nearest_date
+    - previous_row
+    - latest_row
+    - file_order
+    - worksheet_row_order
+    - mtime
+    - manually_pasted_current_year_prior_year_column
+    - prior_year_email_fallback
+    - prior_year_rolling_deck_fallback
+  current_year_prior_year_columns:
+    may_be_blank: true
+    consumed_as_yoy_denominator: false
+    runtime_backfill_allowed: false
+    pipeline_blocking_when_blank: false
+
+eligibility:
+  required_validation_status: passed
+  required_value_status: valid_value
+  required_numeric_semantics: monetary_amount
+  required_unit: CNY_yuan
+  required_precision: preserve_source_precision
+  value_must_be_numeric: true
+  value_must_be_greater_than: 0
+
+actions:
+  on_exact_eligible_result:
+    - calculate_qtd_performance_revenue_yoy
+    - record_store_asset_and_business_date_lineage
+  on_missing_duplicate_blank_non_numeric_zero_or_negative:
+    - set_qtd_performance_revenue_yoy_missing
+    - emit_explicit_owner_warning
+    - retain_valid_current_qtd_performance_revenue
+    - retain_valid_current_qtd_executed_revenue
+    - continue_ctv_pipeline_with_warning
+  fallback_allowed: false
+
+validation:
+  deterministic: true
+  exact_business_date_required: true
+  unique_result_required: true
+  verified_store_state_required: true
+  pending_or_verification_failed_result_consumable: false
+  prior_year_source_report_date_consumed: false
+  prior_year_run_input_required: false
+  metric_formula_defined_here: false
+
+governance:
+  correction_type: Owner-confirmed CTV Contract correction
+  supersedes_for_ctv:
+    - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+  correction_record: >
+    CTV prior-year Rolling Deck / email authority was an incorrect shared
+    binding with Technical and is superseded by Owner-confirmed CTV Historical
+    Store exact-read semantics.
+  technical_pipeline_behavior_changed: false
+  customer_workflow_behavior_changed: false
+
+constraints:
+  generic_store_framework_allowed: false
+  automatic_business_value_inference_allowed: false
+  automatic_nearby_date_selection_allowed: false
+  automatic_provider_fallback_allowed: false
+  physical_excel_access_allowed_in_calculation_engine: false
