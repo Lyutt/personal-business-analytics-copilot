@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the Stage 2 Weekly Acquisition Runtime against frozen 1.1.0 contracts."""
+"""Validate frozen Stage 2 composition and the active Runtime Candidate."""
 
 from __future__ import annotations
 
@@ -10,7 +10,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 OLD_RUNTIME = ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
-NEW_RUNTIME = ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml"
+STAGE2_RUNTIME = ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml"
+ACTIVE_RUNTIME = ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml"
 EXTENSION = ROOT / "phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml"
 DATASETS = ROOT / "phase1_5/assets/datasets/dataset_inventory.yaml"
 PIPELINES = ROOT / "phase1_5/assets/pipelines/pipeline_registry.yaml"
@@ -40,7 +41,8 @@ def load(path: Path) -> dict[str, Any]:
 
 def main() -> int:
     old = load(OLD_RUNTIME)
-    new = load(NEW_RUNTIME)
+    new = load(STAGE2_RUNTIME)
+    active = load(ACTIVE_RUNTIME)
     extension = load(EXTENSION)
     datasets = load(DATASETS)
     pipelines = load(PIPELINES)
@@ -55,6 +57,50 @@ def main() -> int:
             assert candidate == old[interface]
         else:
             assert new[interface] == old[interface], f"Core interface changed: {interface}"
+
+    assert set(active) == set(new)
+    assert active["contract_bundle_id"] == (
+        "RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_2_CANDIDATE"
+    )
+    assert active["contract_bundle_version"] == "1.2.0"
+    correction_interfaces = {
+        "canonical_rule_context_bindings",
+        "pipeline_scoped_rule_context_bindings",
+    }
+    for interface in CORE_INTERFACES:
+        if interface not in correction_interfaces:
+            assert active[interface] == new[interface], (
+                f"Unexpected active Runtime interface change: {interface}"
+            )
+    stage2_rules = new["canonical_rule_context_bindings"]
+    active_rules = active["canonical_rule_context_bindings"]
+    ctv_rule_id = "BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1"
+    technical_rule_id = "BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1"
+    assert set(active_rules) == set(stage2_rules) | {ctv_rule_id}
+    for rule_id in set(stage2_rules) - {"validation"}:
+        assert active_rules[rule_id] == stage2_rules[rule_id]
+    assert set(active_rules[ctv_rule_id]) == {
+        "target_business_line",
+        "current_revenue_cutoff_date",
+        "workflow_year",
+    }
+    stage2_pipeline_bindings = new["pipeline_scoped_rule_context_bindings"]
+    active_pipeline_bindings = active["pipeline_scoped_rule_context_bindings"]
+    assert set(active_pipeline_bindings) == set(stage2_pipeline_bindings)
+    for pipeline_id in set(stage2_pipeline_bindings) - {"PL_REVENUE_CTV_WEEKLY"}:
+        assert active_pipeline_bindings[pipeline_id] == stage2_pipeline_bindings[pipeline_id]
+    assert active_pipeline_bindings["PL_REVENUE_TECHNICAL_WEEKLY"][
+        "target_business_line"
+    ]["applies_to_rule_ids"] == [
+        technical_rule_id,
+        "BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1",
+    ]
+    assert active_pipeline_bindings["PL_REVENUE_CTV_WEEKLY"][
+        "target_business_line"
+    ]["applies_to_rule_ids"] == [
+        ctv_rule_id,
+        "BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1",
+    ]
 
     manifest = new["run_input_manifest"]
     assert manifest["entry_business_key"] == BUSINESS_KEY
@@ -79,6 +125,19 @@ def main() -> int:
     assert binding["inherited_runtime_governance_code_implementation_authorized_remains"] is False
     assert extension["contract_role"]["classification"] == "acquisition_extension_sidecar"
     assert extension["contract_role"]["runtime_contract_replacement_allowed"] is False
+    active_binding = active["acquisition_automation_contract_binding"]
+    assert active_binding["extension_contract_id"] == extension["contract_id"]
+    assert active_binding["extension_contract_version"] == extension["contract_version"]
+    correction = active_binding["inherited_runtime_contract"][
+        "authorized_semantic_correction_scope"
+    ]
+    assert correction == {
+        "pipeline_id": "PL_REVENUE_CTV_WEEKLY",
+        "removed_rule_id": technical_rule_id,
+        "replacement_rule_id": ctv_rule_id,
+        "technical_pipeline_semantics_changed": False,
+        "breaking_change_requiring_major": False,
+    }
     assert extension["acquisition_manifest_contract"]["business_association_key"] == ATTEMPT_KEY
     assert extension["acquisition_lifecycle_contract"]["ordered_steps"] == [
         "lock_run_context",
@@ -160,6 +219,16 @@ def main() -> int:
     assert len(weekly_pipelines) == 12
     assert len(affected) == 10
 
+    pipeline_by_id = {pipeline["pipeline_id"]: pipeline for pipeline in pipelines["pipelines"]}
+    for pipeline_id in ("PL_REVENUE_TECHNICAL_WEEKLY", "PL_REVENUE_CTV_WEEKLY"):
+        registry_rules = pipeline_by_id[pipeline_id]["pipeline_rule_context_bindings"][
+            "target_business_line"
+        ]["applicable_rule_ids"]
+        runtime_rules = active_pipeline_bindings[pipeline_id]["target_business_line"][
+            "applies_to_rule_ids"
+        ]
+        assert registry_rules == runtime_rules
+
     for dataset in datasets["datasets"]:
         if dataset.get("source_id") != "SRC_CORP_OUTLOOK_PRIMARY_MAILBOX":
             continue
@@ -200,6 +269,16 @@ def main() -> int:
     assert authorization["auto_send"] is False
     assert stage2["local_validation_result"]["runtime_unit_test_count"] == 38
     stage2_index = status_index["stage2_acquisition_runtime_implementation"]
+    active_index = status_index["current_runtime_candidate"]
+    assert active_index["runtime_bundle_id"] == active["contract_bundle_id"]
+    assert active_index["runtime_bundle_version"] == active["contract_bundle_version"]
+    assert active_index["runtime_bundle_source"] == (
+        "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml"
+    )
+    assert active_index["baseline_1_0_0_unchanged"] is True
+    assert active_index["stage2_v1_1_candidate_unchanged"] is True
+    assert active_index["runtime_acceptance_authorized"] is False
+    assert active_index["automatic_next_stage_allowed"] is False
     assert status_index["current_stage"] == "Stage 2.5 Governance and Implementation Boundary Sync"
     assert status_index["phase_status"]["code_implementation"] == (
         "stage2_acquisition_runtime_foundation_completed_and_merged"
@@ -271,7 +350,8 @@ def main() -> int:
     assert "python -m unittest tests.test_weekly_acquisition_runtime" in workflow
 
     print(
-        "Weekly Acquisition Runtime validation passed: 9/9 core interfaces preserved; "
+        "Weekly Acquisition Runtime validation passed: frozen v1.0 -> v1.1 9/9 interfaces "
+        "preserved; active v1.2 CTV/Technical Rule bindings exact; "
         "Run Input business key unchanged; deterministic Attempt binding and lifecycle passed; "
         "Dataset/Query coverage exact; 12 Weekly Pipelines with 10 expected acquisition-affected; "
         "Result consumption, completion status, Outlook selection, activation gates, and Customer isolation preserved."

@@ -885,7 +885,7 @@ class ExplicitBindingCliTests(unittest.TestCase):
 
 class CandidateCompositionTests(unittest.TestCase):
     def test_candidate_composition(self) -> None:
-        runtime = load_yaml(ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml")
+        runtime = load_yaml(ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml")
         extension = load_yaml(ROOT / "phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml")
         validate_composition(runtime, extension)
         self.assertEqual(
@@ -899,7 +899,7 @@ class CandidateCompositionTests(unittest.TestCase):
         self.assertFalse(runtime["governance"]["auto_send"])
 
     def test_candidate_composition_exact_identity_mismatches_block(self) -> None:
-        runtime = load_yaml(ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml")
+        runtime = load_yaml(ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml")
         extension = load_yaml(ROOT / "phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml")
         for field_name, bad_value in (
             ("extension_contract_id", "ACQUISITION_WRONG"),
@@ -914,6 +914,45 @@ class CandidateCompositionTests(unittest.TestCase):
         changed_extension["workflow_id"] = "WF_WRONG"
         with self.assertRaises(ContractViolation):
             validate_composition(runtime, changed_extension)
+
+    def test_active_runtime_rule_bindings_exactly_match_pipeline_registry(self) -> None:
+        runtime = load_yaml(
+            ROOT
+            / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml"
+        )
+        registry = load_yaml(ROOT / "phase1_5/assets/pipelines/pipeline_registry.yaml")
+        pipelines = {item["pipeline_id"]: item for item in registry["pipelines"]}
+        expected = {
+            "PL_REVENUE_TECHNICAL_WEEKLY": [
+                "BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1",
+                "BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1",
+            ],
+            "PL_REVENUE_CTV_WEEKLY": [
+                "BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1",
+                "BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1",
+            ],
+        }
+        for pipeline_id, rule_ids in expected.items():
+            with self.subTest(pipeline_id=pipeline_id):
+                runtime_rules = runtime["pipeline_scoped_rule_context_bindings"][
+                    pipeline_id
+                ]["target_business_line"]["applies_to_rule_ids"]
+                registry_rules = pipelines[pipeline_id]["pipeline_rule_context_bindings"][
+                    "target_business_line"
+                ]["applicable_rule_ids"]
+                self.assertEqual(runtime_rules, rule_ids)
+                self.assertEqual(registry_rules, rule_ids)
+
+    def test_active_runtime_validators_have_no_baseline_binding_exception(self) -> None:
+        for relative_path in (
+            "scripts/validate_asset_integrity.py",
+            "scripts/validate_final_acceptance.py",
+        ):
+            with self.subTest(relative_path=relative_path):
+                source = (ROOT / relative_path).read_text(encoding="utf-8")
+                self.assertNotIn("baseline_rules", source)
+                self.assertNotIn("baseline_rule_ids", source)
+                self.assertNotIn("baseline_pipeline_rules", source)
 
 
 if __name__ == "__main__":

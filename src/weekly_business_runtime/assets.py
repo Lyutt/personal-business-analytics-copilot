@@ -138,7 +138,7 @@ class CtvAssetBundle:
             assets / "execution" / "weekly_workflow_runtime_contracts_v1.yaml"
         )
         runtime_contract_candidate = _read_yaml(
-            assets / "execution" / "weekly_workflow_runtime_contracts_v1_1_candidate.yaml"
+            assets / "execution" / "weekly_workflow_runtime_contracts_v1_2_candidate.yaml"
         )
         acquisition_contract = _read_yaml(
             assets / "execution" / "weekly_acquisition_automation_contracts_v1_1_candidate.yaml"
