@@ -279,9 +279,11 @@ def main() -> int:
     assert active_index["stage2_v1_1_candidate_unchanged"] is True
     assert active_index["runtime_acceptance_authorized"] is False
     assert active_index["automatic_next_stage_allowed"] is False
-    assert status_index["current_stage"] == "Stage 2.5 Governance and Implementation Boundary Sync"
+    assert status_index["current_stage"] == (
+        "Stage 3A CTV Vertical Slice and Local Real-Data Calculation Qualification Completed"
+    )
     assert status_index["phase_status"]["code_implementation"] == (
-        "stage2_acquisition_runtime_foundation_completed_and_merged"
+        "stage3a_ctv_vertical_slice_completed_and_merged"
     )
     assert status_index["phase_status"]["stage_2_5_governance_sync"] == "synchronized"
     assert status_index["scope_boundaries"]["code_implementation_owner_approved"] is True

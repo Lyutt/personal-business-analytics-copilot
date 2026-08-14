@@ -708,6 +708,21 @@ asset_rules:
       - capability_profiles[].metadata
       - temporary_execution_plan_contract
 
+  - asset_type: stage3a_local_real_data_calculation_qualification_status
+    selector: { key: config_type, value: stage3a_local_real_data_calculation_qualification_status }
+    required_paths:
+      - config_type
+      - status_version
+      - assessment_date
+      - workflow_id
+      - pipeline_id
+      - status
+      - implementation_lineage
+      - qualification_evidence
+      - qualification_scope
+      - governance_boundaries
+      - evidence_documentation_improvements
+
 constraints:
   optional_template_fields_may_be_omitted: true
   required_paths_must_exist: true

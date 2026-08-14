@@ -1,19 +1,21 @@
 config_type: business_asset_status_index
-index_version: 1.0.0
+index_version: 1.0.1
 status: synchronized
-assessment_date: 2026-08-03
-last_semantic_sync_date: 2026-08-13
+assessment_date: 2026-08-14
+last_semantic_sync_date: 2026-08-14
 design_asset_closure_review_date: 2026-08-09
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-current_stage: Stage 2.5 Governance and Implementation Boundary Sync
+current_stage: Stage 3A CTV Vertical Slice and Local Real-Data Calculation Qualification Completed
 
 phase_status:
   phase_1: completed_and_retained_as_historical_design_baseline
   phase_1_5_business_asset_initialization: completed_for_weekly_workflow_p0_scope
   phase_1_5_final_acceptance: passed
-  code_implementation: stage2_acquisition_runtime_foundation_completed_and_merged
+  code_implementation: stage3a_ctv_vertical_slice_completed_and_merged
   stage_2_5_governance_sync: synchronized
-  data_engine_business_execution: not_started_next_candidate_stage_requires_owner_authorization
+  data_engine_business_execution: stage3a_ctv_vertical_slice_completed
+  stage_3a_ctv_vertical_slice: completed_and_merged
+  local_real_data_calculation_qualification: passed_for_calculation_scope_only
   end_to_end_runtime_acceptance: conditional
 
 asset_stage_gates:
@@ -223,6 +225,9 @@ current_runtime_candidate:
   acquisition_extension_contract_unchanged: ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1
   baseline_1_0_0_unchanged: true
   stage2_v1_1_candidate_unchanged: true
+  activation_scope: active_execution_and_validation_candidate
+  promotion_status: not_promoted
+  frozen_runtime_baseline_changed: false
   breaking_change_requiring_major: false
   runtime_acceptance_authorized: false
   scheduler_activation_authorized: false
@@ -230,8 +235,46 @@ current_runtime_candidate:
   auto_send: false
   automatic_next_stage_allowed: false
 
+stage3a_ctv_vertical_slice_implementation:
+  status: completed_and_merged
+  implementation_pull_request: 14
+  implementation_merge_commit_sha: 3518b6dfb8a0dd5baf678e9c046d4d3197efbee5
+  source_authority_correction_pull_request: 15
+  source_authority_correction_merge_commit_sha: e770538723d58b960bbc56e4c8943d9298f29a0c
+  stage3a_ctv_tests: 47
+  exact_ci_head_sha: 842c2ccb152709b49bd9b10be77c16fb2df5f98a
+  synthetic_and_local_test_acceptance_status: passed
+  local_real_data_calculation_qualification:
+    status_source: phase1_5/assets/readiness/stage3a_ctv_qualification_status.yaml
+    evidence_classification: local_only_outside_git
+    evidence_record_id: EVIDENCE_CTV_LOCAL_REAL_DATA_CALC_QUAL_V3_20260814
+    local_manifest_sha256: 6893a89e6f6519c0e6f523fb80c623d1e317b35bf98afbd1845200a8d61559af
+    evidence_review_status: reviewed
+    qualification_result: passed_for_local_real_data_calculation_scope
+    full_runtime_qualification_result: not_established
+    runtime_acceptance_implication: none
+  runtime_contract_v1_2_promotion_status: not_promoted
+  runtime_acceptance_started: false
+  runtime_acceptance_completed: false
+  provider_capability_validation_started: false
+  scheduler_activated: false
+  automatic_draft_activated: false
+  auto_send: false
+  automatic_next_stage_allowed: false
+
+current_next_stage_boundary:
+  status: stage3a_qualification_complete_governance_closure_required
+  stage3b_scope_contract_registered: false
+  stage3b_authorized: false
+  runtime_acceptance_status: not_started
+  separate_owner_authorization_required: true
+  automatic_next_stage_allowed: false
+
 stage2_5_governance_and_implementation_boundary_sync:
   status: governance_synchronized
+  record_scope: historical_stage2_5_snapshot
+  superseded_as_current_stage: true
+  current_status_source: phase1_5/assets/readiness/status_index.yaml
   synchronization_date: 2026-08-13
   synchronization_base_main_sha: bf3d5571c4971c089cd41075c044a397b16f9bd6
   completed_merged_work:

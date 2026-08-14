@@ -2456,8 +2456,8 @@ def validate_customer_analysis_narrative_mapping(
     for key, expected in expected_status.items():
         if status_scope.get(key) != expected:
             errors.append(f"{status_file}:scope_boundaries.{key}: expected {expected!r}")
-    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-13":
-        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-13")
+    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-14":
+        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-14")
 
     output_gate_file = (
         "phase1_5/assets/output_mappings/"

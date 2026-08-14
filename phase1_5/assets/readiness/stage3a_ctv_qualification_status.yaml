@@ -1,0 +1,62 @@
+config_type: stage3a_local_real_data_calculation_qualification_status
+status_version: 1.0.0
+assessment_date: 2026-08-14
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+pipeline_id: PL_REVENUE_CTV_WEEKLY
+status: passed_for_local_real_data_calculation_scope
+
+implementation_lineage:
+  stage3a_implementation_pull_request: 14
+  stage3a_implementation_merge_commit_sha: 3518b6dfb8a0dd5baf678e9c046d4d3197efbee5
+  source_authority_correction_pull_request: 15
+  source_authority_correction_merge_commit_sha: e770538723d58b960bbc56e4c8943d9298f29a0c
+  stage3a_ctv_exact_ci_head_sha: 842c2ccb152709b49bd9b10be77c16fb2df5f98a
+  stage3a_ctv_tests: 47
+  stage3a_ctv_test_status: passed
+
+qualification_evidence:
+  evidence_record_id: EVIDENCE_CTV_LOCAL_REAL_DATA_CALC_QUAL_V3_20260814
+  local_manifest_sha256: 6893a89e6f6519c0e6f523fb80c623d1e317b35bf98afbd1845200a8d61559af
+  evidence_classification: local_only_outside_git
+  local_evidence_locator_recorded_in_git: false
+  evidence_workbook_sha256_recorded_in_git: false
+  source_row_level_data_in_git: false
+  source_content_fingerprints_in_git: false
+
+execution_capture:
+  git_head_at_execution: not_captured_at_execution
+  qualification_harness_sha256_at_execution: not_captured_at_execution
+  retrospective_inference_allowed: false
+  capture_status_source: local_manifest_only
+
+qualification_scope:
+  ctv_local_real_data_calculation: passed
+  current_period_ctv_metrics: passed
+  prior_year_store_exact_date_selection: passed
+  quarter_transition_source_selection: passed
+  production_excel_store_adapter: not_implemented_not_tested
+  acquisition_attempt_lifecycle: not_run
+  run_input_manifest_lifecycle: not_run
+  provider_capability_validation: not_run
+  metric_store_production_write: not_run
+  scheduler: not_run
+  automatic_draft: not_run
+  runtime_acceptance: not_run
+
+governance_boundaries:
+  runtime_contract_v1_2_promotion_status: not_promoted
+  frozen_runtime_baseline_changed: false
+  stage3b_scope_contract_registered: false
+  stage3b_authorized: false
+  runtime_acceptance_may_be_inferred_from_qualification: false
+  automatic_next_stage_allowed: false
+  separate_owner_authorization_required: true
+  auto_send: false
+
+evidence_documentation_improvements:
+  qualification_pass_blocking: false
+  recommended_additions:
+    - exact_repository_head_used_by_the_qualification_harness
+    - qualification_harness_version_or_content_hash
+    - explicit_runtime_acceptance_non_implication_statement
+    - explicit_provider_scheduler_draft_and_store_write_non_execution_statement
