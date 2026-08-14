@@ -719,8 +719,21 @@ asset_rules:
       - status
       - implementation_lineage
       - qualification_evidence
+      - qualification_evidence.evidence_record_id
+      - qualification_evidence.local_manifest_sha256
+      - execution_capture
+      - execution_capture.git_head_at_execution
+      - execution_capture.qualification_harness_sha256_at_execution
+      - execution_capture.retrospective_inference_allowed
       - qualification_scope
+      - qualification_scope.runtime_acceptance
       - governance_boundaries
+      - governance_boundaries.runtime_contract_v1_2_promotion_status
+      - governance_boundaries.stage3b_scope_contract_registered
+      - governance_boundaries.stage3b_authorized
+      - governance_boundaries.runtime_acceptance_may_be_inferred_from_qualification
+      - governance_boundaries.automatic_next_stage_allowed
+      - governance_boundaries.auto_send
       - evidence_documentation_improvements
 
 constraints:

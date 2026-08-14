@@ -18,7 +18,7 @@
 - Weekly状态入口：[Phase 1.5 Weekly Status Index](phase1_5/assets/readiness/status_index.yaml)；Customer Revenue Detail状态入口：[Customer Status Index](phase1_5/assets/readiness/status_index_customer_revenue_detail.yaml)。
 - 历史实现入口Gate：[Code Implementation Readiness Gate](phase1_5/assets/readiness/code_implementation_readiness_gate.yaml)；其记录 pre-Stage 2 审查结论，不代表当前阻断状态。
 - 当前已完成设计资产的Workflow：Weekly Business Report与独立的Customer Revenue Detail；Weekly 已完成 Acquisition Runtime Foundation 与 Stage 3A CTV vertical slice，Customer 仍保持独立未授权状态。
-- Runtime Contract v1.2 当前仅为 active execution/validation candidate，未晋级、未促进或重冻结为新的正式 Baseline。
+- Runtime Contract v1.2 当前仅为 active execution/validation candidate，尚未晋级，也未重冻结为新的正式 Baseline。
 - CTV 本地真实数据 calculation qualification 已在两个场景中通过；该结论仅覆盖 calculation scope，不包含生产 Excel Store Adapter、Provider、Store write、Scheduler、Draft 或 Runtime Acceptance。当前仍需完成 Stage 3A governance closure；Stage 3B 尚无已登记范围合同且未授权。
 - Provider capability validation 与 Runtime Acceptance 未开始；Scheduler 与 Automatic Draft 未激活、未授权，`auto_send=false`。
 

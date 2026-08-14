@@ -37,7 +37,7 @@ qualification evidence, and merge status do not grant any later-stage approval.
 The two Workflows remain isolated: they may reuse registered source and Mapping
 assets, but neither consumes the other Workflow's files or outputs. The initial
 MVP remains sequential. The Acquisition Runtime Foundation exists, while the
-the Stage 3A CTV Data Engine and Business Execution slice is implemented. Other
+Stage 3A CTV Data Engine and Business Execution slice is implemented. Other
 business Pipelines, the Output Engine, and the end-to-end Workflow runtime are
 not implied complete by that vertical slice.
 
