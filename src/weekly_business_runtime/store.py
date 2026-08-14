@@ -23,6 +23,17 @@ class StoreReadKey:
 
 
 @dataclass(frozen=True)
+class StoreBusinessDateReadKey:
+    """Exact historical lookup identity keyed by the Store business date."""
+
+    store_id: str
+    store_asset_id: str
+    metric_variant_id: str
+    current_revenue_cutoff_date: str
+    business_context_id: str
+
+
+@dataclass(frozen=True)
 class StoreWriteIdentity:
     """Frozen Revenue duplicate identity based on the Store business date."""
 
@@ -75,6 +86,16 @@ class MetricStoreRecord:
             self.business_context_id,
         )
 
+    @property
+    def business_date_read_key(self) -> StoreBusinessDateReadKey:
+        return StoreBusinessDateReadKey(
+            self.store_id,
+            self.store_asset_id,
+            self.metric_variant_id,
+            self.current_revenue_cutoff_date,
+            self.business_context_id,
+        )
+
 
 @dataclass(frozen=True)
 class StoreWritePlan:
@@ -97,6 +118,10 @@ class MetricStorePort(Protocol):
     """Physical-store-agnostic, result-set atomic operations used by CTV."""
 
     def read_exact(self, key: StoreReadKey) -> MetricStoreRecord: ...
+
+    def read_exact_business_date(
+        self, key: StoreBusinessDateReadKey
+    ) -> MetricStoreRecord: ...
 
     def preflight_write(self, records: tuple[MetricStoreRecord, ...]) -> StoreWritePlan: ...
 
@@ -135,7 +160,9 @@ class InMemoryMetricStore:
     def __init__(self) -> None:
         self._verified: dict[StoreReadKey, list[MetricStoreRecord]] = {}
         self._pending: dict[StoreWriteIdentity, tuple[MetricStoreRecord, ...]] = {}
-        self._verification_failures: set[StoreReadKey | StoreWriteIdentity] = set()
+        self._verification_failures: set[
+            StoreReadKey | StoreBusinessDateReadKey | StoreWriteIdentity
+        ] = set()
 
     def seed_historical(self, *records: MetricStoreRecord) -> None:
         """Seed explicitly verified synthetic history, including deliberate ambiguity."""
@@ -143,7 +170,9 @@ class InMemoryMetricStore:
         for record in records:
             self._verified.setdefault(record.read_key, []).append(record)
 
-    def force_verification_failure(self, key: StoreReadKey | StoreWriteIdentity) -> None:
+    def force_verification_failure(
+        self, key: StoreReadKey | StoreBusinessDateReadKey | StoreWriteIdentity
+    ) -> None:
         """Test-only fault injection without expanding the Store Port."""
 
         self._verification_failures.add(key)
@@ -159,6 +188,38 @@ class InMemoryMetricStore:
             raise MetricStoreError(
                 "STORE_EXACT_KEY_AMBIGUOUS",
                 f"More than one verified Metric Result exists for exact key {key}",
+            )
+        record = matches[0]
+        if record.validation_status != "passed" or record.value_status != "valid_value":
+            raise MetricStoreError(
+                "STORE_RESULT_NOT_CONSUMABLE",
+                "Historical Metric Result is not validation/value-status eligible",
+            )
+        return record
+
+    def read_exact_business_date(
+        self, key: StoreBusinessDateReadKey
+    ) -> MetricStoreRecord:
+        if key in self._verification_failures:
+            raise MetricStoreError(
+                "STORE_EXACT_BUSINESS_DATE_NOT_VERIFIED",
+                "Exact business-date Metric Result failed verification",
+            )
+        matches = [
+            record
+            for records in self._verified.values()
+            for record in records
+            if record.business_date_read_key == key
+        ]
+        if not matches:
+            raise MetricStoreError(
+                "STORE_EXACT_BUSINESS_DATE_NOT_FOUND",
+                f"No verified Metric Result exists for exact business-date key {key}",
+            )
+        if len(matches) != 1:
+            raise MetricStoreError(
+                "STORE_EXACT_BUSINESS_DATE_AMBIGUOUS",
+                "More than one verified Metric Result exists for the exact business-date key",
             )
         record = matches[0]
         if record.validation_status != "passed" or record.value_status != "valid_value":

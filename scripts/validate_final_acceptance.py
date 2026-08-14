@@ -15,7 +15,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS = ROOT / "phase1_5/tests/final_acceptance_scenarios.yaml"
 CUSTOMER_SCENARIOS = ROOT / "phase1_5/tests/customer_revenue_detail_acceptance_scenarios.yaml"
-RUNTIME = ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
+RUNTIME = ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml"
 DCP = ROOT / "phase1_5/assets/analysis/dcp_registry_v1.yaml"
 STORE = ROOT / "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
 CUSTOMER_CONTEXT = ROOT / "phase1_5/assets/execution/customer_revenue_detail_run_context_v1.yaml"
@@ -23,6 +23,7 @@ CUSTOMER_POLICY = ROOT / "phase1_5/assets/policies/PL_CUSTOMER_REVENUE_DETAIL_PO
 CUSTOMER_OUTPUT = ROOT / "phase1_5/assets/output_mappings/OM_CUSTOMER_REVENUE_DETAIL_EXCEL_V1.yaml"
 TECHNICAL_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1.yaml"
 WEEKLY_COMPARABLE_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml"
+CTV_PRIOR_YEAR_STORE_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1.yaml"
 WEEKLY_PREVIOUS_QUARTER_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1.yaml"
 WEEKLY_QTD_HISTORY_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_QTD_HISTORY_CARRY_FORWARD_ELIGIBILITY_V1.yaml"
 WEEKLY_EMAIL_CLASSIFICATION_RULE = ROOT / "phase1_5/assets/business_rules/BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1.yaml"
@@ -354,6 +355,7 @@ def main() -> int:
     customer_output = load(CUSTOMER_OUTPUT)
     technical_rule = load(TECHNICAL_RULE)
     weekly_comparable_rule = load(WEEKLY_COMPARABLE_RULE)
+    ctv_prior_year_store_rule = load(CTV_PRIOR_YEAR_STORE_RULE)
     weekly_previous_quarter_rule = load(WEEKLY_PREVIOUS_QUARTER_RULE)
     weekly_qtd_history_rule = load(WEEKLY_QTD_HISTORY_RULE)
     weekly_email_classification_rule = load(WEEKLY_EMAIL_CLASSIFICATION_RULE)
@@ -570,6 +572,7 @@ def main() -> int:
         for rule in (
             weekly_previous_quarter_rule,
             weekly_comparable_rule,
+            ctv_prior_year_store_rule,
             weekly_qtd_history_rule,
             weekly_email_classification_rule,
             technical_rule,
@@ -613,7 +616,7 @@ def main() -> int:
     pipeline_by_id = {item["pipeline_id"]: item for item in pipeline_registry["pipelines"]}
     expected_pipeline_business_lines = {
         "PL_REVENUE_TECHNICAL_WEEKLY": ("Technical", {weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}),
-        "PL_REVENUE_CTV_WEEKLY": ("CTV", {weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}),
+        "PL_REVENUE_CTV_WEEKLY": ("CTV", {ctv_prior_year_store_rule["rule_id"], weekly_previous_quarter_rule["rule_id"]}),
         "PL_REVENUE_SMART_SPEAKER_WEEKLY": ("Smart Speaker", {weekly_qtd_history_rule["rule_id"]}),
         "PL_REVENUE_FAST_VERSION_WEEKLY": ("Fast Version", {weekly_qtd_history_rule["rule_id"]}),
     }
@@ -631,7 +634,7 @@ def main() -> int:
         if pipeline_id in {"PL_REVENUE_SMART_SPEAKER_WEEKLY", "PL_REVENUE_FAST_VERSION_WEEKLY"}:
             assert registry_binding["value_source"] == "exact_registered_pipeline_business_line"
             assert registry_binding["value"] == pipeline["business_line"]
-    for rule_id in (weekly_comparable_rule["rule_id"], weekly_previous_quarter_rule["rule_id"], weekly_qtd_history_rule["rule_id"]):
+    for rule_id in (weekly_comparable_rule["rule_id"], ctv_prior_year_store_rule["rule_id"], weekly_previous_quarter_rule["rule_id"], weekly_qtd_history_rule["rule_id"]):
         assert canonical_bindings[rule_id]["target_business_line"]["scope"] == "pipeline"
 
     weekly_datasets = {item["dataset_id"]: item for item in dataset_inventory["datasets"]}

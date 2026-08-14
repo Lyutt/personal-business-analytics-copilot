@@ -2513,7 +2513,7 @@ def validate_phase1_5_final_closure(
 ) -> int:
     """Validate the final Phase 1.5 runtime, persistence, and ad-hoc contracts."""
     checked = 0
-    runtime_file = "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
+    runtime_file = "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml"
     store_file = "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
     scenarios_file = "phase1_5/tests/final_acceptance_scenarios.yaml"
     registry_file = "phase1_5/assets/pipelines/pipeline_registry.yaml"
@@ -3767,7 +3767,10 @@ def validate_weekly_canonical_rule_context_bindings(
 ) -> int:
     """Close every approved Weekly Rule Context field without runtime aliases."""
 
-    runtime_file = "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1.yaml"
+    runtime_file = (
+        "phase1_5/assets/execution/"
+        "weekly_workflow_runtime_contracts_v1_2_candidate.yaml"
+    )
     revenue_metric_file = "phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml"
     store_file = "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
     scenarios_file = "phase1_5/tests/final_acceptance_scenarios.yaml"

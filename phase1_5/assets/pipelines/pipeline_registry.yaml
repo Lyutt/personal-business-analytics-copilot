@@ -315,7 +315,7 @@ pipelines:
         scope: pipeline
         value: CTV
         value_source: explicit_pipeline_rule_context_configuration
-        applicable_rule_ids: [BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1, BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1]
+        applicable_rule_ids: [BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1, BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1]
         display_name_inference_allowed: false
     business_context_id: CTX_REVENUE_CTV_WEEKLY
     trigger_type: Scheduled
@@ -392,27 +392,38 @@ pipelines:
           automatic_rule_duplication_in_pipeline: false
 
     historical_input_dependencies:
-      - dependency_type: Historical Attachment Archive
-        source_id: SRC_CORP_OUTLOOK_PRIMARY_MAILBOX
-        archive_id: ARCHIVE_REVENUE_ROLLING_DECK_PRIOR_YEAR
+      - dependency_type: Conditional Previous-Quarter Attachment
         dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
-        role: Prior-year comparable CTV Rolling Deck input
-        required_for_fields: [qtd_performance_revenue_yoy]
-        relationship_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
-        missing_input_action: >
-          仅将qtd_performance_revenue_yoy标记为missing并通知Owner；
-          保留有效的CTV当前QTD Performance与Executed结果，禁止使用相近日期文件替代。
-        multiple_match_action: >
-          仅将qtd_performance_revenue_yoy标记为missing，通知Owner并请求确认具体文件；
-          保留有效的CTV当前期Revenue结果，禁止自动选择或相近日期替代。
+        role: Previous-quarter complete CTV primary input
+        required_when: report_mode equals quarter_transition_week
+        relationship_rule_id: BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
+        run_input_manifest_required_when_selected: true
+        prior_year_yoy_use_allowed: false
       - dependency_type: Metric Result Store
         store_id: STORE_WEEKLY_REVENUE_HISTORICAL
         store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
         role: Prior-period validated CTV revenue results
+        read_key_semantics: exact_workflow_reporting_date
         read_required_or_optional: required_for_regular_week
         missing_or_incomplete_action: >
           暂停CTV收入Pipeline并通知Owner，
           禁止使用其他日期或未验证结果替代。
+      - dependency_type: Metric Result Store
+        store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+        store_asset_id: STORE_ASSET_WEEKLY_REVENUE_CTV
+        role: Prior-year QTD Performance Revenue
+        source_metric_variant_id: MV_REVENUE_CTV_QTD_PERFORMANCE_V1
+        read_key_semantics: exact_current_revenue_cutoff_business_date
+        target_business_date_rule_id: BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1
+        read_required_or_optional: required_for_qtd_performance_revenue_yoy_only
+        physical_asset: CTV线历史整体数据存档.xlsx
+        physical_value_field: QTD签单执行金额
+        run_input_manifest_required: false
+        prior_year_source_report_date_required: false
+        missing_or_invalid_action: >
+          将qtd_performance_revenue_yoy标记为missing并产生明确warning；
+          保留有效的当前qtd_performance_revenue与qtd_executed_revenue，
+          禁止改用邮件、Rolling Deck、相近日期或任意隐式行选择。
 
     execution:
       schedule:
@@ -431,13 +442,13 @@ pipelines:
         - MAP_REVENUE_CTV_EXCL_PLACEMENT_QTD_V1
       conditional_mapping_profile_ids:
         - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
-          applies_when: Quarter-transition or prior-year comparable business-line result is required
+          applies_when: Quarter-transition previous-quarter primary result is required
         - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
           applies_when: BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1 selects fallback
       ordered_rule_set_ids:
         - BR_REVENUE_ROLLING_DECK_EMAIL_CLASSIFICATION_V1
         - BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1
-        - BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+        - BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1
         - BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1
       metric_variant_ids:
         - MV_REVENUE_CTV_QTD_PERFORMANCE_V1

@@ -37,7 +37,7 @@ from .storage import LocalRuntimeStorage
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RUNTIME_BUNDLE = (
-    ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_1_candidate.yaml"
+    ROOT / "phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml"
 )
 DEFAULT_EXTENSION = (
     ROOT / "phase1_5/assets/execution/weekly_acquisition_automation_contracts_v1_1_candidate.yaml"

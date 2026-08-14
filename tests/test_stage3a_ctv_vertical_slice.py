@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import inspect
 import sys
 import tempfile
 import unittest
@@ -10,6 +11,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pandas as pd
+import yaml
 from openpyxl import Workbook
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +29,7 @@ from weekly_acquisition_runtime.runtime import AcquisitionRuntime
 from weekly_acquisition_runtime.storage import LocalRuntimeStorage
 from weekly_business_runtime.assets import (
     BUSINESS_CONTEXT_ID,
+    CTV_PRIOR_YEAR_STORE_RULE_ID,
     CTV_VARIANT_IDS,
     CURRENT_DATASET_ID,
     PIPELINE_ID,
@@ -52,6 +55,7 @@ from weekly_business_runtime.models import PipelineExecutionStatus
 from weekly_business_runtime.store import (
     InMemoryMetricStore,
     MetricStoreRecord,
+    StoreBusinessDateReadKey,
     StoreReadKey,
     StoreWriteIdentity,
 )
@@ -93,6 +97,7 @@ def store_record(
     variant_id: str,
     *,
     workflow_reporting_date: str = "2026-07-16",
+    current_revenue_cutoff_date: str = "2026-07-15",
     value: Decimal = Decimal("1"),
     result_id_suffix: str = "A",
 ) -> MetricStoreRecord:
@@ -108,7 +113,7 @@ def store_record(
         metric_variant_id=variant_id,
         metric_variant_version="1.0.0-draft",
         workflow_reporting_date=workflow_reporting_date,
-        current_revenue_cutoff_date="2026-07-15",
+        current_revenue_cutoff_date=current_revenue_cutoff_date,
         business_context_id=BUSINESS_CONTEXT_ID,
         reporting_period="2026-W29",
         value=value,
@@ -170,12 +175,6 @@ class CtvScenario:
             "current",
             "not_applicable",
         )
-        self.prior_key = BusinessKey(
-            self.run.context.workflow_run_id,
-            PRIOR_DATASET_ID,
-            "prior_year_comparable",
-            "not_applicable",
-        )
         self.previous_primary_key = BusinessKey(
             self.run.context.workflow_run_id,
             PRIOR_DATASET_ID,
@@ -191,26 +190,60 @@ class CtvScenario:
         inputs = self.storage.root / "runs" / self.run.context.workflow_run_id / "legacy_inputs"
         inputs.mkdir(parents=True)
         self.current_path = inputs / "ctv_current.xlsx"
-        self.prior_path = inputs / "ctv_prior.xlsx"
         self.previous_primary_path = inputs / "ctv_previous_primary.xlsx"
         self.previous_fallback_path = inputs / "ctv_previous_fallback.xlsx"
         self.write_current()
-        self.write_prior()
         self.write_previous_primary()
         self.write_previous_fallback()
         self.declare_current()
-        self.declare_prior()
         if report_mode == "quarter_transition_week":
             self.declare_previous_primary()
             self.declare_previous_fallback()
         self.store = InMemoryMetricStore()
         if seed_history:
-            self.store.seed_historical(*(store_record(variant_id) for variant_id in CTV_VARIANT_IDS))
+            self.seed_regular_history()
+            self.seed_prior_year_history()
         self.executor = CtvPipelineExecutor(
             acquisition_runtime=self.runtime,
             assets=self.assets,
             metric_store=self.store,
         )
+
+    def seed_regular_history(self) -> None:
+        self.store.seed_historical(
+            *(store_record(variant_id) for variant_id in CTV_VARIANT_IDS)
+        )
+
+    def prior_year_business_date(self) -> str:
+        context = validate_revenue_context(self.run.context.values)
+        return derive_prior_year_date(context).isoformat()
+
+    def prior_year_store_key(self) -> StoreBusinessDateReadKey:
+        return StoreBusinessDateReadKey(
+            STORE_ID,
+            STORE_ASSET_ID,
+            CTV_VARIANT_IDS[0],
+            self.prior_year_business_date(),
+            BUSINESS_CONTEXT_ID,
+        )
+
+    def seed_prior_year_history(
+        self,
+        *,
+        value: Decimal = Decimal("30"),
+        business_date: str | None = None,
+        result_id_suffix: str = "PRIOR_YEAR",
+    ) -> MetricStoreRecord:
+        exact_date = business_date or self.prior_year_business_date()
+        record = store_record(
+            CTV_VARIANT_IDS[0],
+            workflow_reporting_date=exact_date,
+            current_revenue_cutoff_date=exact_date,
+            value=value,
+            result_id_suffix=result_id_suffix,
+        )
+        self.store.seed_historical(record)
+        return record
 
     def write_current(
         self,
@@ -242,13 +275,6 @@ class CtvScenario:
             frame["SYNTH_NEW_FIELD"] = "synthetic"
         frame.to_excel(self.current_path, sheet_name="Sheet0", index=False)
 
-    def write_prior(self, *, value: object = 30, duplicate_ctv: bool = False) -> None:
-        lines = ["CTV", "CTV"] if duplicate_ctv else ["CTV"]
-        values = [value, value] if duplicate_ctv else [value]
-        pd.DataFrame({"业务线": lines, "25Q3": values}).to_excel(
-            self.prior_path, sheet_name="业务线", index=False
-        )
-
     def write_previous_primary(self, *, value: object = 50) -> None:
         pd.DataFrame({"业务线": ["CTV"], "26Q2": [value]}).to_excel(
             self.previous_primary_path, sheet_name="业务线", index=False
@@ -274,24 +300,6 @@ class CtvScenario:
                 local_input_reference=self.storage.opaque_reference(self.current_path),
                 source_report_date=str(values["workflow_reporting_date"]),
                 source_business_data_cutoff_date=str(values["current_revenue_cutoff_date"]),
-                acquisition_mode=AcquisitionMode.LEGACY_PREPARED_LOCAL_INPUT,
-            ),
-        )
-
-    def declare_prior(
-        self, *, source_report_date: str | None = None, cutoff: str | None = None
-    ) -> None:
-        context = validate_revenue_context(self.run.context.values)
-        exact_source_date = derive_prior_year_date(context).isoformat()
-        self.runtime.declare_input(
-            self.run,
-            RunInputEntry(
-                business_key=self.prior_key,
-                dataset_version="0.1.0",
-                query_asset_binding={"binding_status": "not_applicable"},
-                local_input_reference=self.storage.opaque_reference(self.prior_path),
-                source_report_date=source_report_date or exact_source_date,
-                source_business_data_cutoff_date=cutoff or exact_source_date,
                 acquisition_mode=AcquisitionMode.LEGACY_PREPARED_LOCAL_INPUT,
             ),
         )
@@ -326,7 +334,6 @@ class CtvScenario:
             run=self.run,
             pipeline_run_id=pipeline_run_id,
             current_input_key=self.current_key,
-            prior_year_input_key=self.prior_key,
             generated_at=generated_at,
             previous_quarter_primary_input_key=(
                 self.previous_primary_key if self.report_mode == "quarter_transition_week" else None
@@ -363,11 +370,17 @@ class Stage3ACtvVerticalSliceTests(unittest.TestCase):
         )
         self.assertEqual(contract.validation_status, "passed")
         self.assertIn(
-            "rule-evaluated://BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1",
+            f"rule-evaluated://{CTV_PRIOR_YEAR_STORE_RULE_ID}",
             result.lineage_references,
         )
         self.assertTrue(
-            any(item.startswith("source-consumed://prior_year_comparable/") for item in result.lineage_references)
+            any(
+                item.startswith("metric-store-business-date://")
+                for item in result.lineage_references
+            )
+        )
+        self.assertFalse(
+            any("prior_year_comparable" in item for item in result.input_binding_references)
         )
         for variant_id in CTV_VARIANT_IDS:
             key = StoreReadKey(
@@ -465,10 +478,10 @@ class Stage3ACtvVerticalSliceTests(unittest.TestCase):
         result = scenario.execute()
         self.assertEqual(result.error_code, "STORE_EXACT_KEY_AMBIGUOUS")
 
-    def test_prior_input_date_mismatch_only_marks_yoy_missing(self) -> None:
-        scenario = CtvScenario(self.root)
-        entry = scenario.run.run_input_manifest.get_entry(scenario.prior_key)
-        entry.source_report_date = "2025-07-22"
+    def test_wrong_prior_store_date_only_marks_yoy_missing(self) -> None:
+        scenario = CtvScenario(self.root, seed_history=False)
+        scenario.seed_regular_history()
+        scenario.seed_prior_year_history(business_date="2025-07-22")
         result = scenario.execute()
         self.assertEqual(result.execution_status, PipelineExecutionStatus.COMPLETED_WITH_WARNING)
         assert result.result_contract is not None
@@ -479,9 +492,9 @@ class Stage3ACtvVerticalSliceTests(unittest.TestCase):
         )
         self.assertEqual(result.result_contract.field("qtd_performance_revenue").value, Decimal("60"))
 
-    def test_missing_prior_input_only_marks_yoy_missing(self) -> None:
-        scenario = CtvScenario(self.root)
-        scenario.run.run_input_manifest._entries.pop(scenario.prior_key.as_tuple())
+    def test_missing_prior_store_row_only_marks_yoy_missing(self) -> None:
+        scenario = CtvScenario(self.root, seed_history=False)
+        scenario.seed_regular_history()
         result = scenario.execute()
         self.assertEqual(result.execution_status, PipelineExecutionStatus.COMPLETED_WITH_WARNING)
         assert result.result_contract is not None
@@ -576,22 +589,163 @@ class Stage3ACtvVerticalSliceTests(unittest.TestCase):
         result = scenario.execute()
         self.assertEqual(result.error_code, "CTV_PREVIOUS_CALENDAR_QUARTER_MISMATCH")
 
-    def test_prior_year_source_report_date_is_exact_source_authority(self) -> None:
+    def test_prior_year_store_business_date_is_exact_source_authority(self) -> None:
         scenario = CtvScenario(self.root)
-        entry = scenario.run.run_input_manifest.get_entry(scenario.prior_key)
-        self.assertEqual(entry.source_report_date, "2025-07-23")
+        record = scenario.store.read_exact_business_date(scenario.prior_year_store_key())
+        self.assertEqual(record.current_revenue_cutoff_date, "2025-07-23")
         self.assertEqual(scenario.execute().execution_status, PipelineExecutionStatus.COMPLETED)
 
-    def test_prior_source_date_and_business_cutoff_remain_distinct_for_yoy(self) -> None:
-        scenario = CtvScenario(self.root)
-        entry = scenario.run.run_input_manifest.get_entry(scenario.prior_key)
-        entry.source_business_data_cutoff_date = "2025-07-22"
+    def test_prior_year_yoy_uses_exact_store_business_date_day_count(self) -> None:
+        scenario = CtvScenario(self.root, seed_history=False)
+        scenario.seed_regular_history()
+        scenario.seed_prior_year_history(value=Decimal("30"))
         result = scenario.execute()
         assert result.result_contract is not None
-        self.assertEqual(entry.source_report_date, "2025-07-23")
         self.assertEqual(
             result.result_contract.field("qtd_performance_revenue_yoy").value,
-            (Decimal("60") / Decimal("22")) / (Decimal("30") / Decimal("22")) - 1,
+            (Decimal("60") / Decimal("22")) / (Decimal("30") / Decimal("23")) - 1,
+        )
+
+    def test_ordinary_week_prior_date_derives_to_2025_08_13(self) -> None:
+        values = locked_context()
+        values["current_revenue_cutoff_date"] = "2026-08-12"
+        values["target_revenue_cutoff_date"] = "2026-08-12"
+        context = validate_revenue_context(values)
+        self.assertEqual(derive_prior_year_date(context).isoformat(), "2025-08-13")
+
+    def test_quarter_first_week_prior_date_derives_to_2025_07_02(self) -> None:
+        context = validate_revenue_context(locked_context(report_mode="quarter_transition_week"))
+        self.assertEqual(derive_prior_year_date(context).isoformat(), "2025-07-02")
+
+    def test_current_year_prior_reference_columns_are_not_runtime_requirements(self) -> None:
+        gate = CtvAssetBundle.load(ROOT).store_asset["pre_write_completeness_gate"]
+        self.assertTrue(gate["current_year_prior_year_reference_columns_may_be_blank"])
+        self.assertFalse(
+            gate["current_year_prior_year_reference_columns_runtime_backfill_allowed"]
+        )
+
+    def test_current_year_store_value_never_replaces_exact_prior_denominator(self) -> None:
+        scenario = CtvScenario(self.root)
+        scenario.store.seed_historical(
+            store_record(
+                CTV_VARIANT_IDS[0],
+                workflow_reporting_date="2026-07-23",
+                current_revenue_cutoff_date="2026-07-22",
+                value=Decimal("999"),
+                result_id_suffix="CURRENT_YEAR_NOT_AUTHORITY",
+            )
+        )
+        result = scenario.execute()
+        assert result.result_contract is not None
+        self.assertEqual(
+            result.result_contract.field("qtd_performance_revenue_yoy").value,
+            (Decimal("60") / Decimal("22")) / (Decimal("30") / Decimal("23")) - 1,
+        )
+
+    def test_duplicate_prior_store_rows_only_mark_yoy_missing(self) -> None:
+        scenario = CtvScenario(self.root)
+        scenario.seed_prior_year_history(result_id_suffix="PRIOR_YEAR_DUPLICATE")
+        result = scenario.execute()
+        self._assert_yoy_missing_current_values_preserved(result)
+
+    def test_blank_or_non_numeric_prior_amount_only_marks_yoy_missing(self) -> None:
+        for index, value in enumerate((None, "not-numeric")):
+            with self.subTest(value=value):
+                scenario = CtvScenario(self.root / f"prior-invalid-{index}", seed_history=False)
+                scenario.seed_regular_history()
+                record = scenario.seed_prior_year_history()
+                scenario.store = InMemoryMetricStore()
+                scenario.seed_regular_history()
+                scenario.store.seed_historical(replace(record, value=value))
+                scenario.executor.metric_store = scenario.store
+                self._assert_yoy_missing_current_values_preserved(scenario.execute())
+
+    def test_non_positive_prior_amount_only_marks_yoy_missing(self) -> None:
+        for index, value in enumerate((Decimal("0"), Decimal("-1"))):
+            with self.subTest(value=value):
+                scenario = CtvScenario(self.root / f"prior-non-positive-{index}", seed_history=False)
+                scenario.seed_regular_history()
+                scenario.seed_prior_year_history(value=value)
+                self._assert_yoy_missing_current_values_preserved(scenario.execute())
+
+    def test_nearby_or_latest_prior_store_result_is_never_selected(self) -> None:
+        scenario = CtvScenario(self.root, seed_history=False)
+        scenario.seed_regular_history()
+        scenario.seed_prior_year_history(business_date="2025-07-22", value=Decimal("999"))
+        self._assert_yoy_missing_current_values_preserved(scenario.execute())
+
+    def test_declared_prior_rolling_deck_is_not_consumed_or_used_as_fallback(self) -> None:
+        scenario = CtvScenario(self.root, seed_history=False)
+        scenario.seed_regular_history()
+        legacy_path = scenario.storage.root / "legacy_prior_rolling_deck.xlsx"
+        pd.DataFrame({"业务线": ["CTV"], "25Q3": [999]}).to_excel(
+            legacy_path, sheet_name="业务线", index=False
+        )
+        legacy_key = BusinessKey(
+            scenario.run.context.workflow_run_id,
+            PRIOR_DATASET_ID,
+            "prior_year_comparable",
+            "not_applicable",
+        )
+        scenario.runtime.declare_input(
+            scenario.run,
+            RunInputEntry(
+                business_key=legacy_key,
+                dataset_version="0.1.0",
+                query_asset_binding={"binding_status": "not_applicable"},
+                local_input_reference=scenario.storage.opaque_reference(legacy_path),
+                source_report_date="2025-07-23",
+                source_business_data_cutoff_date="2025-07-23",
+                acquisition_mode=AcquisitionMode.LEGACY_PREPARED_LOCAL_INPUT,
+            ),
+        )
+        result = scenario.execute()
+        self._assert_yoy_missing_current_values_preserved(result)
+        self.assertNotIn(
+            scenario.storage.opaque_reference(legacy_path), result.input_binding_references
+        )
+
+    def test_ctv_execute_has_no_prior_year_runtime_input_parameter(self) -> None:
+        parameters = inspect.signature(CtvPipelineExecutor.execute).parameters
+        self.assertNotIn("prior_year_input_key", parameters)
+
+    def test_technical_retains_shared_prior_year_rolling_deck_rule(self) -> None:
+        assets = CtvAssetBundle.load(ROOT)
+        shared = assets.business_rules[
+            "BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1"
+        ]
+        self.assertEqual(shared["applicable_pipeline_ids"], ["PL_REVENUE_TECHNICAL_WEEKLY"])
+        self.assertNotIn(PIPELINE_ID, shared["applicable_pipeline_ids"])
+        metric_library = yaml.safe_load(
+            (
+                ROOT
+                / "phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml"
+            ).read_text(encoding="utf-8")
+        )
+        technical_yoy = next(
+            item
+            for item in metric_library["metric_variants"]
+            if item["metric_variant_id"] == "MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_YOY_V1"
+        )
+        self.assertEqual(
+            technical_yoy["prior_year_source_rule_id"],
+            "BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1",
+        )
+
+    def test_prior_year_store_verification_failure_only_marks_yoy_missing(self) -> None:
+        scenario = CtvScenario(self.root)
+        scenario.store.force_verification_failure(scenario.prior_year_store_key())
+        self._assert_yoy_missing_current_values_preserved(scenario.execute())
+
+    def _assert_yoy_missing_current_values_preserved(self, result) -> None:
+        self.assertEqual(result.execution_status, PipelineExecutionStatus.COMPLETED_WITH_WARNING)
+        assert result.result_contract is not None
+        self.assertIsNone(result.result_contract.field("qtd_performance_revenue_yoy").value)
+        self.assertEqual(result.result_contract.field("qtd_performance_revenue").value, Decimal("60"))
+        self.assertEqual(result.result_contract.field("qtd_executed_revenue").value, Decimal("30.0"))
+        self.assertIn(
+            "CTV_PRIOR_YEAR_STORE_RESULT_UNAVAILABLE",
+            {warning.code for warning in result.warnings},
         )
 
     def test_changed_generated_at_is_business_idempotent(self) -> None:
@@ -669,8 +823,8 @@ class Stage3ACtvVerticalSliceTests(unittest.TestCase):
             self.assertEqual(scenario.store.records_for(key), ())
 
     def test_missing_yoy_blocks_entire_regular_week_store_write_set(self) -> None:
-        scenario = CtvScenario(self.root)
-        scenario.run.run_input_manifest._entries.pop(scenario.prior_key.as_tuple())
+        scenario = CtvScenario(self.root, seed_history=False)
+        scenario.seed_regular_history()
         result = scenario.execute()
         self.assertIn("STORE_WRITE_SET_INCOMPLETE", {item.code for item in result.warnings})
         for variant_id in CTV_VARIANT_IDS:

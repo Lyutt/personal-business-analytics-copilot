@@ -211,6 +211,25 @@ stage2_acquisition_runtime_implementation:
     merged_to: main
     merged_at: 2026-08-13T10:31:59+08:00
 
+current_runtime_candidate:
+  status: ctv_source_authority_correction_candidate
+  runtime_bundle_id: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_2_CANDIDATE
+  runtime_bundle_version: 1.2.0
+  runtime_bundle_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml
+  evolution_base: RUNTIME_CONTRACTS_WF_WEEKLY_BUSINESS_REPORT_V1_1_CANDIDATE
+  correction_scope: PL_REVENUE_CTV_WEEKLY prior-year Rule binding only
+  ctv_rule_id: BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1
+  technical_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+  acquisition_extension_contract_unchanged: ACQUISITION_AUTOMATION_WF_WEEKLY_BUSINESS_REPORT_V1_1
+  baseline_1_0_0_unchanged: true
+  stage2_v1_1_candidate_unchanged: true
+  breaking_change_requiring_major: false
+  runtime_acceptance_authorized: false
+  scheduler_activation_authorized: false
+  automatic_draft_activation_authorized: false
+  auto_send: false
+  automatic_next_stage_allowed: false
+
 stage2_5_governance_and_implementation_boundary_sync:
   status: governance_synchronized
   synchronization_date: 2026-08-13

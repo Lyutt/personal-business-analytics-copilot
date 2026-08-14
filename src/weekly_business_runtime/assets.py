@@ -23,6 +23,9 @@ PREVIOUS_QUARTER_FALLBACK_MAPPING_ID = (
     "MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1"
 )
 PREVIOUS_QUARTER_RULE_ID = "BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1"
+CTV_PRIOR_YEAR_STORE_RULE_ID = (
+    "BR_REVENUE_CTV_PRIOR_YEAR_HISTORICAL_STORE_SELECTION_V1"
+)
 RESULT_CONTRACT_ID = "RC_REVENUE_CTV_WEEKLY"
 STORE_ID = "STORE_WEEKLY_REVENUE_HISTORICAL"
 STORE_ASSET_ID = "STORE_ASSET_WEEKLY_REVENUE_CTV"
@@ -135,7 +138,7 @@ class CtvAssetBundle:
             assets / "execution" / "weekly_workflow_runtime_contracts_v1.yaml"
         )
         runtime_contract_candidate = _read_yaml(
-            assets / "execution" / "weekly_workflow_runtime_contracts_v1_1_candidate.yaml"
+            assets / "execution" / "weekly_workflow_runtime_contracts_v1_2_candidate.yaml"
         )
         acquisition_contract = _read_yaml(
             assets / "execution" / "weekly_acquisition_automation_contracts_v1_1_candidate.yaml"
@@ -189,6 +192,19 @@ class CtvAssetBundle:
             raise AssetContractError("CTV_ASSET_IDENTITY_MISMATCH", "CTV Store binding mismatch")
         if outputs.get("metric_result_store_asset_id") != STORE_ASSET_ID:
             raise AssetContractError("CTV_ASSET_IDENTITY_MISMATCH", "CTV Store Asset binding mismatch")
+        prior_year_exact_read = self.store_asset.get("prior_year_yoy_exact_read", {})
+        if (
+            self.store_asset.get("workbook_name") != "CTV线历史整体数据存档.xlsx"
+            or self.store_asset.get("business_date_field") != "数据当周最后一天"
+            or prior_year_exact_read.get("rule_id") != CTV_PRIOR_YEAR_STORE_RULE_ID
+            or prior_year_exact_read.get("value_field") != "QTD签单执行金额"
+            or prior_year_exact_read.get("source_metric_variant_id") != CTV_VARIANT_IDS[0]
+            or prior_year_exact_read.get("exact_single_row_required") is not True
+        ):
+            raise AssetContractError(
+                "CTV_ASSET_IDENTITY_MISMATCH",
+                "CTV Store exact business-date read contract mismatch",
+            )
         if self.current_mapping.get("mapping_profile_id") != CURRENT_MAPPING_ID:
             raise AssetContractError("CTV_ASSET_IDENTITY_MISMATCH", "Current Mapping identity mismatch")
         if self.current_mapping.get("dataset_id") != CURRENT_DATASET_ID:
@@ -251,22 +267,70 @@ class CtvAssetBundle:
                 "Previous-quarter primary/fallback Dataset authority mismatch",
             )
         historical = self.pipeline.get("historical_input_dependencies", ())
-        prior_dependencies = [
+        previous_quarter_dependencies = [
             item
             for item in historical
-            if isinstance(item, dict) and item.get("dataset_id") == PRIOR_DATASET_ID
+            if isinstance(item, dict)
+            and item.get("dataset_id") == PRIOR_DATASET_ID
+            and item.get("role") == "Previous-quarter complete CTV primary input"
         ]
-        store_dependencies = [
+        regular_store_dependencies = [
             item
             for item in historical
             if isinstance(item, dict)
             and item.get("store_id") == STORE_ID
             and item.get("store_asset_id") == STORE_ASSET_ID
+            and item.get("read_key_semantics") == "exact_workflow_reporting_date"
         ]
-        if len(prior_dependencies) != 1 or len(store_dependencies) != 1:
+        prior_year_store_dependencies = [
+            item
+            for item in historical
+            if isinstance(item, dict)
+            and item.get("store_id") == STORE_ID
+            and item.get("store_asset_id") == STORE_ASSET_ID
+            and item.get("read_key_semantics")
+            == "exact_current_revenue_cutoff_business_date"
+            and item.get("target_business_date_rule_id") == CTV_PRIOR_YEAR_STORE_RULE_ID
+            and item.get("source_metric_variant_id") == CTV_VARIANT_IDS[0]
+            and item.get("run_input_manifest_required") is False
+            and item.get("prior_year_source_report_date_required") is False
+        ]
+        if (
+            len(previous_quarter_dependencies) != 1
+            or len(regular_store_dependencies) != 1
+            or len(prior_year_store_dependencies) != 1
+        ):
             raise AssetContractError(
                 "CTV_ASSET_IDENTITY_MISMATCH",
-                "CTV prior-year or historical Store dependency mismatch",
+                "CTV previous-quarter or Historical Store dependency mismatch",
+            )
+        yoy_variant = self.metric_variants.get(CTV_VARIANT_IDS[1], {})
+        yoy_store = yoy_variant.get("prior_year_store_dependency", {})
+        if (
+            yoy_variant.get("prior_year_source_rule_id") != CTV_PRIOR_YEAR_STORE_RULE_ID
+            or yoy_store.get("store_id") != STORE_ID
+            or yoy_store.get("store_asset_id") != STORE_ASSET_ID
+            or yoy_store.get("source_metric_variant_id") != CTV_VARIANT_IDS[0]
+            or yoy_store.get("run_input_manifest_required") is not False
+            or yoy_store.get("prior_year_source_report_date_required") is not False
+        ):
+            raise AssetContractError(
+                "CTV_ASSET_IDENTITY_MISMATCH",
+                "CTV prior-year Metric Store authority mismatch",
+            )
+        technical_prior_rule = self.business_rules.get(
+            "BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1", {}
+        )
+        ctv_prior_rule = self.business_rules.get(CTV_PRIOR_YEAR_STORE_RULE_ID, {})
+        if (
+            PIPELINE_ID in technical_prior_rule.get("applicable_pipeline_ids", [])
+            or "PL_REVENUE_TECHNICAL_WEEKLY"
+            not in technical_prior_rule.get("applicable_pipeline_ids", [])
+            or ctv_prior_rule.get("applicable_pipeline_ids") != [PIPELINE_ID]
+        ):
+            raise AssetContractError(
+                "CTV_ASSET_IDENTITY_MISMATCH",
+                "CTV and Technical prior-year authority separation mismatch",
             )
         for runtime in (self.runtime_contract_v1, self.runtime_contract_candidate):
             if runtime.get("workflow_id") != WORKFLOW_ID:
