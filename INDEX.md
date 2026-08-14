@@ -7,8 +7,9 @@
 - Weekly 与 Customer 可复用已登记输入资产，但彼此不产生文件、输出、Result Contract、Metric Store、Baseline 或 Gate 依赖。
 - 架构方向：已确认。
 - Phase 1：已确认。
-- 当前正式阶段：`Stage 2 Acquisition Runtime Foundation Completed → Stage 2.5 Governance and Implementation Boundary Sync`。
-- Stage 2 已在 PR #8 完成并合并；Pydantic V2 parity 与 Ruff Phase 1、2A、2B 已在 PR #9–#12 完成并合并。
+- 当前正式阶段：`Stage 3A CTV Vertical Slice and Local Real-Data Calculation Qualification Completed`。
+- Stage 2 已在 PR #8 完成并合并；Pydantic V2 parity 与 Ruff Phase 1、2A、2B 已在 PR #9–#12 完成并合并；Stage 2.5 治理同步已在 PR #13 合并。
+- Stage 3A CTV vertical slice 已在 PR #14 完成并合并；CTV prior-year source authority 修正已在 PR #15 合并，Stage 3A CTV 专项测试 47/47 PASS。
 - Weekly Business Report Baseline 1.0.0与Customer Revenue Detail Baseline 1.0.0继续作为各自冻结历史基线，不因后续实现被追溯改写。
 - Workflow Architecture Optimization v2：已确认并迁移为独立 v2 文件。
 - Weekly Workflow的Data Source、Dataset、Pipeline、Field Mapping、Business Rule、Metric Library、Result Contract、Metric Store逻辑契约与Output Mapping：已完成P0资产收口。
@@ -16,9 +17,10 @@
 - 本地External Asset仅登记版本合同与`LOCAL_ONLY`运行时占位符，真实版本和内容指纹不得进入Git。
 - Weekly状态入口：[Phase 1.5 Weekly Status Index](phase1_5/assets/readiness/status_index.yaml)；Customer Revenue Detail状态入口：[Customer Status Index](phase1_5/assets/readiness/status_index_customer_revenue_detail.yaml)。
 - 历史实现入口Gate：[Code Implementation Readiness Gate](phase1_5/assets/readiness/code_implementation_readiness_gate.yaml)；其记录 pre-Stage 2 审查结论，不代表当前阻断状态。
-- 当前已完成设计资产的Workflow：Weekly Business Report与独立的Customer Revenue Detail；Weekly仅完成Acquisition Runtime Foundation，Customer仍保持独立未授权状态。
-- 下一候选实施阶段：Data Engine / Business Execution，从确定性本地输入和首条业务Pipeline开始；尚未启动，且仍需Owner独立授权。
-- Real-data calculation、Provider capability validation、Runtime Acceptance均未开始；Scheduler与Automatic Draft未激活、未授权，`auto_send=false`。
+- 当前已完成设计资产的Workflow：Weekly Business Report与独立的Customer Revenue Detail；Weekly 已完成 Acquisition Runtime Foundation 与 Stage 3A CTV vertical slice，Customer 仍保持独立未授权状态。
+- Runtime Contract v1.2 当前仅为 active execution/validation candidate，尚未晋级，也未重冻结为新的正式 Baseline。
+- CTV 本地真实数据 calculation qualification 已在两个场景中通过；该结论仅覆盖 calculation scope，不包含生产 Excel Store Adapter、Provider、Store write、Scheduler、Draft 或 Runtime Acceptance。当前仍需完成 Stage 3A governance closure；Stage 3B 尚无已登记范围合同且未授权。
+- Provider capability validation 与 Runtime Acceptance 未开始；Scheduler 与 Automatic Draft 未激活、未授权，`auto_send=false`。
 
 ## 默认读取顺序
 

@@ -2456,8 +2456,8 @@ def validate_customer_analysis_narrative_mapping(
     for key, expected in expected_status.items():
         if status_scope.get(key) != expected:
             errors.append(f"{status_file}:scope_boundaries.{key}: expected {expected!r}")
-    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-13":
-        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-13")
+    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-14":
+        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-14")
 
     output_gate_file = (
         "phase1_5/assets/output_mappings/"
@@ -4112,6 +4112,305 @@ def validate_status_consistency(
     return checked
 
 
+def validate_stage3a_qualification_status_consistency(
+    documents: dict[str, Any], errors: list[str]
+) -> int:
+    """Fail closed when Stage 3A qualification governance records drift."""
+    qualification_path = (
+        "phase1_5/assets/readiness/stage3a_ctv_qualification_status.yaml"
+    )
+    status_index_path = "phase1_5/assets/readiness/status_index.yaml"
+    qualification = documents.get(qualification_path)
+    status_index = documents.get(status_index_path)
+    checked = 0
+
+    if not isinstance(qualification, dict):
+        errors.append(f"{qualification_path}: missing or invalid qualification status")
+        return checked
+    if not isinstance(status_index, dict):
+        errors.append(f"{status_index_path}: missing or invalid status index")
+        return checked
+
+    missing = object()
+
+    def nested_value(document: dict[str, Any], path: str) -> Any:
+        value: Any = document
+        for segment in path.split("."):
+            if not isinstance(value, dict) or segment not in value:
+                return missing
+            value = value[segment]
+        return value
+
+    def require_exact(
+        file: str, document: dict[str, Any], path: str, expected: Any
+    ) -> Any:
+        nonlocal checked
+        actual = nested_value(document, path)
+        if actual is missing:
+            errors.append(f"{file}:{path}: missing fail-closed governance value")
+        elif actual != expected:
+            errors.append(
+                f"{file}:{path}: expected {expected!r}, found {actual!r}"
+            )
+        checked += 1
+        return actual
+
+    def require_match(
+        left_file: str,
+        left_document: dict[str, Any],
+        left_path: str,
+        right_file: str,
+        right_document: dict[str, Any],
+        right_path: str,
+    ) -> tuple[Any, Any]:
+        nonlocal checked
+        left = nested_value(left_document, left_path)
+        right = nested_value(right_document, right_path)
+        if left is missing or right is missing:
+            errors.append(
+                f"{left_file}:{left_path} and {right_file}:{right_path}: "
+                "missing cross-file governance value"
+            )
+        elif left != right:
+            errors.append(
+                f"{left_file}:{left_path} value {left!r} does not match "
+                f"{right_file}:{right_path} value {right!r}"
+            )
+        checked += 1
+        return left, right
+
+    evidence_id, _ = require_match(
+        qualification_path,
+        qualification,
+        "qualification_evidence.evidence_record_id",
+        status_index_path,
+        status_index,
+        "stage3a_ctv_vertical_slice_implementation."
+        "local_real_data_calculation_qualification.evidence_record_id",
+    )
+    if not isinstance(evidence_id, str) or not evidence_id.strip():
+        errors.append(
+            f"{qualification_path}:qualification_evidence.evidence_record_id: "
+            "must be a non-empty sanitized evidence ID"
+        )
+    checked += 1
+
+    manifest_hash, _ = require_match(
+        qualification_path,
+        qualification,
+        "qualification_evidence.local_manifest_sha256",
+        status_index_path,
+        status_index,
+        "stage3a_ctv_vertical_slice_implementation."
+        "local_real_data_calculation_qualification.local_manifest_sha256",
+    )
+    if not isinstance(manifest_hash, str) or not re.fullmatch(
+        r"[0-9a-f]{64}", manifest_hash
+    ):
+        errors.append(
+            f"{qualification_path}:qualification_evidence.local_manifest_sha256: "
+            "must be a lowercase SHA-256"
+        )
+    checked += 1
+
+    require_match(
+        qualification_path,
+        qualification,
+        "status",
+        status_index_path,
+        status_index,
+        "stage3a_ctv_vertical_slice_implementation."
+        "local_real_data_calculation_qualification.qualification_result",
+    )
+    require_exact(
+        qualification_path,
+        qualification,
+        "status",
+        "passed_for_local_real_data_calculation_scope",
+    )
+    require_exact(
+        qualification_path,
+        qualification,
+        "qualification_scope.ctv_local_real_data_calculation",
+        "passed",
+    )
+    require_exact(
+        status_index_path,
+        status_index,
+        "phase_status.local_real_data_calculation_qualification",
+        "passed_for_calculation_scope_only",
+    )
+
+    require_match(
+        qualification_path,
+        qualification,
+        "governance_boundaries.runtime_contract_v1_2_promotion_status",
+        status_index_path,
+        status_index,
+        "stage3a_ctv_vertical_slice_implementation."
+        "runtime_contract_v1_2_promotion_status",
+    )
+    require_match(
+        status_index_path,
+        status_index,
+        "current_runtime_candidate.promotion_status",
+        status_index_path,
+        status_index,
+        "stage3a_ctv_vertical_slice_implementation."
+        "runtime_contract_v1_2_promotion_status",
+    )
+    require_exact(
+        qualification_path,
+        qualification,
+        "governance_boundaries.runtime_contract_v1_2_promotion_status",
+        "not_promoted",
+    )
+
+    for file, document, path, expected in (
+        (
+            qualification_path,
+            qualification,
+            "execution_capture.git_head_at_execution",
+            "not_captured_at_execution",
+        ),
+        (
+            qualification_path,
+            qualification,
+            "execution_capture.qualification_harness_sha256_at_execution",
+            "not_captured_at_execution",
+        ),
+        (
+            qualification_path,
+            qualification,
+            "execution_capture.retrospective_inference_allowed",
+            False,
+        ),
+        (
+            qualification_path,
+            qualification,
+            "qualification_scope.runtime_acceptance",
+            "not_run",
+        ),
+        (
+            qualification_path,
+            qualification,
+            "governance_boundaries.runtime_acceptance_may_be_inferred_from_qualification",
+            False,
+        ),
+        (
+            status_index_path,
+            status_index,
+            "stage3a_ctv_vertical_slice_implementation."
+            "local_real_data_calculation_qualification."
+            "full_runtime_qualification_result",
+            "not_established",
+        ),
+        (
+            status_index_path,
+            status_index,
+            "stage3a_ctv_vertical_slice_implementation."
+            "local_real_data_calculation_qualification.runtime_acceptance_implication",
+            "none",
+        ),
+        (
+            status_index_path,
+            status_index,
+            "stage3a_ctv_vertical_slice_implementation.runtime_acceptance_started",
+            False,
+        ),
+        (
+            status_index_path,
+            status_index,
+            "stage3a_ctv_vertical_slice_implementation.runtime_acceptance_completed",
+            False,
+        ),
+        (
+            status_index_path,
+            status_index,
+            "current_next_stage_boundary.runtime_acceptance_status",
+            "not_started",
+        ),
+        (
+            status_index_path,
+            status_index,
+            "current_runtime_candidate.runtime_acceptance_authorized",
+            False,
+        ),
+        (
+            status_index_path,
+            status_index,
+            "phase_status.end_to_end_runtime_acceptance",
+            "conditional",
+        ),
+    ):
+        require_exact(file, document, path, expected)
+
+    for qualification_key, status_key in (
+        (
+            "stage3b_scope_contract_registered",
+            "current_next_stage_boundary.stage3b_scope_contract_registered",
+        ),
+        (
+            "stage3b_authorized",
+            "current_next_stage_boundary.stage3b_authorized",
+        ),
+    ):
+        require_match(
+            qualification_path,
+            qualification,
+            f"governance_boundaries.{qualification_key}",
+            status_index_path,
+            status_index,
+            status_key,
+        )
+        require_exact(
+            qualification_path,
+            qualification,
+            f"governance_boundaries.{qualification_key}",
+            False,
+        )
+
+    for status_path in (
+        "stage3a_ctv_vertical_slice_implementation.automatic_next_stage_allowed",
+        "current_next_stage_boundary.automatic_next_stage_allowed",
+        "current_runtime_candidate.automatic_next_stage_allowed",
+    ):
+        require_match(
+            qualification_path,
+            qualification,
+            "governance_boundaries.automatic_next_stage_allowed",
+            status_index_path,
+            status_index,
+            status_path,
+        )
+    require_exact(
+        qualification_path,
+        qualification,
+        "governance_boundaries.automatic_next_stage_allowed",
+        False,
+    )
+
+    for status_path in (
+        "stage3a_ctv_vertical_slice_implementation.auto_send",
+        "current_runtime_candidate.auto_send",
+    ):
+        require_match(
+            qualification_path,
+            qualification,
+            "governance_boundaries.auto_send",
+            status_index_path,
+            status_index,
+            status_path,
+        )
+    require_exact(
+        qualification_path,
+        qualification,
+        "governance_boundaries.auto_send",
+        False,
+    )
+    return checked
+
+
 def main() -> int:
     errors: list[str] = []
     documents: dict[str, Any] = {}
@@ -4184,6 +4483,9 @@ def main() -> int:
         documents, errors
     )
     checked_status_entries = validate_status_consistency(documents, errors)
+    qualification_status_checks = validate_stage3a_qualification_status_consistency(
+        documents, errors
+    )
 
     if errors:
         print("Asset integrity validation FAILED:")
@@ -4222,7 +4524,9 @@ def main() -> int:
         f"{weekly_rule_context_binding_checks} Weekly Rule Context binding checks passed; "
         f"{len(references)} asset references resolved; "
         f"{checked_paths} Required paths checked across {matched_assets} assets; "
-        f"{checked_status_entries} Gate status links are consistent."
+        f"{checked_status_entries} Gate status links and "
+        f"{qualification_status_checks} Stage 3A qualification governance "
+        "boundaries are consistent."
     )
     return 0
 

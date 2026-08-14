@@ -22,6 +22,7 @@ data/raw/
 attachments/
 generated_reports/
 weekly_reports/
+本地数据测试/
 
 # Email archives and mutable business extracts
 *.msg

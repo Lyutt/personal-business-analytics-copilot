@@ -17,25 +17,29 @@ contract.
 6. [Weekly Business Report Workflow v2](phase1_5/workflows/weekly_business_report/WORKFLOW_v2.md)
 7. [Customer Revenue Detail Workflow v1](phase1_5/workflows/customer_revenue_detail/WORKFLOW_v1.md)
 
-The Weekly Acquisition Runtime Foundation completed Stage 2 and was merged in
-PR #8. Pydantic V2 validation parity and Ruff Phases 1, 2A, and 2B were also
-merged in PRs #9-#12. Stage 2.5 synchronizes governance and implementation
-boundaries only; it does not change the frozen Weekly Baseline 1.0.0 or any
-business contract.
+The Weekly Acquisition Runtime Foundation completed Stage 2 in PR #8. Pydantic
+V2 validation parity and Ruff Phases 1, 2A, and 2B were merged in PRs #9-#12,
+and the Stage 2.5 governance synchronization was merged in PR #13. Stage 3A's
+CTV vertical slice was completed in PR #14, followed by the CTV prior-year
+source-authority correction in PR #15. The exact PR #15 head passed all 47
+Stage 3A CTV tests.
 
-The next candidate implementation stage is Data Engine / Business Execution,
-starting with deterministic local input and the first business Pipeline. It has
-not started and requires separate Owner authorization. Real-data calculation,
-Provider capability validation, Runtime Acceptance, Scheduler activation, and
-automatic Draft activation have not started and are not authorized. Automated
-checks, readiness Gates, synthetic acceptance, and merge status do not grant
-any later-stage approval.
+Runtime Contract v1.2 is the active execution and validation candidate only.
+It has not been promoted or refrozen as a new formal Runtime Baseline. The
+local-only real-data calculation qualification has passed for the CTV
+calculation scope in ordinary-week and quarter-transition scenarios. This does
+not qualify a production Excel Store Adapter or any Provider, Store-write,
+Scheduler, Draft, or Runtime Acceptance lifecycle. Stage 3A governance closure
+remains current; Stage 3B has no registered scope contract or authorization,
+and Runtime Acceptance has not started. Automated checks, readiness Gates,
+qualification evidence, and merge status do not grant any later-stage approval.
 
 The two Workflows remain isolated: they may reuse registered source and Mapping
 assets, but neither consumes the other Workflow's files or outputs. The initial
 MVP remains sequential. The Acquisition Runtime Foundation exists, while the
-Data Engine, Business Execution, Output Engine, and end-to-end Workflow runtime
-remain unimplemented.
+Stage 3A CTV Data Engine and Business Execution slice is implemented. Other
+business Pipelines, the Output Engine, and the end-to-end Workflow runtime are
+not implied complete by that vertical slice.
 
 Local business data, customer rows, emails, templates, recipients, credentials,
 paths, resolved External Asset versions, and content fingerprints must remain

@@ -86,6 +86,10 @@ post_stage2_quality_integrations:
   - { scope: Ruff Phase 2B, pull_request: 12, status: completed_and_merged, merge_commit_sha: bf3d5571c4971c089cd41075c044a397b16f9bd6 }
 
 next_stage_boundary:
+  record_scope: historical_post_stage2_snapshot
+  snapshot_date: 2026-08-13
+  superseded_as_current_status: true
+  current_status_source: phase1_5/assets/readiness/status_index.yaml
   current_governance_stage: Stage 2.5 Governance and Implementation Boundary Sync
   next_candidate_stage: Data Engine / Business Execution Implementation
   data_engine_status: not_started

@@ -19,7 +19,7 @@
 - Metric Library Initialization：已完成并通过Readiness Gate。
 - Result Contract Initialization：12个正式Contract已完成并通过Readiness Gate；
   48个Metric Variant已显式绑定Contract Field。
-- 当前收口点：Weekly的Phase 1.5 Final Acceptance已通过；Weekly与Customer Revenue Detail各自的Implementation Baseline 1.0.0继续作为冻结历史基线。Weekly Stage 2 Acquisition Runtime Foundation已在PR #8完成并合并；Customer仍保持独立未授权状态。
+- 当前收口点：Weekly的Phase 1.5 Final Acceptance已通过；Weekly与Customer Revenue Detail各自的Implementation Baseline 1.0.0继续作为冻结历史基线。Weekly Stage 2 Acquisition Runtime Foundation已在PR #8完成并合并，Stage 2.5治理同步已在PR #13合并，Stage 3A CTV vertical slice已在PR #14完成并合并，CTV prior-year source authority修正已在PR #15合并；Customer仍保持独立未授权状态。
 - 统一状态入口：[Status Index](assets/readiness/status_index.yaml)。
 - 历史实现入口：[Code Implementation Readiness Gate](assets/readiness/code_implementation_readiness_gate.yaml)，记录pre-Stage 2审查结论；当前状态以Status Index为准。
 - 冻结实现基线：[Implementation Baseline 1.0.0](assets/readiness/implementation_baseline.yaml)。
@@ -28,9 +28,10 @@
 - Weekly Output Mapping Gate：[weekly_report_output_mapping_readiness_gate.yaml](assets/output_mappings/weekly_report_output_mapping_readiness_gate.yaml)。
 - Weekly Workflow 收口归档：[Weekly_Business_Report_Workflow_Closure_2026-08-02.md](Weekly_Business_Report_Workflow_Closure_2026-08-02.md)。
 - 整体 Personal Business Analytics Copilot 架构：不变。
-- Stage 2：Acquisition Runtime Foundation已完成并合并；Stage 2.5仅同步治理和实施边界。
-- 下一候选实施阶段：Data Engine / Business Execution，从确定性本地输入和首条业务Pipeline开始；尚未启动且需要Owner独立授权。
-- Real-data calculation、Provider capability validation与Runtime Acceptance均未开始；端到端MVP运行验收保持Conditional。
+- Stage 3A：CTV vertical slice 已完成并合并，CTV prior-year source authority 已修正，专项测试 47/47 PASS。
+- Runtime Contract v1.2 仅作为 active execution/validation candidate；Baseline 1.0.0 与历史 v1.1 Candidate 未被改写，v1.2 未晋级。
+- 当前边界：CTV 本地真实数据 calculation qualification 已在 ordinary-week 与 quarter-transition 场景通过；该结论不包含生产 Excel Store Adapter、Provider、Store write、Scheduler、Draft 或 Runtime Acceptance。当前仍需 Stage 3A governance closure；Stage 3B 尚无已登记范围合同且未授权。
+- Provider capability validation与Runtime Acceptance未开始；端到端MVP运行验收保持Conditional。
 - Scheduler与Automatic Draft未激活、未授权；`auto_send=false`。
 
 ## 已确认架构
