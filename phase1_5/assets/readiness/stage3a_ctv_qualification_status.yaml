@@ -46,8 +46,11 @@ qualification_scope:
 governance_boundaries:
   runtime_contract_v1_2_promotion_status: not_promoted
   frozen_runtime_baseline_changed: false
-  stage3b_scope_contract_registered: false
-  stage3b_authorized: false
+  stage3b_scope_contract_registered: true
+  stage3b_scope_contract_id: SCOPE_STAGE3B_REVENUE_EXPANSION_V1
+  stage3b_scope_contract_status: registered_not_authorized
+  stage3b_authorized: true
+  stage3b_authorization_date: 2026-08-18
   runtime_acceptance_may_be_inferred_from_qualification: false
   automatic_next_stage_allowed: false
   separate_owner_authorization_required: true

@@ -206,9 +206,25 @@ metric_variants:
       reporting_period_selection: exact prior-year comparable period selected by BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
       business_cutoff_selection: exact approved target_prior_year_date derived from current_revenue_cutoff_date
       validation_status_required: passed
-      owner_confirmation: confirmed_option_A_2026-08-09
+      owner_confirmation: confirmed_primary_store_result_with_exact_dual_qtd_reconstruction_fallback_2026-08-20
       unique_source_required: true
       qtd_or_full_quarter_executed_revenue_amount_equivalence_allowed: false
+      fallback_reconstruction:
+        allowed_when: primary_exact_store_result_not_found_only
+        current_prior_year_qtd_executed_snapshot:
+          source: Run Input Manifest-bound prior_year_comparable Dataset
+          mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+          standard_field_id: executed_revenue_amount
+        previous_prior_year_qtd_executed_snapshot:
+          source: MetricStorePort exact physical snapshot read
+          physical_field_id: E
+          carrier_reporting_period_selection: exactly equals expected_previous_revenue_workflow_reporting_date
+          period_role: prior_year_comparable
+        reconstruction_metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+        formula: exact current prior-year QTD Executed minus exact previous-period prior-year QTD Executed
+        exact_date_and_validated_lineage_required: true
+        nearby_date_or_row_order_fallback_allowed: false
+        rounded_value_or_fuzzy_inference_allowed: false
     calculation_method: Direct ratio comparison
     formula: Current-week Incremental Executed Revenue / prior-year comparable Incremental Executed Revenue - 1.
     denominator_invalid_action: Leave growth result blank and notify owner

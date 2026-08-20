@@ -1,20 +1,21 @@
 config_type: business_asset_status_index
 index_version: 1.0.1
 status: synchronized
-assessment_date: 2026-08-14
-last_semantic_sync_date: 2026-08-14
+assessment_date: 2026-08-20
+last_semantic_sync_date: 2026-08-20
 design_asset_closure_review_date: 2026-08-09
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-current_stage: Stage 3A CTV Vertical Slice and Local Real-Data Calculation Qualification Completed
+current_stage: Stage 3B Revenue Expansion Implementation Completed - Exit Qualified; Later Stages Not Authorized
 
 phase_status:
   phase_1: completed_and_retained_as_historical_design_baseline
   phase_1_5_business_asset_initialization: completed_for_weekly_workflow_p0_scope
   phase_1_5_final_acceptance: passed
-  code_implementation: stage3a_ctv_vertical_slice_completed_and_merged
+  code_implementation: stage3b_revenue_expansion_completed_exit_qualified
   stage_2_5_governance_sync: synchronized
-  data_engine_business_execution: stage3a_ctv_vertical_slice_completed
+  data_engine_business_execution: stage3b_revenue_expansion_completed_exit_qualified
   stage_3a_ctv_vertical_slice: completed_and_merged
+  stage_3b_revenue_expansion: implementation_completed_exit_qualified
   local_real_data_calculation_qualification: passed_for_calculation_scope_only
   end_to_end_runtime_acceptance: conditional
 
@@ -110,7 +111,7 @@ scope_boundaries:
   workflow_run_context_status: confirmed_core_lock_with_revenue_conditional_scope_and_distinct_date_authorities
   expected_previous_revenue_reporting_period_status: adjacent_period_deterministic_no_older_fallback
   weekly_revenue_result_lineage_status: workflow_reporting_date_and_current_revenue_cutoff_date_explicit
-  technical_incremental_dependency_status: owner_confirmed_option_A_exact_metric_store_binding
+  technical_incremental_dependency_status: owner_confirmed_primary_exact_store_with_not_found_only_exact_dual_qtd_reconstruction
   prior_year_source_failure_status: yoy_field_scoped_warning_current_results_retained
   weekly_active_rule_context_binding_status: complete_without_runtime_alias_guessing
   weekly_field_mapping_profile_count: 11
@@ -143,6 +144,7 @@ scope_boundaries:
 
 source_of_truth_order:
   - phase1_5/assets/readiness/status_index.yaml
+  - phase1_5/assets/readiness/stage3b_revenue_expansion_exact_scope.yaml
   - phase1_5/assets/readiness/implementation_baseline.yaml
   - phase1_5/assets/readiness/code_implementation_readiness_gate.yaml
   - Versioned assets and stage Gates under phase1_5/assets
@@ -263,12 +265,193 @@ stage3a_ctv_vertical_slice_implementation:
   automatic_next_stage_allowed: false
 
 current_next_stage_boundary:
-  status: stage3a_qualification_complete_governance_closure_required
-  stage3b_scope_contract_registered: false
-  stage3b_authorized: false
+  status: stage3b_completed_later_stages_not_authorized
+  stage3b_scope_contract_registered: true
+  stage3b_scope_contract_id: SCOPE_STAGE3B_REVENUE_EXPANSION_V1
+  stage3b_scope_contract_version: 1.0.0
+  stage3b_scope_contract_status: registered_not_authorized
+  stage3b_scope_contract_source: phase1_5/assets/readiness/stage3b_revenue_expansion_exact_scope.yaml
+  stage3b_authorized: true
+  stage3b_authorization_received: true
+  stage3b_authorization_date: 2026-08-18
+  stage3b_implementation_started: true
+  stage3b_implementation_completed: true
+  stage3b_exit_qualification_passed: true
+  stage3b_completed: true
   runtime_acceptance_status: not_started
   separate_owner_authorization_required: true
   automatic_next_stage_allowed: false
+
+stage3b_revenue_expansion_implementation:
+  status: implementation_completed_exit_qualified
+  scope_contract_id: SCOPE_STAGE3B_REVENUE_EXPANSION_V1
+  scope_contract_version: 1.0.0
+  scope_contract_source: phase1_5/assets/readiness/stage3b_revenue_expansion_exact_scope.yaml
+  owner_authorization_received: true
+  owner_authorization_date: 2026-08-18
+  owner_authorization_statement: >-
+    我正式授权按照已登记的 SCOPE_STAGE3B_REVENUE_EXPANSION_V1 version 1.0.0
+    精确实施 Stage 3B，所有 explicit exclusions 保持不变。
+  implementation_authorized: true
+  implementation_started: true
+  implementation_completed: true
+  exit_qualification_passed: true
+  stage3b_completed: true
+  completion_date: 2026-08-20
+  implementation_code_changed: true
+  explicit_exclusions_unchanged: true
+  runtime_acceptance_authorized: false
+  baseline_promotion_or_refreeze_authorized: false
+  automatic_next_stage_allowed: false
+  auto_send: false
+  store_contract_evidence_reconciliation:
+    status: resolved_by_owner_decision
+    reconciliation_date: 2026-08-18
+    affected_scope: Revenue Excel Historical Store Adapter
+    technical_store_only_helper_fields: [G, I]
+    technical_store_only_helper_formula_authority: confirmed_existing_workbook_qtd_difference_semantics
+    technical_quarter_transition_blank_not_applicable_columns: [H, K, L]
+    result_contract_applicability_precedence_confirmed: true
+    owner_decision_required: false
+    frozen_contracts_modified: false
+  physical_lineage_binding_reconciliation:
+    status: resolved_registered_and_synthetic_validated
+    reconciliation_date: 2026-08-19
+    affected_scope: Revenue Excel Historical Store Adapter exact previous-period read
+    root_cause_classification: missing_physical_lineage_binding_not_missing_business_rule
+    store_contract_binding_status: registered
+    metadata_worksheet_name: _pbac_metric_store_metadata
+    adapter_technical_metadata_only: true
+    business_value_storage_allowed: false
+    synthetic_adapter_test_count: 6
+    owner_decision_required: false
+    frozen_contracts_modified: false
+  static_value_excel_metric_store_adapter_increment:
+    status: implemented_and_synthetic_validated
+    implementation_date: 2026-08-19
+    applicable_store_assets:
+      - STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
+      - STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
+    metric_store_port_operations:
+      - read_exact
+      - read_exact_business_date
+      - read_exact_physical_snapshot
+      - preflight_write
+      - write_validated
+      - verify_write
+    physical_persisted_fields: [business_date, weekly_revenue, qtd_revenue]
+    result_contract_wow_persisted_to_physical_store: false
+    quarter_transition_weekly_value: blank_not_applicable
+    synthetic_metric_store_test_count: 7
+    technical_and_ctv_formula_capable_write_status: implemented_and_validated
+    owner_decision_required: false
+    frozen_contracts_modified: false
+  technical_business_execution_increment:
+    status: implemented_and_synthetic_validated
+    implementation_date: 2026-08-20
+    pipeline_id: PL_REVENUE_TECHNICAL_WEEKLY
+    authority_reconciliation_classification: authority_exists_but_unregistered
+    authority_registration_corrected: true
+    detailed_qtd_mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+    complete_quarter_equivalence_allowed_for_prior_year_qtd: false
+    prior_year_performance_mapping_entry_id: FM016
+    prior_year_executed_mapping_entry_id: FM017
+    technical_store_physical_bindings: { D: performance_revenue_amount, E: executed_revenue_amount }
+    manifest_bound_input_roles: [current, prior_year_comparable]
+    metric_store_port_only_for_historical_read_write_verify: true
+    quarter_transition_blank_not_applicable_columns: [H, K, L]
+    incremental_yoy_denominator_owner_decision_date: 2026-08-20
+    incremental_yoy_denominator_primary_source: exact_validated_prior_year_comparable_weekly_incremental_store_result
+    incremental_yoy_denominator_fallback: exact_dual_qtd_executed_reconstruction_on_primary_not_found_only
+    prohibited_denominator_fallbacks: [nearby_date, previous_row, rounded_weekly_report_value, fuzzy_match, other_inference]
+    scope_contract_evidence_aligned: true
+    source_authority_modified_under_owner_authorized_scope_exception: true
+    metric_variant_dependency_modified_under_owner_authorized_scope_exception: true
+    primary_not_found_fallback_error_codes: [STORE_EXACT_BUSINESS_DATE_NOT_FOUND, STORE_EXCEL_LINEAGE_BUSINESS_DATE_KEY_NOT_FOUND]
+    non_not_found_fallback_prohibited: [metadata_missing, ambiguous, unverified, invalid]
+    synthetic_pipeline_test_count: 9
+    owner_decision_required: false
+    frozen_business_semantics_modified: false
+    frozen_metric_definition_modified: false
+    frozen_result_contract_modified: false
+    stage3c_authorized: false
+  smart_speaker_fast_version_business_execution_increment:
+    status: implemented_and_synthetic_validated
+    implementation_date: 2026-08-20
+    pipeline_ids:
+      - PL_REVENUE_SMART_SPEAKER_WEEKLY
+      - PL_REVENUE_FAST_VERSION_WEEKLY
+    manifest_bound_dataset_id: DS_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY
+    mapping_profile_id: MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1
+    exact_query_template_business_key_required: true
+    regular_week_qtd_carry_forward_through_metric_store_port: true
+    quarter_transition_qtd_reset_to_current_validated_weekly_input: true
+    quarter_transition_weekly_and_wow_status: blank_not_applicable
+    result_contract_wow_persisted_to_physical_store: false
+    provider_acquisition_implemented: false
+    provider_dependent_repair_query_implemented: false
+    unknown_source_field_handling: owner_notification_and_completed_with_warning
+    confirmed_field_processing_continues_on_unknown_source_field: true
+    synthetic_pipeline_test_count: 5
+    owner_decision_required: false
+    frozen_business_semantics_modified: false
+  revenue_pipeline_exit_qualification:
+    status: passed_for_stage3b_implementation_scope_only
+    assessment_date: 2026-08-20
+    qualified_pipeline_ids:
+      - PL_REVENUE_TECHNICAL_WEEKLY
+      - PL_REVENUE_CTV_WEEKLY
+      - PL_REVENUE_SMART_SPEAKER_WEEKLY
+      - PL_REVENUE_FAST_VERSION_WEEKLY
+    revenue_execution_and_store_synthetic_test_count: 78
+    full_repository_regression_test_count: 127
+    full_repository_regression_status: passed
+    asset_integrity_status: passed
+    final_acceptance_status: passed
+    weekly_acquisition_runtime_consistency_status: passed
+    local_technical_calculation_check: passed
+    local_technical_weekly_incremental_yoy_requalification: passed_exact_dual_qtd_reconstruction
+    local_technical_weekly_incremental_yoy_requalification_evidence_id: EVIDENCE_TECHNICAL_WEEKLY_YOY_EXACT_DUAL_QTD_REQUAL_V1_20260820
+    technical_real_data_calculation_qualification:
+      status: passed
+      evidence_classification: local_only_outside_git
+      previously_qualified_fields_not_reexecuted: true
+    ctv_real_data_calculation_qualification:
+      status: passed_reused_stage3a_evidence
+      evidence_source: phase1_5/assets/readiness/stage3a_ctv_qualification_status.yaml
+      stage3b_reexecution_required: false
+    smart_speaker_fast_version_real_data_source_to_result_qualification:
+      status: not_executed
+      stage3b_exit_requirement: false
+      pipeline_ids: [PL_REVENUE_SMART_SPEAKER_WEEKLY, PL_REVENUE_FAST_VERSION_WEEKLY]
+    pr17_merge_fix_evidence:
+      status: passed
+      assessment_date: 2026-08-20
+      scope_contract_owner_authorized_yoy_source_rule_aligned: true
+      business_line_unknown_field_warning_implemented: true
+      technical_yoy_not_found_only_fallback_enforced: true
+      targeted_new_test_count: 4
+      affected_stage3b_regression_test_count: 14
+      asset_integrity_status: passed
+      final_acceptance_consistency_status: passed
+      scoped_ruff_status: passed
+      git_diff_check_status: passed
+      full_repository_regression_reexecuted: false
+      prior_full_repository_regression_evidence_retained: true
+      ctv_qualification_reexecuted: false
+      runtime_consistency_reexecuted: false
+    local_technical_evidence_classification: local_only_outside_git
+    local_source_values_or_fingerprints_recorded_in_git: false
+    real_metric_store_write_run: false
+    provider_query_run: false
+    runtime_acceptance_implication: none
+    baseline_promotion_or_refreeze_implication: none
+    automatic_next_stage_allowed: false
+    stage3c_authorized: false
+    provider_authorized: false
+    scheduler_or_queue_authorized: false
+    draft_or_send_authorized: false
+    cutover_authorized: false
 
 stage2_5_governance_and_implementation_boundary_sync:
   status: governance_synchronized

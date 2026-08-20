@@ -14,7 +14,7 @@ effective_from: 2026-08-01
 approval_record:
   approved_by: WORKFLOW_OWNER
   approved_at: 2026-08-01
-  approval_scope: 季度切换首周及去年同期完整季度收入结果的最小映射
+  approval_scope: 季度切换首周完整季度收入结果的最小映射
 
 scope:
   asset_scope: 整个Rolling Deck工作簿中的业务线Sheet
@@ -32,7 +32,8 @@ scope:
   other_workbook_sheets_status: mapped_by_separate_profiles_or_tbd
   usage_contexts:
     - quarter_transition_previous_quarter_final
-    - prior_year_comparable
+  excluded_usage_contexts:
+    - prior_year_comparable_qtd
 
 evidence:
   evidence_sources:

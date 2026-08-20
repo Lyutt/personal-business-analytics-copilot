@@ -736,6 +736,35 @@ asset_rules:
       - governance_boundaries.auto_send
       - evidence_documentation_improvements
 
+  - asset_type: stage_scope_contract
+    selector: { key: config_type, value: stage_scope_contract }
+    required_paths:
+      - config_type
+      - scope_contract_id
+      - scope_contract_version
+      - status
+      - registration_date
+      - workflow_id
+      - stage
+      - stage_name
+      - owner
+      - included_scope
+      - included_scope.pipeline_business_execution_slices
+      - included_scope.execution_entry_boundary
+      - included_scope.reusable_stage3a_foundation
+      - included_scope.revenue_store_adapter
+      - included_scope.frozen_contract_preservation
+      - explicit_exclusions
+      - exit_criteria
+      - referenced_authoritative_assets
+      - authorization
+      - authorization.stage3b_authorized
+      - authorization.implementation_may_start
+      - authorization.separate_explicit_owner_authorization_required
+      - authorization.automatic_next_stage_allowed
+      - authorization.required_owner_authorization_statement
+      - constraints
+
 constraints:
   optional_template_fields_may_be_omitted: true
   required_paths_must_exist: true

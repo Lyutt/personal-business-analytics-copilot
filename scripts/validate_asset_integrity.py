@@ -2456,8 +2456,8 @@ def validate_customer_analysis_narrative_mapping(
     for key, expected in expected_status.items():
         if status_scope.get(key) != expected:
             errors.append(f"{status_file}:scope_boundaries.{key}: expected {expected!r}")
-    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-14":
-        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-14")
+    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-20":
+        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-20")
 
     output_gate_file = (
         "phase1_5/assets/output_mappings/"
@@ -3863,6 +3863,113 @@ def validate_weekly_canonical_rule_context_bindings(
             errors.append(f"{rule_file}: nonexistent combined fiscal-quarter/source-period field remains")
         checked += 1
 
+    technical_prior_rule_file = (
+        "phase1_5/assets/business_rules/"
+        "BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml"
+    )
+    technical_qtd_mapping_file = (
+        "phase1_5/assets/field_mappings/"
+        "MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1.yaml"
+    )
+    complete_quarter_mapping_file = (
+        "phase1_5/assets/field_mappings/"
+        "MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1.yaml"
+    )
+    technical_prior_rule = documents.get(technical_prior_rule_file, {})
+    technical_qtd_mapping = documents.get(technical_qtd_mapping_file, {})
+    complete_quarter_mapping = documents.get(complete_quarter_mapping_file, {})
+    eligibility_binding = technical_prior_rule.get(
+        "technical_qtd_eligibility_binding", {}
+    )
+    registration = technical_qtd_mapping.get("scope", {}).get(
+        "prior_year_comparable_qtd_registration", {}
+    )
+    if (
+        technical_prior_rule.get("inputs", {}).get("required_mapping_profile_id")
+        != "MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1"
+        or eligibility_binding.get("binding_type")
+        != "prior_year_role_context_adapter"
+        or eligibility_binding.get("semantic_authority_rule_id")
+        != "BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1"
+        or eligibility_binding.get("input_role") != "prior_year_comparable"
+        or eligibility_binding.get("source_mapping_profile_id")
+        != "MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1"
+        or eligibility_binding.get("source_standard_fields")
+        != {
+            "performance": "performance_revenue_amount",
+            "executed": "executed_revenue_amount",
+        }
+        or eligibility_binding.get("source_raw_field_independence_required") is not True
+        or eligibility_binding.get("complete_quarter_business_line_equivalence_allowed")
+        is not False
+        or eligibility_binding.get("frozen_semantic_authority_modified") is not False
+        or eligibility_binding.get("registration_status") != "registered"
+    ):
+        errors.append(
+            f"{technical_prior_rule_file}: Technical prior-year QTD authority "
+            "registration is incomplete"
+        )
+    if (
+        technical_qtd_mapping.get("scope", {}).get("usage_contexts")
+        != ["current_quarter_qtd", "prior_year_comparable_qtd"]
+        or registration.get("input_role") != "prior_year_comparable"
+        or registration.get("performance_source_mapping_entry_id") != "FM016"
+        or registration.get("executed_source_mapping_entry_id") != "FM017"
+        or registration.get("source_raw_fields_must_be_distinct") is not True
+        or registration.get("complete_quarter_equivalence_allowed") is not False
+        or registration.get("registration_status") != "registered"
+    ):
+        errors.append(
+            f"{technical_qtd_mapping_file}: prior-year QTD Mapping registration is incomplete"
+        )
+    qtd_mapping_entries = {
+        item.get("mapping_entry_id"): item
+        for item in technical_qtd_mapping.get("field_mappings", [])
+        if isinstance(item, dict)
+    }
+    qtd_raw_fields = {
+        item.get("raw_field_inventory_id"): item
+        for item in technical_qtd_mapping.get("raw_field_inventory", [])
+        if isinstance(item, dict)
+    }
+    performance_entry = qtd_mapping_entries.get("FM016", {})
+    executed_entry = qtd_mapping_entries.get("FM017", {})
+    performance_raw = qtd_raw_fields.get(
+        performance_entry.get("raw_field_inventory_id"), {}
+    )
+    executed_raw = qtd_raw_fields.get(executed_entry.get("raw_field_inventory_id"), {})
+    if (
+        performance_entry.get("standard_field_id") != "performance_revenue_amount"
+        or executed_entry.get("standard_field_id") != "executed_revenue_amount"
+        or performance_raw.get("raw_column") != "U"
+        or executed_raw.get("raw_column") != "X"
+        or performance_entry.get("raw_field_inventory_id")
+        == executed_entry.get("raw_field_inventory_id")
+    ):
+        errors.append(
+            f"{technical_qtd_mapping_file}: Technical QTD performance/executed "
+            "sources must remain independent U/X fields"
+        )
+    complete_scope = complete_quarter_mapping.get("scope", {})
+    complete_entries = {
+        item.get("mapping_entry_id"): item
+        for item in complete_quarter_mapping.get("field_mappings", [])
+        if isinstance(item, dict)
+    }
+    if (
+        complete_scope.get("usage_contexts")
+        != ["quarter_transition_previous_quarter_final"]
+        or "prior_year_comparable_qtd"
+        not in complete_scope.get("excluded_usage_contexts", [])
+        or "仅在完整季度收入场景中"
+        not in str(complete_entries.get("FM004", {}).get("contextual_equivalence", ""))
+    ):
+        errors.append(
+            f"{complete_quarter_mapping_file}: complete-quarter equivalence is not "
+            "fail-closed outside its registered context"
+        )
+    checked += 30
+
     context_fields = runtime.get("workflow_run_context", {}).get("required_fields", {})
     if "target_business_line" in context_fields:
         errors.append(f"{runtime_file}: target_business_line must not be a Workflow-scoped scalar")
@@ -3873,6 +3980,64 @@ def validate_weekly_canonical_rule_context_bindings(
         for item in documents.get(registry_file, {}).get("pipelines", [])
         if isinstance(item, dict) and isinstance(item.get("pipeline_id"), str)
     }
+    technical_pipeline = pipelines.get("PL_REVENUE_TECHNICAL_WEEKLY", {})
+    technical_execution = technical_pipeline.get("execution", {})
+    technical_historical = [
+        item
+        for item in technical_pipeline.get("historical_input_dependencies", [])
+        if isinstance(item, dict)
+        and item.get("relationship_rule_id")
+        == "BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1"
+    ]
+    technical_conditional = {
+        item.get("mapping_profile_id"): item
+        for item in technical_execution.get("conditional_mapping_profile_ids", [])
+        if isinstance(item, dict)
+    }
+    if (
+        technical_execution.get("mapping_profile_ids")
+        != ["MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1"]
+        or technical_conditional.get(
+            "MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1", {}
+        ).get("applies_when")
+        != "Quarter-transition previous-quarter complete business-line result is required"
+        or len(technical_historical) != 1
+    ):
+        errors.append(
+            f"{registry_file}: Technical prior-year QTD Mapping route is not unique"
+        )
+    else:
+        historical = technical_historical[0]
+        physical_bindings = historical.get("physical_store_value_bindings", {})
+        historical_eligibility = historical.get(
+            "technical_qtd_eligibility_binding", {}
+        )
+        if (
+            historical.get("dataset_id") != "DS_REVENUE_SALES_ROLLING_DECK_QTD"
+            or historical.get("run_input_manifest_required") is not True
+            or historical.get("run_input_role") != "prior_year_comparable"
+            or historical.get("mapping_profile_id")
+            != "MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1"
+            or historical.get("required_for_store_physical_fields") != ["D", "E"]
+            or historical_eligibility.get("rule_id")
+            != "BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1"
+            or historical_eligibility.get("binding_type")
+            != "prior_year_role_context_adapter"
+            or historical.get("complete_quarter_performance_executed_equivalence_allowed")
+            is not False
+            or physical_bindings.get("D", {}).get("standard_field_id")
+            != "performance_revenue_amount"
+            or physical_bindings.get("E", {}).get("standard_field_id")
+            != "executed_revenue_amount"
+            or physical_bindings.get("D", {}).get("metric_variant_id")
+            != "MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1"
+            or physical_bindings.get("E", {}).get("metric_variant_id")
+            != "MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1"
+        ):
+            errors.append(
+                f"{registry_file}: Technical prior-year QTD D/E source binding is incomplete"
+            )
+    checked += 16
     target_rules = {
         rule_id: rule
         for rule_id, (_, rule) in active_rules.items()
@@ -3994,12 +4159,33 @@ def validate_weekly_canonical_rule_context_bindings(
         wow_dependency.get("reporting_period_selection")
         != "exactly equals expected_previous_revenue_workflow_reporting_date"
         or wow_dependency.get("older_successful_period_fallback_allowed") is not False
-        or yoy_dependency.get("owner_confirmation") != "confirmed_option_A_2026-08-09"
+        or yoy_dependency.get("owner_confirmation")
+        != "confirmed_primary_store_result_with_exact_dual_qtd_reconstruction_fallback_2026-08-20"
         or yoy_dependency.get("unique_source_required") is not True
         or yoy_dependency.get("qtd_or_full_quarter_executed_revenue_amount_equivalence_allowed") is not False
     ):
         errors.append(f"{revenue_metric_file}: Technical incremental WoW/YoY dependency policy is incomplete")
     checked += 10
+    yoy_fallback = yoy_dependency.get("fallback_reconstruction", {})
+    previous_snapshot = yoy_fallback.get(
+        "previous_prior_year_qtd_executed_snapshot", {}
+    )
+    if (
+        yoy_fallback.get("allowed_when")
+        != "primary_exact_store_result_not_found_only"
+        or yoy_fallback.get("reconstruction_metric_variant_id") != incremental_id
+        or yoy_fallback.get("exact_date_and_validated_lineage_required") is not True
+        or yoy_fallback.get("nearby_date_or_row_order_fallback_allowed") is not False
+        or yoy_fallback.get("rounded_value_or_fuzzy_inference_allowed") is not False
+        or previous_snapshot.get("source")
+        != "MetricStorePort exact physical snapshot read"
+        or previous_snapshot.get("physical_field_id") != "E"
+        or previous_snapshot.get("period_role") != "prior_year_comparable"
+    ):
+        errors.append(
+            f"{revenue_metric_file}: Technical incremental YoY exact dual-QTD fallback is incomplete"
+        )
+    checked += 8
 
     store = documents.get(store_file, {})
     revenue_store = next(
@@ -4014,13 +4200,87 @@ def validate_weekly_canonical_rule_context_bindings(
     ):
         errors.append(f"{store_file}: Revenue Metric Store date lineage is incomplete")
     checked += 3
+    physical_lineage = date_lineage.get("physical_lineage_binding", {})
+    expected_metadata_columns = [
+        "schema_version",
+        "store_id",
+        "store_asset_id",
+        "business_context_id",
+        "metric_variant_id",
+        "workflow_reporting_date",
+        "current_revenue_cutoff_date",
+        "physical_worksheet",
+        "physical_row",
+        "business_date_column",
+        "result_id",
+        "validation_status",
+        "business_digest",
+    ]
+    if (
+        physical_lineage.get("binding_status") != "registered"
+        or physical_lineage.get("metadata_worksheet_name")
+        != "_pbac_metric_store_metadata"
+        or physical_lineage.get("metadata_worksheet_visibility") != "veryHidden"
+        or physical_lineage.get("adapter_technical_metadata_only") is not True
+        or physical_lineage.get("business_output_or_source_dataset") is not False
+        or physical_lineage.get("business_semantics_authority") != "none"
+        or physical_lineage.get("business_value_storage_allowed") is not False
+        or physical_lineage.get("required_columns") != expected_metadata_columns
+        or physical_lineage.get("missing_duplicate_or_mismatched_metadata_action")
+        != "fail closed for the affected Store read or write and notify owner"
+        or physical_lineage.get("legacy_row_without_metadata")
+        != "runtime bootstrap required; never infer the missing lineage binding"
+    ):
+        errors.append(
+            f"{store_file}: Revenue Excel physical lineage metadata binding is incomplete"
+        )
+    if set(physical_lineage.get("prohibited_inference", [])) != {
+        "reporting_date_equals_business_date",
+        "reporting_date_plus_or_minus_calendar_offset",
+        "weekday_based_business_date_derivation",
+        "nearest_date",
+        "previous_row",
+        "latest_row",
+        "worksheet_row_order",
+    }:
+        errors.append(
+            f"{store_file}: Revenue Excel physical lineage inference prohibitions are incomplete"
+        )
+    checked += 12
+    technical_store_asset = next(
+        (
+            item
+            for item in revenue_store.get("store_assets", [])
+            if item.get("store_asset_id")
+            == "STORE_ASSET_WEEKLY_REVENUE_TECHNICAL"
+        ),
+        {},
+    )
+    qtd_snapshot = technical_store_asset.get(
+        "prior_year_qtd_executed_snapshot_read", {}
+    )
+    if (
+        qtd_snapshot.get("adapter_operation") != "read_exact_physical_snapshot"
+        or qtd_snapshot.get("metric_store_port_required") is not True
+        or qtd_snapshot.get("physical_field_id") != "E"
+        or qtd_snapshot.get("metric_variant_id")
+        != "MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1"
+        or qtd_snapshot.get("period_role") != "prior_year_comparable"
+        or qtd_snapshot.get("adapter_technical_read_only") is not True
+        or qtd_snapshot.get("result_contract_field_created") is not False
+    ):
+        errors.append(
+            f"{store_file}: Technical prior-year QTD physical snapshot read is incomplete"
+        )
+    checked += 7
 
     assertions = documents.get(scenarios_file, {}).get("weekly_revenue_contract_assertions", [])
     expected_assertion_ids = {
         "revenue_context_missing_inventory_continues_partial_draft",
         "revenue_result_lineage_rejects_generic_cutoff",
         "technical_incremental_wow_exact_previous_metric",
-        "technical_incremental_yoy_unique_denominator",
+        "technical_incremental_yoy_primary_store_precedence",
+        "technical_incremental_yoy_exact_dual_qtd_fallback",
         "prior_year_unavailable_failure_precedence",
     }
     if {item.get("assertion_id") for item in assertions} != expected_assertion_ids:
@@ -4345,30 +4605,665 @@ def validate_stage3a_qualification_status_consistency(
     ):
         require_exact(file, document, path, expected)
 
-    for qualification_key, status_key in (
-        (
-            "stage3b_scope_contract_registered",
-            "current_next_stage_boundary.stage3b_scope_contract_registered",
-        ),
-        (
-            "stage3b_authorized",
-            "current_next_stage_boundary.stage3b_authorized",
-        ),
-    ):
+    require_match(
+        qualification_path,
+        qualification,
+        "governance_boundaries.stage3b_scope_contract_registered",
+        status_index_path,
+        status_index,
+        "current_next_stage_boundary.stage3b_scope_contract_registered",
+    )
+    require_exact(
+        qualification_path,
+        qualification,
+        "governance_boundaries.stage3b_scope_contract_registered",
+        True,
+    )
+    require_match(
+        qualification_path,
+        qualification,
+        "governance_boundaries.stage3b_authorized",
+        status_index_path,
+        status_index,
+        "current_next_stage_boundary.stage3b_authorized",
+    )
+    require_exact(
+        qualification_path,
+        qualification,
+        "governance_boundaries.stage3b_authorized",
+        True,
+    )
+
+    stage3b_scope_path = (
+        "phase1_5/assets/readiness/stage3b_revenue_expansion_exact_scope.yaml"
+    )
+    stage3b_scope = documents.get(stage3b_scope_path)
+    if not isinstance(stage3b_scope, dict):
+        errors.append(f"{stage3b_scope_path}: missing or invalid Stage 3B scope contract")
+    else:
+        for file, document, path, expected in (
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "config_type",
+                "stage_scope_contract",
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "scope_contract_id",
+                "SCOPE_STAGE3B_REVENUE_EXPANSION_V1",
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "scope_contract_version",
+                "1.0.0",
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "status",
+                "registered_not_authorized",
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "authorization.stage3b_authorized",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "authorization.implementation_may_start",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "authorization.separate_explicit_owner_authorization_required",
+                True,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "authorization.automatic_next_stage_allowed",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.default_modify_business_semantics",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.modify_metric_definitions",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.exception_id",
+                "STAGE3B_TECHNICAL_WEEKLY_YOY_DENOMINATOR_SOURCE_SELECTION",
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.fallback_allowed_when",
+                "primary exact Store Result is truly not_found only",
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.fallback_prohibited_when_primary_is",
+                ["metadata_missing", "ambiguous", "unverified", "invalid"],
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.metric_definition_formula_modified",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.result_contract_modified",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.manifest_business_key_modified",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.status",
+                "stage3b_completed_later_stages_not_authorized",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3b_scope_contract_id",
+                "SCOPE_STAGE3B_REVENUE_EXPANSION_V1",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3b_scope_contract_version",
+                "1.0.0",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3b_scope_contract_status",
+                "registered_not_authorized",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3b_scope_contract_source",
+                stage3b_scope_path,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.separate_owner_authorization_required",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3b_authorization_received",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3b_implementation_started",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3b_implementation_completed",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3b_exit_qualification_passed",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3b_completed",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.status",
+                "implementation_completed_exit_qualified",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.scope_contract_id",
+                "SCOPE_STAGE3B_REVENUE_EXPANSION_V1",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.scope_contract_version",
+                "1.0.0",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.owner_authorization_received",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.implementation_authorized",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.implementation_started",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.implementation_completed",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.exit_qualification_passed",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.stage3b_completed",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.implementation_code_changed",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.explicit_exclusions_unchanged",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.runtime_acceptance_authorized",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.baseline_promotion_or_refreeze_authorized",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.physical_lineage_binding_reconciliation.status",
+                "resolved_registered_and_synthetic_validated",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.physical_lineage_binding_reconciliation.owner_decision_required",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.physical_lineage_binding_reconciliation.frozen_contracts_modified",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.static_value_excel_metric_store_adapter_increment.status",
+                "implemented_and_synthetic_validated",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.static_value_excel_metric_store_adapter_increment.result_contract_wow_persisted_to_physical_store",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.static_value_excel_metric_store_adapter_increment.technical_and_ctv_formula_capable_write_status",
+                "implemented_and_validated",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.static_value_excel_metric_store_adapter_increment.owner_decision_required",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.static_value_excel_metric_store_adapter_increment.frozen_contracts_modified",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.status",
+                "implemented_and_synthetic_validated",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.authority_reconciliation_classification",
+                "authority_exists_but_unregistered",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.authority_registration_corrected",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.complete_quarter_equivalence_allowed_for_prior_year_qtd",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.metric_store_port_only_for_historical_read_write_verify",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.owner_decision_required",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.scope_contract_evidence_aligned",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.primary_not_found_fallback_error_codes",
+                [
+                    "STORE_EXACT_BUSINESS_DATE_NOT_FOUND",
+                    "STORE_EXCEL_LINEAGE_BUSINESS_DATE_KEY_NOT_FOUND",
+                ],
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.non_not_found_fallback_prohibited",
+                ["metadata_missing", "ambiguous", "unverified", "invalid"],
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.frozen_business_semantics_modified",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.stage3c_authorized",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.synthetic_pipeline_test_count",
+                9,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.status",
+                "implemented_and_synthetic_validated",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.provider_acquisition_implemented",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.provider_dependent_repair_query_implemented",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.unknown_source_field_handling",
+                "owner_notification_and_completed_with_warning",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.confirmed_field_processing_continues_on_unknown_source_field",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.frozen_business_semantics_modified",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.synthetic_pipeline_test_count",
+                5,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.status",
+                "passed_for_stage3b_implementation_scope_only",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.full_repository_regression_status",
+                "passed",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.revenue_execution_and_store_synthetic_test_count",
+                78,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.pr17_merge_fix_evidence.status",
+                "passed",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.pr17_merge_fix_evidence.full_repository_regression_reexecuted",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.pr17_merge_fix_evidence.ctv_qualification_reexecuted",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.pr17_merge_fix_evidence.runtime_consistency_reexecuted",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.technical_real_data_calculation_qualification.status",
+                "passed",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.ctv_real_data_calculation_qualification.status",
+                "passed_reused_stage3a_evidence",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.smart_speaker_fast_version_real_data_source_to_result_qualification.status",
+                "not_executed",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.smart_speaker_fast_version_real_data_source_to_result_qualification.stage3b_exit_requirement",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.local_source_values_or_fingerprints_recorded_in_git",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.real_metric_store_write_run",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.provider_query_run",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.runtime_acceptance_implication",
+                "none",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.automatic_next_stage_allowed",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.stage3c_authorized",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.provider_authorized",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.scheduler_or_queue_authorized",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.draft_or_send_authorized",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.cutover_authorized",
+                False,
+            ),
+        ):
+            require_exact(file, document, path, expected)
+
         require_match(
+            stage3b_scope_path,
+            stage3b_scope,
+            "scope_contract_id",
             qualification_path,
             qualification,
-            f"governance_boundaries.{qualification_key}",
-            status_index_path,
-            status_index,
-            status_key,
+            "governance_boundaries.stage3b_scope_contract_id",
         )
+        require_match(
+            stage3b_scope_path,
+            stage3b_scope,
+            "status",
+            qualification_path,
+            qualification,
+            "governance_boundaries.stage3b_scope_contract_status",
+        )
+
+        expected_pipeline_scope = [
+            "PL_REVENUE_TECHNICAL_WEEKLY",
+            "PL_REVENUE_CTV_WEEKLY",
+            "PL_REVENUE_SMART_SPEAKER_WEEKLY",
+            "PL_REVENUE_FAST_VERSION_WEEKLY",
+        ]
         require_exact(
-            qualification_path,
-            qualification,
-            f"governance_boundaries.{qualification_key}",
-            False,
+            stage3b_scope_path,
+            stage3b_scope,
+            "included_scope.pipeline_business_execution_slices",
+            expected_pipeline_scope,
         )
+        expected_entry_boundary = [
+            "Begin from local Dataset inputs explicitly bound by the Run Input Manifest.",
+            "Dataset loading and binding validation are included.",
+            "Mapping is included.",
+            "Standardization and validation are included.",
+            "Business Rule execution is included.",
+            "Metric and Metric Variant execution are included.",
+            "Result Contract assembly and validation are included.",
+        ]
+        require_exact(
+            stage3b_scope_path,
+            stage3b_scope,
+            "included_scope.execution_entry_boundary",
+            expected_entry_boundary,
+        )
+
+        business_line_mapping_path = (
+            "phase1_5/assets/field_mappings/"
+            "MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1.yaml"
+        )
+        business_line_mapping = documents.get(business_line_mapping_path, {})
+        for path, expected in (
+            (
+                "source_schema.unknown_source_field_policy",
+                "notify_and_request_owner_confirmation_without_blocking",
+            ),
+            ("validation.unknown_field_validation_required", True),
+            ("validation.new_raw_field_policy.notify_owner", True),
+            (
+                "validation.new_raw_field_policy.block_confirmed_field_processing",
+                False,
+            ),
+            ("validation.new_raw_field_policy.automatic_registration_allowed", False),
+            ("validation.new_raw_field_policy.automatic_mapping_allowed", False),
+        ):
+            require_exact(
+                business_line_mapping_path,
+                business_line_mapping,
+                path,
+                expected,
+            )
+
+        exclusions = nested_value(stage3b_scope, "explicit_exclusions")
+        required_exclusions = {
+            "Provider acquisition",
+            "Provider capability validation",
+            "Provider-dependent repair query execution",
+            "Runtime Acceptance",
+            "Baseline promotion or refreeze",
+            "Customer Revenue Detail Workflow",
+        }
+        if not isinstance(exclusions, list) or not required_exclusions.issubset(
+            set(exclusions)
+        ):
+            errors.append(
+                f"{stage3b_scope_path}:explicit_exclusions: missing fail-closed "
+                "Stage 3B exclusions"
+            )
+        checked += 1
 
     for status_path in (
         "stage3a_ctv_vertical_slice_implementation.automatic_next_stage_allowed",

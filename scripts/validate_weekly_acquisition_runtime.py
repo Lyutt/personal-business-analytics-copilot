@@ -17,6 +17,7 @@ DATASETS = ROOT / "phase1_5/assets/datasets/dataset_inventory.yaml"
 PIPELINES = ROOT / "phase1_5/assets/pipelines/pipeline_registry.yaml"
 STAGE2 = ROOT / "phase1_5/assets/readiness/weekly_acquisition_stage2_implementation_status.yaml"
 STATUS_INDEX = ROOT / "phase1_5/assets/readiness/status_index.yaml"
+STORE_REGISTRY = ROOT / "phase1_5/assets/metric_stores/metric_result_store_registry.yaml"
 
 CORE_INTERFACES = [
     "workflow_run_context",
@@ -43,6 +44,7 @@ def main() -> int:
     old = load(OLD_RUNTIME)
     new = load(STAGE2_RUNTIME)
     active = load(ACTIVE_RUNTIME)
+    store_registry = load(STORE_REGISTRY)
     extension = load(EXTENSION)
     datasets = load(DATASETS)
     pipelines = load(PIPELINES)
@@ -280,11 +282,80 @@ def main() -> int:
     assert active_index["runtime_acceptance_authorized"] is False
     assert active_index["automatic_next_stage_allowed"] is False
     assert status_index["current_stage"] == (
-        "Stage 3A CTV Vertical Slice and Local Real-Data Calculation Qualification Completed"
+        "Stage 3B Revenue Expansion Implementation Completed - Exit Qualified; Later Stages Not Authorized"
     )
     assert status_index["phase_status"]["code_implementation"] == (
-        "stage3a_ctv_vertical_slice_completed_and_merged"
+        "stage3b_revenue_expansion_completed_exit_qualified"
     )
+    stage3b = status_index["stage3b_revenue_expansion_implementation"]
+    assert stage3b["scope_contract_id"] == "SCOPE_STAGE3B_REVENUE_EXPANSION_V1"
+    assert stage3b["scope_contract_version"] == "1.0.0"
+    assert stage3b["owner_authorization_received"] is True
+    assert stage3b["implementation_authorized"] is True
+    assert stage3b["implementation_completed"] is True
+    assert stage3b["implementation_code_changed"] is True
+    assert stage3b["explicit_exclusions_unchanged"] is True
+    assert stage3b["runtime_acceptance_authorized"] is False
+    assert stage3b["baseline_promotion_or_refreeze_authorized"] is False
+    assert stage3b["automatic_next_stage_allowed"] is False
+    reconciliation = stage3b["store_contract_evidence_reconciliation"]
+    assert reconciliation["status"] == "resolved_by_owner_decision"
+    assert reconciliation["technical_store_only_helper_fields"] == ["G", "I"]
+    assert reconciliation["technical_quarter_transition_blank_not_applicable_columns"] == [
+        "H",
+        "K",
+        "L",
+    ]
+    assert reconciliation["owner_decision_required"] is False
+    physical_reconciliation = stage3b["physical_lineage_binding_reconciliation"]
+    assert physical_reconciliation["status"] == (
+        "resolved_registered_and_synthetic_validated"
+    )
+    assert physical_reconciliation["root_cause_classification"] == (
+        "missing_physical_lineage_binding_not_missing_business_rule"
+    )
+    assert physical_reconciliation["adapter_technical_metadata_only"] is True
+    assert physical_reconciliation["business_value_storage_allowed"] is False
+    assert physical_reconciliation["owner_decision_required"] is False
+    static_adapter = stage3b["static_value_excel_metric_store_adapter_increment"]
+    assert static_adapter["status"] == "implemented_and_synthetic_validated"
+    assert static_adapter["applicable_store_assets"] == [
+        "STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER",
+        "STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION",
+    ]
+    assert static_adapter["result_contract_wow_persisted_to_physical_store"] is False
+    assert static_adapter["technical_and_ctv_formula_capable_write_status"] == (
+        "implemented_and_validated"
+    )
+    assert static_adapter["owner_decision_required"] is False
+    assert static_adapter["frozen_contracts_modified"] is False
+    business_lines = stage3b[
+        "smart_speaker_fast_version_business_execution_increment"
+    ]
+    assert business_lines["status"] == "implemented_and_synthetic_validated"
+    assert business_lines["provider_acquisition_implemented"] is False
+    assert business_lines["provider_dependent_repair_query_implemented"] is False
+    qualification = stage3b["revenue_pipeline_exit_qualification"]
+    assert qualification["status"] == "passed_for_stage3b_implementation_scope_only"
+    assert qualification["full_repository_regression_status"] == "passed"
+    assert qualification["real_metric_store_write_run"] is False
+    assert qualification["provider_query_run"] is False
+    assert qualification["runtime_acceptance_implication"] == "none"
+    assert qualification["automatic_next_stage_allowed"] is False
+    revenue_store = next(
+        item
+        for item in store_registry["metric_result_stores"]
+        if item["store_id"] == "STORE_WEEKLY_REVENUE_HISTORICAL"
+    )
+    physical_binding = revenue_store["revenue_date_lineage_contract"][
+        "physical_lineage_binding"
+    ]
+    assert physical_binding["binding_status"] == "registered"
+    assert physical_binding["metadata_worksheet_name"] == (
+        "_pbac_metric_store_metadata"
+    )
+    assert physical_binding["adapter_technical_metadata_only"] is True
+    assert physical_binding["business_value_storage_allowed"] is False
     assert status_index["phase_status"]["stage_2_5_governance_sync"] == "synchronized"
     assert status_index["scope_boundaries"]["code_implementation_owner_approved"] is True
     assert status_index["implementation_baseline"]["baseline_version"] == "1.0.0"

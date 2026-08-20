@@ -584,6 +584,12 @@ def main() -> int:
     for rule_id, rule in weekly_active_rules.items():
         assert set(canonical_bindings[rule_id]) == set(rule["inputs"]["required_context_fields"])
         assert all(binding["lock"] for binding in canonical_bindings[rule_id].values())
+    expected_comparable_qtd_fields = [
+        "business_line_level_1",
+        "fiscal_quarter",
+        "performance_revenue_amount",
+        "executed_revenue_amount",
+    ]
     expected_primary_fields = [
         "revenue_business_line",
         "fiscal_quarter",
@@ -600,8 +606,28 @@ def main() -> int:
     ]
     primary_mapped_fields = {item["standard_field_id"] for item in primary_business_line_mapping["field_mappings"]}
     fallback_mapped_fields = {item["standard_field_id"] for item in fallback_business_line_mapping["field_mappings"]}
-    assert weekly_comparable_rule["inputs"]["required_standard_fields"] == expected_primary_fields
-    assert weekly_comparable_rule["inputs"]["required_mapping_profile_id"] == primary_business_line_mapping["mapping_profile_id"]
+    detailed_qtd_mapped_fields = {
+        item["standard_field_id"] for item in rolling_deck_mapping["field_mappings"]
+    }
+    assert (
+        weekly_comparable_rule["inputs"]["required_standard_fields"]
+        == expected_comparable_qtd_fields
+    )
+    assert (
+        weekly_comparable_rule["inputs"]["required_mapping_profile_id"]
+        == rolling_deck_mapping["mapping_profile_id"]
+    )
+    assert set(expected_comparable_qtd_fields).issubset(detailed_qtd_mapped_fields)
+    technical_binding = weekly_comparable_rule["technical_qtd_eligibility_binding"]
+    assert technical_binding["semantic_authority_rule_id"] == technical_rule["rule_id"]
+    assert technical_binding["input_role"] == "prior_year_comparable"
+    assert technical_binding["source_standard_fields"] == {
+        "performance": "performance_revenue_amount",
+        "executed": "executed_revenue_amount",
+    }
+    assert technical_binding["source_raw_field_independence_required"] is True
+    assert technical_binding["complete_quarter_business_line_equivalence_allowed"] is False
+    assert technical_binding["registration_status"] == "registered"
     source_role_fields = weekly_previous_quarter_rule["inputs"]["required_standard_fields_by_source_role"]
     assert source_role_fields["primary"]["fields"] == expected_primary_fields
     assert source_role_fields["fallback"]["fields"] == expected_fallback_fields
@@ -710,7 +736,8 @@ def main() -> int:
         "revenue_context_missing_inventory_continues_partial_draft",
         "revenue_result_lineage_rejects_generic_cutoff",
         "technical_incremental_wow_exact_previous_metric",
-        "technical_incremental_yoy_unique_denominator",
+        "technical_incremental_yoy_primary_store_precedence",
+        "technical_incremental_yoy_exact_dual_qtd_fallback",
         "prior_year_unavailable_failure_precedence",
     }
     partial_case = revenue_assertions["revenue_context_missing_inventory_continues_partial_draft"]
@@ -756,11 +783,27 @@ def main() -> int:
     }
     assert yoy_dependency["metric_variant_id"] == incremental_id
     assert yoy_dependency["store_asset_id"] == "STORE_ASSET_WEEKLY_REVENUE_TECHNICAL"
-    assert yoy_dependency["owner_confirmation"] == "confirmed_option_A_2026-08-09"
+    assert yoy_dependency["owner_confirmation"] == "confirmed_primary_store_result_with_exact_dual_qtd_reconstruction_fallback_2026-08-20"
     assert yoy_dependency["unique_source_required"] is True
     assert yoy_dependency["qtd_or_full_quarter_executed_revenue_amount_equivalence_allowed"] is False
-    assert revenue_assertions["technical_incremental_yoy_unique_denominator"]["expected_result"]["selected_source_count"] == 1
-    assert revenue_assertions["technical_incremental_yoy_unique_denominator"]["expected_result"]["qtd_or_full_quarter_equivalence_allowed"] is False
+    yoy_fallback = yoy_dependency["fallback_reconstruction"]
+    assert yoy_fallback["allowed_when"] == "primary_exact_store_result_not_found_only"
+    assert yoy_fallback["reconstruction_metric_variant_id"] == incremental_id
+    assert yoy_fallback["exact_date_and_validated_lineage_required"] is True
+    assert yoy_fallback["nearby_date_or_row_order_fallback_allowed"] is False
+    assert yoy_fallback["rounded_value_or_fuzzy_inference_allowed"] is False
+    assert revenue_assertions["technical_incremental_yoy_primary_store_precedence"]["expected_result"] == {
+        "selected_source": "validated_prior_year_incremental_metric",
+        "reconstruction_used": False,
+        "metric_variant_id": incremental_id,
+        "store_asset_id": "STORE_ASSET_WEEKLY_REVENUE_TECHNICAL",
+    }
+    assert revenue_assertions["technical_incremental_yoy_exact_dual_qtd_fallback"]["expected_result"] == {
+        "selected_source": "deterministic_dual_qtd_reconstruction",
+        "formula_metric_variant_id": incremental_id,
+        "exact_snapshots_required": True,
+        "nearby_or_fuzzy_fallback_used": False,
+    }
 
     revenue_store = next(item for item in store["metric_result_stores"] if item["store_id"] == "STORE_WEEKLY_REVENUE_HISTORICAL")
     assert revenue_store["revenue_date_lineage_contract"]["required_fields"] == ["workflow_reporting_date", "current_revenue_cutoff_date"]

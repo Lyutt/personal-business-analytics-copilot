@@ -34,6 +34,32 @@ class StoreBusinessDateReadKey:
 
 
 @dataclass(frozen=True)
+class StorePhysicalSnapshotReadKey:
+    """Exact technical read identity for a registered physical helper snapshot."""
+
+    store_id: str
+    store_asset_id: str
+    field_id: str
+    workflow_reporting_date: str
+    business_context_id: str
+
+
+@dataclass(frozen=True)
+class StorePhysicalSnapshot:
+    """Validated physical snapshot exposed through MetricStorePort without becoming a Result field."""
+
+    read_key: StorePhysicalSnapshotReadKey
+    metric_variant_id: str
+    period_role: str
+    represented_business_date: str
+    value: Decimal
+    numeric_semantics: str
+    unit: str
+    validation_status: str
+    lineage_references: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class StoreWriteIdentity:
     """Frozen Revenue duplicate identity based on the Store business date."""
 
@@ -98,11 +124,28 @@ class MetricStoreRecord:
 
 
 @dataclass(frozen=True)
+class StorePhysicalValue:
+    """Adapter-only validated value required by a physical Store schema."""
+
+    field_id: str
+    value: Decimal
+
+
+@dataclass(frozen=True)
+class StoreWriteContext:
+    """Physical write context that never expands logical Result Contract semantics."""
+
+    report_mode: str
+    physical_values: tuple[StorePhysicalValue, ...] = ()
+
+
+@dataclass(frozen=True)
 class StoreWritePlan:
     write_identity: StoreWriteIdentity
     records: tuple[MetricStoreRecord, ...]
     business_digest: str
     idempotent_replay: bool
+    physical_write_context: StoreWriteContext | None = None
 
 
 @dataclass(frozen=True)
@@ -123,7 +166,15 @@ class MetricStorePort(Protocol):
         self, key: StoreBusinessDateReadKey
     ) -> MetricStoreRecord: ...
 
-    def preflight_write(self, records: tuple[MetricStoreRecord, ...]) -> StoreWritePlan: ...
+    def read_exact_physical_snapshot(
+        self, key: StorePhysicalSnapshotReadKey
+    ) -> StorePhysicalSnapshot: ...
+
+    def preflight_write(
+        self,
+        records: tuple[MetricStoreRecord, ...],
+        physical_write_context: StoreWriteContext | None = None,
+    ) -> StoreWritePlan: ...
 
     def write_validated(self, plan: StoreWritePlan) -> StoreWriteReceipt: ...
 
@@ -159,9 +210,15 @@ class InMemoryMetricStore:
 
     def __init__(self) -> None:
         self._verified: dict[StoreReadKey, list[MetricStoreRecord]] = {}
+        self._physical_snapshots: dict[
+            StorePhysicalSnapshotReadKey, list[StorePhysicalSnapshot]
+        ] = {}
         self._pending: dict[StoreWriteIdentity, tuple[MetricStoreRecord, ...]] = {}
         self._verification_failures: set[
-            StoreReadKey | StoreBusinessDateReadKey | StoreWriteIdentity
+            StoreReadKey
+            | StoreBusinessDateReadKey
+            | StorePhysicalSnapshotReadKey
+            | StoreWriteIdentity
         ] = set()
 
     def seed_historical(self, *records: MetricStoreRecord) -> None:
@@ -170,8 +227,18 @@ class InMemoryMetricStore:
         for record in records:
             self._verified.setdefault(record.read_key, []).append(record)
 
+    def seed_physical_snapshot(self, *snapshots: StorePhysicalSnapshot) -> None:
+        """Seed explicitly validated synthetic physical snapshots for port tests."""
+
+        for snapshot in snapshots:
+            self._physical_snapshots.setdefault(snapshot.read_key, []).append(snapshot)
+
     def force_verification_failure(
-        self, key: StoreReadKey | StoreBusinessDateReadKey | StoreWriteIdentity
+        self,
+        key: StoreReadKey
+        | StoreBusinessDateReadKey
+        | StorePhysicalSnapshotReadKey
+        | StoreWriteIdentity,
     ) -> None:
         """Test-only fault injection without expanding the Store Port."""
 
@@ -229,7 +296,43 @@ class InMemoryMetricStore:
             )
         return record
 
-    def preflight_write(self, records: tuple[MetricStoreRecord, ...]) -> StoreWritePlan:
+    def read_exact_physical_snapshot(
+        self, key: StorePhysicalSnapshotReadKey
+    ) -> StorePhysicalSnapshot:
+        if key in self._verification_failures:
+            raise MetricStoreError(
+                "STORE_EXACT_PHYSICAL_SNAPSHOT_NOT_VERIFIED",
+                "Exact physical snapshot failed verification",
+            )
+        matches = self._physical_snapshots.get(key, [])
+        if not matches:
+            raise MetricStoreError(
+                "STORE_EXACT_PHYSICAL_SNAPSHOT_NOT_FOUND",
+                f"No validated physical snapshot exists for exact key {key}",
+            )
+        if len(matches) != 1:
+            raise MetricStoreError(
+                "STORE_EXACT_PHYSICAL_SNAPSHOT_AMBIGUOUS",
+                "More than one validated physical snapshot exists for the exact key",
+            )
+        snapshot = matches[0]
+        if (
+            snapshot.validation_status != "passed"
+            or not isinstance(snapshot.value, Decimal)
+            or not snapshot.value.is_finite()
+            or not snapshot.lineage_references
+        ):
+            raise MetricStoreError(
+                "STORE_PHYSICAL_SNAPSHOT_NOT_CONSUMABLE",
+                "Historical physical snapshot is not validation/value eligible",
+            )
+        return snapshot
+
+    def preflight_write(
+        self,
+        records: tuple[MetricStoreRecord, ...],
+        physical_write_context: StoreWriteContext | None = None,
+    ) -> StoreWritePlan:
         if not records:
             raise MetricStoreError(
                 "STORE_WRITE_SET_INCOMPLETE", "Validated Result Contract write set is empty"
@@ -271,7 +374,9 @@ class InMemoryMetricStore:
         if existing:
             existing_records = tuple(existing)
             if _business_digest(existing_records) == digest:
-                return StoreWritePlan(identity, records, digest, True)
+                return StoreWritePlan(
+                    identity, records, digest, True, physical_write_context
+                )
             raise MetricStoreError(
                 "STORE_DUPLICATE_CONFLICT",
                 "Revenue business date already contains a different validated result set",
@@ -282,7 +387,7 @@ class InMemoryMetricStore:
                 "STORE_DUPLICATE_CONFLICT",
                 "Revenue business date already contains a different unverified candidate set",
             )
-        return StoreWritePlan(identity, records, digest, False)
+        return StoreWritePlan(identity, records, digest, False, physical_write_context)
 
     def write_validated(self, plan: StoreWritePlan) -> StoreWriteReceipt:
         if _business_digest(plan.records) != plan.business_digest:

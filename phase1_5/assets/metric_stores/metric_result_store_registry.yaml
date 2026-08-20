@@ -119,6 +119,48 @@ metric_result_stores:
       current_revenue_cutoff_date_semantics: actual Revenue business-data cutoff represented by the validated result
       exact_previous_period_lookup: workflow_reporting_date exactly equals expected_previous_revenue_workflow_reporting_date
       older_successful_period_fallback_allowed: false
+      physical_lineage_binding:
+        binding_status: registered
+        binding_scope: Revenue Excel Historical Store Adapter
+        metadata_worksheet_name: _pbac_metric_store_metadata
+        metadata_worksheet_visibility: veryHidden
+        adapter_technical_metadata_only: true
+        business_output_or_source_dataset: false
+        business_semantics_authority: none
+        business_value_storage_allowed: false
+        record_grain: one metric result lineage binding per physical business row
+        required_columns:
+          - schema_version
+          - store_id
+          - store_asset_id
+          - business_context_id
+          - metric_variant_id
+          - workflow_reporting_date
+          - current_revenue_cutoff_date
+          - physical_worksheet
+          - physical_row
+          - business_date_column
+          - result_id
+          - validation_status
+          - business_digest
+        exact_reporting_date_read_sequence:
+          - Match exactly one metadata record by StoreReadKey workflow_reporting_date identity.
+          - Read current_revenue_cutoff_date from that selected metadata record; do not derive it from workflow_reporting_date.
+          - Verify the bound physical row business-date cell exactly equals the selected record current_revenue_cutoff_date.
+        exact_business_date_read_sequence:
+          - Match exactly one eligible metadata record by StoreBusinessDateReadKey current_revenue_cutoff_date identity.
+          - Verify the bound physical row business-date cell exactly equals the requested current_revenue_cutoff_date.
+        prohibited_inference:
+          - reporting_date_equals_business_date
+          - reporting_date_plus_or_minus_calendar_offset
+          - weekday_based_business_date_derivation
+          - nearest_date
+          - previous_row
+          - latest_row
+          - worksheet_row_order
+        write_atomicity: business row and technical metadata must be saved and post-write verified as one workbook operation
+        missing_duplicate_or_mismatched_metadata_action: fail closed for the affected Store read or write and notify owner
+        legacy_row_without_metadata: runtime bootstrap required; never infer the missing lineage binding
     storage_type: Excel Workbooks in Fixed Directory
     storage_location: '${LOCAL_WORKFLOW_DATA_ROOT}\分周分业务线业绩收入汇总-存档'
     data_source_boundary: >
@@ -222,6 +264,48 @@ metric_result_stores:
           同一工作簿内不应因补充当周缺失数据而新增相同截止日期记录；
           其他重复日期场景的处理规则仍为TBD。
         observed_column_count: 12
+        physical_column_bindings:
+          A: { field: 数据当周最后一天, role: business_date }
+          B: { field: QTD签单执行金额, metric_variant_id: MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1, period_role: current }
+          C: { field: QTD已执行金额, metric_variant_id: MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1, period_role: current }
+          D: { field: 去年同期QTD签单执行金额, metric_variant_id: MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1, period_role: prior_year_comparable }
+          E: { field: 去年同期QTD已执行金额, metric_variant_id: MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1, period_role: prior_year_comparable }
+          F: { field: QTD签单执行金额同比, metric_variant_id: MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_YOY_V1 }
+          G: { field: 当周新增签单执行金额, role: store_only_helper, formula_semantics: current_QTD_performance_minus_prior_same_quarter_QTD_performance }
+          H: { field: 当周新增已执行金额, metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1 }
+          I: { field: 去年同期周新增签单执行金额, role: store_only_helper, formula_semantics: prior_year_QTD_performance_minus_prior_year_previous_week_QTD_performance }
+          J: { field: 去年同期周新增已执行金额, metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1, period_role: prior_year_comparable }
+          K: { field: 当周新增已执行金额环比, metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_WOW_V1 }
+          L: { field: 当周新增已执行金额同比, metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_YOY_V1 }
+        store_only_helper_authority:
+          owner_decision_date: 2026-08-18
+          confirmed_columns: [G, I]
+          formula_source: existing_authoritative_workbook_qtd_difference_semantics
+          result_contract_fields_created: false
+        prior_year_qtd_executed_snapshot_read:
+          owner_decision_date: 2026-08-20
+          adapter_operation: read_exact_physical_snapshot
+          metric_store_port_required: true
+          physical_field_id: E
+          metric_variant_id: MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1
+          period_role: prior_year_comparable
+          carrier_result_selection: workflow_reporting_date exactly equals expected_previous_revenue_workflow_reporting_date
+          carrier_result_validation_status_required: passed
+          represented_business_date_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+          allowed_usage: deterministic reconstruction of MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1 only when the exact prior-year weekly incremental Store Result is not found
+          prohibited_selection:
+            - nearby_date
+            - previous_row
+            - latest_row
+            - worksheet_row_order
+            - fuzzy_match
+            - formula_pattern_inference
+          adapter_technical_read_only: true
+          result_contract_field_created: false
+        quarter_transition_applicability:
+          authority: RC_REVENUE_TECHNICAL_WEEKLY
+          blank_not_applicable_columns: [H, K, L]
+          historical_formula_instance_may_override_result_contract: false
         current_write_mode: >
           Append a new occurred-week row at the end of the current-quarter
           sequence, using validated base values plus configured Excel formulas.
@@ -234,8 +318,8 @@ metric_result_stores:
             任一字段为空、公式未配置或出现计算错误时，
             暂停写入并通知用户。
           exception: >
-            季度切换首周仅允许已明确确认的字段留空，
-            当前包括“当周新增已执行金额环比”。
+            季度切换首周遵循RC_REVENUE_TECHNICAL_WEEKLY applicability semantics；
+            H、K、L保持blank / not_applicable，不因历史Excel公式实例生成业务数值。
         historical_anomaly_handling:
           classification: runtime-only
           confirmed_scope: only anomalies explicitly documented in this Store Asset contract

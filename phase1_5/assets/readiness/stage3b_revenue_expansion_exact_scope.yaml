@@ -1,0 +1,140 @@
+config_type: stage_scope_contract
+scope_contract_id: SCOPE_STAGE3B_REVENUE_EXPANSION_V1
+scope_contract_version: 1.0.0
+status: registered_not_authorized
+registration_date: 2026-08-18
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+stage: Stage 3B
+stage_name: Revenue Expansion
+owner: WORKFLOW_OWNER
+
+included_scope:
+  pipeline_business_execution_slices:
+    - PL_REVENUE_TECHNICAL_WEEKLY
+    - PL_REVENUE_CTV_WEEKLY
+    - PL_REVENUE_SMART_SPEAKER_WEEKLY
+    - PL_REVENUE_FAST_VERSION_WEEKLY
+  execution_entry_boundary:
+    - Begin from local Dataset inputs explicitly bound by the Run Input Manifest.
+    - Dataset loading and binding validation are included.
+    - Mapping is included.
+    - Standardization and validation are included.
+    - Business Rule execution is included.
+    - Metric and Metric Variant execution are included.
+    - Result Contract assembly and validation are included.
+  reusable_stage3a_foundation:
+    - Existing execution-context and Manifest identity validation patterns.
+    - Existing fail-closed asset composition validation.
+    - Existing Rule and Metric binding patterns.
+    - Existing Result Contract assembly and validation patterns.
+    - Existing MetricStorePort identities and operations.
+    - Existing atomic write-set, idempotency, conflict, and verification behavior.
+    - Existing Stage 3A CTV behavior remains regression-protected.
+  revenue_store_adapter:
+    store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+    adapter_type: Revenue Excel Historical Store Adapter
+    store_asset_ids:
+      - STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
+      - STORE_ASSET_WEEKLY_REVENUE_CTV
+      - STORE_ASSET_WEEKLY_REVENUE_SMART_SPEAKER
+      - STORE_ASSET_WEEKLY_REVENUE_FAST_VERSION
+    mandatory_port_boundary:
+      - Every read from STORE_WEEKLY_REVENUE_HISTORICAL uses MetricStorePort.
+      - Every validated write to STORE_WEEKLY_REVENUE_HISTORICAL uses MetricStorePort.
+      - Every post-write verification for STORE_WEEKLY_REVENUE_HISTORICAL uses MetricStorePort.
+      - Revenue Pipeline executors do not access Revenue historical Store workbooks directly.
+    non_store_historical_inputs:
+      - Existing authoritative historical attachments remain governed by current Pipeline and Rule contracts.
+      - MetricStorePort does not replace attachment or Dataset source authority.
+  frozen_contract_preservation:
+    default_modify_business_semantics: false
+    modify_metric_definitions: false
+    modify_metric_variants_outside_authorized_exception: false
+    modify_result_contracts: false
+    modify_manifest_business_keys: false
+    modify_pipeline_dependencies_outside_authorized_exception: false
+    modify_source_authority_outside_authorized_exception: false
+    owner_authorized_scope_exception:
+      exception_id: STAGE3B_TECHNICAL_WEEKLY_YOY_DENOMINATOR_SOURCE_SELECTION
+      owner_decision_date: 2026-08-20
+      affected_result_field_id: weekly_incremental_executed_revenue_yoy
+      primary_source: exact validated prior-year comparable weekly_incremental_executed_revenue Store Result
+      fallback_source: deterministic reconstruction from two exact authoritative prior-year comparable QTD Executed snapshots
+      fallback_allowed_when: primary exact Store Result is truly not_found only
+      fallback_prohibited_when_primary_is: [metadata_missing, ambiguous, unverified, invalid]
+      metric_definition_formula_modified: false
+      result_contract_modified: false
+      manifest_business_key_modified: false
+      authorized_authority_registration_assets:
+        - phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml
+        - phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml
+        - phase1_5/assets/pipelines/pipeline_registry.yaml
+        - phase1_5/assets/metric_stores/metric_result_store_registry.yaml
+
+explicit_exclusions:
+  - Inventory Pipeline
+  - User Analytics Pipeline
+  - Advertising Pipeline
+  - Shared SQLite Store
+  - Weekly Workflow Runner
+  - Weekly Output and Revenue Section Assembly
+  - Provider acquisition
+  - Provider capability validation
+  - Provider-dependent repair query execution
+  - Scheduler and Queue
+  - Automatic Draft
+  - Outlook Draft
+  - Outlook Send
+  - Runtime Acceptance
+  - Cutover
+  - Baseline promotion or refreeze
+  - Customer Revenue Detail Workflow
+
+exit_criteria:
+  - All four Revenue business-execution slices load their exact existing Pipeline, Rule, Metric Variant, Result Contract, Store, and Manifest bindings without inference.
+  - Each slice produces and validates only its registered Revenue Result Contract.
+  - Existing regular-week and quarter-transition semantics remain unchanged.
+  - The Revenue Excel Historical Store Adapter implements the four registered Store Assets and their existing workbook, worksheet, date, formula, completeness, duplicate, idempotency, lock, save, and re-read contracts.
+  - All Revenue Store reads, validated writes, and post-write verification are observable through MetricStorePort; no Pipeline performs direct Store workbook I/O.
+  - Write failure preserves the already validated Result Contract and applies the existing Store warning and failure semantics.
+  - Stage 3A CTV tests remain passing and new synthetic tests cover all four execution slices and the Excel Adapter without real business data in Git.
+  - Asset-integrity validation confirms the Owner-authorized Technical weekly YoY denominator source-selection and dependency registration is the only scope exception; Metric Definition formula, Result Contract, Manifest business key, and all unrelated business semantics and dependencies remain unchanged.
+  - No excluded component is implemented, activated, validated, or represented as accepted.
+  - Completion does not imply Runtime Acceptance, cutover, baseline promotion, Scheduler activation, Draft activation, or authorization of any later stage.
+
+referenced_authoritative_assets:
+  - phase1_5/assets/readiness/status_index.yaml
+  - phase1_5/assets/readiness/stage3a_ctv_qualification_status.yaml
+  - phase1_5/assets/pipelines/pipeline_registry.yaml
+  - phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml
+  - phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml
+  - phase1_5/assets/result_contracts/RC_REVENUE_TECHNICAL_WEEKLY.yaml
+  - phase1_5/assets/result_contracts/RC_REVENUE_CTV_WEEKLY.yaml
+  - phase1_5/assets/result_contracts/RC_REVENUE_SMART_SPEAKER_WEEKLY.yaml
+  - phase1_5/assets/result_contracts/RC_REVENUE_FAST_VERSION_WEEKLY.yaml
+  - phase1_5/assets/metric_stores/metric_result_store_registry.yaml
+  - phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml
+  - phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml
+  - src/weekly_business_runtime/store.py
+  - src/weekly_business_runtime/ctv_pipeline.py
+  - tests/test_stage3a_ctv_vertical_slice.py
+
+authorization:
+  stage3b_authorized: false
+  implementation_may_start: false
+  separate_explicit_owner_authorization_required: true
+  automatic_next_stage_allowed: false
+  required_owner_authorization_statement: >-
+    I authorize implementation of SCOPE_STAGE3B_REVENUE_EXPANSION_V1 version
+    1.0.0 exactly as registered, with all explicit exclusions unchanged. This
+    authorization does not authorize Runtime Acceptance, Provider acquisition,
+    Provider capability validation, Scheduler or Queue activation, Draft or Send,
+    cutover, or baseline promotion or refreeze.
+
+constraints:
+  scope_registration_does_not_authorize_implementation: true
+  qualification_inference_allowed: false
+  runtime_acceptance_inference_allowed: false
+  baseline_change_allowed: false
+  auto_send: false
+  auto_merge: false

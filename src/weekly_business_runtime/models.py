@@ -18,6 +18,7 @@ class ResultValueStatus(str, Enum):
     VALID_VALUE = "valid_value"
     MISSING = "missing"
     CALCULATION_FAILED = "calculation_failed"
+    NOT_APPLICABLE = "not_applicable"
     PENDING_CONFIRMATION = "pending_confirmation"
 
 
