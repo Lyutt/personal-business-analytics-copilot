@@ -105,6 +105,7 @@ class BusinessLineScenario:
         report_mode: str = "regular_week",
         raw_value: object = "1,000.5",
         seed_history: bool = True,
+        extra_fields: dict[str, object] | None = None,
     ) -> None:
         self.profile = profile
         self.assets = BusinessLineAssetBundle.load(ROOT, profile)
@@ -144,7 +145,10 @@ class BusinessLineScenario:
         row = dict.fromkeys(raw_fields, "")
         mapped_raw = self.assets.mapping["field_mappings"][0]["raw_field_name"]
         row[mapped_raw] = raw_value
-        pd.DataFrame([row], columns=raw_fields).to_csv(self.path, index=False, encoding="utf-8-sig")
+        row.update(extra_fields or {})
+        pd.DataFrame([row], columns=[*raw_fields, *(extra_fields or {})]).to_csv(
+            self.path, index=False, encoding="utf-8-sig"
+        )
         values = self.run.context.values
         self.runtime.declare_input(
             self.run,
@@ -260,6 +264,34 @@ class Stage3BBusinessLineVerticalSliceTests(unittest.TestCase):
                 self.assertEqual(result.execution_status, PipelineExecutionStatus.BLOCKED)
                 self.assertEqual(result.error_code, "STORE_EXACT_KEY_NOT_FOUND")
                 self.assertNotIn("repair", result.lineage_references)
+
+    def test_unknown_source_field_warns_and_preserves_confirmed_processing(self) -> None:
+        for profile in PROFILES:
+            with self.subTest(profile=profile.pipeline_id):
+                result = BusinessLineScenario(
+                    self.root,
+                    profile,
+                    extra_fields={"synthetic_new_source_field": "unmapped"},
+                ).execute()
+                self.assertEqual(
+                    result.execution_status,
+                    PipelineExecutionStatus.COMPLETED_WITH_WARNING,
+                )
+                self.assertEqual(
+                    {warning.code for warning in result.warnings},
+                    {"BUSINESS_LINE_UNKNOWN_SOURCE_FIELDS"},
+                )
+                self.assertIn("Owner notification required", result.warnings[0].message)
+                contract = result.result_contract
+                assert contract is not None
+                self.assertEqual(
+                    contract.field("weekly_executed_revenue").value,
+                    Decimal("1001"),
+                )
+                self.assertEqual(
+                    contract.field("qtd_executed_revenue").value,
+                    Decimal("1301"),
+                )
 
 
 if __name__ == "__main__":

@@ -47,13 +47,29 @@ included_scope:
       - Existing authoritative historical attachments remain governed by current Pipeline and Rule contracts.
       - MetricStorePort does not replace attachment or Dataset source authority.
   frozen_contract_preservation:
-    modify_business_semantics: false
+    default_modify_business_semantics: false
     modify_metric_definitions: false
-    modify_metric_variants: false
+    modify_metric_variants_outside_authorized_exception: false
     modify_result_contracts: false
     modify_manifest_business_keys: false
-    modify_pipeline_dependencies: false
-    modify_source_authority: false
+    modify_pipeline_dependencies_outside_authorized_exception: false
+    modify_source_authority_outside_authorized_exception: false
+    owner_authorized_scope_exception:
+      exception_id: STAGE3B_TECHNICAL_WEEKLY_YOY_DENOMINATOR_SOURCE_SELECTION
+      owner_decision_date: 2026-08-20
+      affected_result_field_id: weekly_incremental_executed_revenue_yoy
+      primary_source: exact validated prior-year comparable weekly_incremental_executed_revenue Store Result
+      fallback_source: deterministic reconstruction from two exact authoritative prior-year comparable QTD Executed snapshots
+      fallback_allowed_when: primary exact Store Result is truly not_found only
+      fallback_prohibited_when_primary_is: [metadata_missing, ambiguous, unverified, invalid]
+      metric_definition_formula_modified: false
+      result_contract_modified: false
+      manifest_business_key_modified: false
+      authorized_authority_registration_assets:
+        - phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml
+        - phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml
+        - phase1_5/assets/pipelines/pipeline_registry.yaml
+        - phase1_5/assets/metric_stores/metric_result_store_registry.yaml
 
 explicit_exclusions:
   - Inventory Pipeline
@@ -82,7 +98,7 @@ exit_criteria:
   - All Revenue Store reads, validated writes, and post-write verification are observable through MetricStorePort; no Pipeline performs direct Store workbook I/O.
   - Write failure preserves the already validated Result Contract and applies the existing Store warning and failure semantics.
   - Stage 3A CTV tests remain passing and new synthetic tests cover all four execution slices and the Excel Adapter without real business data in Git.
-  - Asset-integrity validation confirms no changes to frozen business contracts, Metric Variants, Result Contracts, Manifest business keys, or Pipeline dependencies.
+  - Asset-integrity validation confirms the Owner-authorized Technical weekly YoY denominator source-selection and dependency registration is the only scope exception; Metric Definition formula, Result Contract, Manifest business key, and all unrelated business semantics and dependencies remain unchanged.
   - No excluded component is implemented, activated, validated, or represented as accepted.
   - Completion does not imply Runtime Acceptance, cutover, baseline promotion, Scheduler activation, Draft activation, or authorization of any later stage.
 
@@ -90,6 +106,7 @@ referenced_authoritative_assets:
   - phase1_5/assets/readiness/status_index.yaml
   - phase1_5/assets/readiness/stage3a_ctv_qualification_status.yaml
   - phase1_5/assets/pipelines/pipeline_registry.yaml
+  - phase1_5/assets/business_rules/BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1.yaml
   - phase1_5/assets/metrics/metric_library_revenue_technical_ctv_v1.yaml
   - phase1_5/assets/result_contracts/RC_REVENUE_TECHNICAL_WEEKLY.yaml
   - phase1_5/assets/result_contracts/RC_REVENUE_CTV_WEEKLY.yaml

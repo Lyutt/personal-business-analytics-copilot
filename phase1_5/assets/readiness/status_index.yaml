@@ -364,7 +364,12 @@ stage3b_revenue_expansion_implementation:
     incremental_yoy_denominator_primary_source: exact_validated_prior_year_comparable_weekly_incremental_store_result
     incremental_yoy_denominator_fallback: exact_dual_qtd_executed_reconstruction_on_primary_not_found_only
     prohibited_denominator_fallbacks: [nearby_date, previous_row, rounded_weekly_report_value, fuzzy_match, other_inference]
-    synthetic_pipeline_test_count: 6
+    scope_contract_evidence_aligned: true
+    source_authority_modified_under_owner_authorized_scope_exception: true
+    metric_variant_dependency_modified_under_owner_authorized_scope_exception: true
+    primary_not_found_fallback_error_codes: [STORE_EXACT_BUSINESS_DATE_NOT_FOUND, STORE_EXCEL_LINEAGE_BUSINESS_DATE_KEY_NOT_FOUND]
+    non_not_found_fallback_prohibited: [metadata_missing, ambiguous, unverified, invalid]
+    synthetic_pipeline_test_count: 9
     owner_decision_required: false
     frozen_business_semantics_modified: false
     frozen_metric_definition_modified: false
@@ -385,7 +390,9 @@ stage3b_revenue_expansion_implementation:
     result_contract_wow_persisted_to_physical_store: false
     provider_acquisition_implemented: false
     provider_dependent_repair_query_implemented: false
-    synthetic_pipeline_test_count: 4
+    unknown_source_field_handling: owner_notification_and_completed_with_warning
+    confirmed_field_processing_continues_on_unknown_source_field: true
+    synthetic_pipeline_test_count: 5
     owner_decision_required: false
     frozen_business_semantics_modified: false
   revenue_pipeline_exit_qualification:
@@ -396,7 +403,7 @@ stage3b_revenue_expansion_implementation:
       - PL_REVENUE_CTV_WEEKLY
       - PL_REVENUE_SMART_SPEAKER_WEEKLY
       - PL_REVENUE_FAST_VERSION_WEEKLY
-    revenue_execution_and_store_synthetic_test_count: 74
+    revenue_execution_and_store_synthetic_test_count: 78
     full_repository_regression_test_count: 127
     full_repository_regression_status: passed
     asset_integrity_status: passed
@@ -417,6 +424,22 @@ stage3b_revenue_expansion_implementation:
       status: not_executed
       stage3b_exit_requirement: false
       pipeline_ids: [PL_REVENUE_SMART_SPEAKER_WEEKLY, PL_REVENUE_FAST_VERSION_WEEKLY]
+    pr17_merge_fix_evidence:
+      status: passed
+      assessment_date: 2026-08-20
+      scope_contract_owner_authorized_yoy_source_rule_aligned: true
+      business_line_unknown_field_warning_implemented: true
+      technical_yoy_not_found_only_fallback_enforced: true
+      targeted_new_test_count: 4
+      affected_stage3b_regression_test_count: 14
+      asset_integrity_status: passed
+      final_acceptance_consistency_status: passed
+      scoped_ruff_status: passed
+      git_diff_check_status: passed
+      full_repository_regression_reexecuted: false
+      prior_full_repository_regression_evidence_retained: true
+      ctv_qualification_reexecuted: false
+      runtime_consistency_reexecuted: false
     local_technical_evidence_classification: local_only_outside_git
     local_source_values_or_fingerprints_recorded_in_git: false
     real_metric_store_write_run: false

@@ -3,8 +3,10 @@ from __future__ import annotations
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -20,10 +22,12 @@ from weekly_acquisition_runtime.contracts import (
 )
 from weekly_acquisition_runtime.runtime import AcquisitionRuntime
 from weekly_acquisition_runtime.storage import LocalRuntimeStorage
+from weekly_business_runtime.errors import MetricStoreError
 from weekly_business_runtime.models import PipelineExecutionStatus, ResultValueStatus
 from weekly_business_runtime.store import (
     InMemoryMetricStore,
     MetricStoreRecord,
+    StoreBusinessDateReadKey,
     StorePhysicalSnapshot,
     StorePhysicalSnapshotReadKey,
     StoreReadKey,
@@ -370,6 +374,72 @@ class Stage3BTechnicalVerticalSliceTests(unittest.TestCase):
                 reporting_date="2025-07-23",
                 cutoff_date="2025-07-23",
                 suffix="PRIOR_INCREMENTAL_DUPLICATE",
+            )
+        )
+        result = scenario.execute()
+        field = result.result_contract.field("weekly_incremental_executed_revenue_yoy")
+        self.assertIsNone(field.value)
+        self.assertIs(field.value_status, ResultValueStatus.MISSING)
+        self.assertNotIn(
+            "TECHNICAL_PRIOR_YEAR_INCREMENTAL_RECONSTRUCTED",
+            {warning.code for warning in result.warnings},
+        )
+
+    def test_metadata_missing_primary_does_not_use_qtd_fallback(self) -> None:
+        scenario = TechnicalScenario(self.root, seed_fallback_snapshot=True)
+        with patch.object(
+            scenario.store,
+            "read_exact_business_date",
+            side_effect=MetricStoreError(
+                "STORE_EXCEL_LINEAGE_METADATA_MISSING",
+                "Synthetic physical row has no Adapter metadata",
+            ),
+        ):
+            result = scenario.execute()
+        field = result.result_contract.field("weekly_incremental_executed_revenue_yoy")
+        self.assertIsNone(field.value)
+        self.assertIs(field.value_status, ResultValueStatus.MISSING)
+        self.assertNotIn(
+            "TECHNICAL_PRIOR_YEAR_INCREMENTAL_RECONSTRUCTED",
+            {warning.code for warning in result.warnings},
+        )
+
+    def test_unverified_primary_does_not_use_qtd_fallback(self) -> None:
+        scenario = TechnicalScenario(self.root, seed_fallback_snapshot=True)
+        scenario.store.force_verification_failure(
+            StoreBusinessDateReadKey(
+                STORE_ID,
+                STORE_ASSET_ID,
+                VARIANT_IDS[3],
+                "2025-07-23",
+                BUSINESS_CONTEXT_ID,
+            )
+        )
+        result = scenario.execute()
+        field = result.result_contract.field("weekly_incremental_executed_revenue_yoy")
+        self.assertIsNone(field.value)
+        self.assertIs(field.value_status, ResultValueStatus.MISSING)
+        self.assertNotIn(
+            "TECHNICAL_PRIOR_YEAR_INCREMENTAL_RECONSTRUCTED",
+            {warning.code for warning in result.warnings},
+        )
+
+    def test_invalid_primary_does_not_use_qtd_fallback(self) -> None:
+        scenario = TechnicalScenario(
+            self.root,
+            seed_primary_prior_incremental=False,
+            seed_fallback_snapshot=True,
+        )
+        scenario.store.seed_historical(
+            replace(
+                store_record(
+                    VARIANT_IDS[3],
+                    Decimal("15"),
+                    reporting_date="2025-07-23",
+                    cutoff_date="2025-07-23",
+                    suffix="PRIOR_INCREMENTAL_INVALID",
+                ),
+                validation_status="failed",
             )
         )
         result = scenario.execute()

@@ -4691,6 +4691,54 @@ def validate_stage3a_qualification_status_consistency(
                 False,
             ),
             (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.default_modify_business_semantics",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.modify_metric_definitions",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.exception_id",
+                "STAGE3B_TECHNICAL_WEEKLY_YOY_DENOMINATOR_SOURCE_SELECTION",
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.fallback_allowed_when",
+                "primary exact Store Result is truly not_found only",
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.fallback_prohibited_when_primary_is",
+                ["metadata_missing", "ambiguous", "unverified", "invalid"],
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.metric_definition_formula_modified",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.result_contract_modified",
+                False,
+            ),
+            (
+                stage3b_scope_path,
+                stage3b_scope,
+                "included_scope.frozen_contract_preservation.owner_authorized_scope_exception.manifest_business_key_modified",
+                False,
+            ),
+            (
                 status_index_path,
                 status_index,
                 "current_next_stage_boundary.status",
@@ -4921,6 +4969,27 @@ def validate_stage3a_qualification_status_consistency(
             (
                 status_index_path,
                 status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.scope_contract_evidence_aligned",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.primary_not_found_fallback_error_codes",
+                [
+                    "STORE_EXACT_BUSINESS_DATE_NOT_FOUND",
+                    "STORE_EXCEL_LINEAGE_BUSINESS_DATE_KEY_NOT_FOUND",
+                ],
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.non_not_found_fallback_prohibited",
+                ["metadata_missing", "ambiguous", "unverified", "invalid"],
+            ),
+            (
+                status_index_path,
+                status_index,
                 "stage3b_revenue_expansion_implementation.technical_business_execution_increment.frozen_business_semantics_modified",
                 False,
             ),
@@ -4929,6 +4998,12 @@ def validate_stage3a_qualification_status_consistency(
                 status_index,
                 "stage3b_revenue_expansion_implementation.technical_business_execution_increment.stage3c_authorized",
                 False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.technical_business_execution_increment.synthetic_pipeline_test_count",
+                9,
             ),
             (
                 status_index_path,
@@ -4951,8 +5026,26 @@ def validate_stage3a_qualification_status_consistency(
             (
                 status_index_path,
                 status_index,
+                "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.unknown_source_field_handling",
+                "owner_notification_and_completed_with_warning",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.confirmed_field_processing_continues_on_unknown_source_field",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
                 "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.frozen_business_semantics_modified",
                 False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.smart_speaker_fast_version_business_execution_increment.synthetic_pipeline_test_count",
+                5,
             ),
             (
                 status_index_path,
@@ -4965,6 +5058,36 @@ def validate_stage3a_qualification_status_consistency(
                 status_index,
                 "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.full_repository_regression_status",
                 "passed",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.revenue_execution_and_store_synthetic_test_count",
+                78,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.pr17_merge_fix_evidence.status",
+                "passed",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.pr17_merge_fix_evidence.full_repository_regression_reexecuted",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.pr17_merge_fix_evidence.ctv_qualification_reexecuted",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3b_revenue_expansion_implementation.revenue_pipeline_exit_qualification.pr17_merge_fix_evidence.runtime_consistency_reexecuted",
+                False,
             ),
             (
                 status_index_path,
@@ -5097,6 +5220,32 @@ def validate_stage3a_qualification_status_consistency(
             "included_scope.execution_entry_boundary",
             expected_entry_boundary,
         )
+
+        business_line_mapping_path = (
+            "phase1_5/assets/field_mappings/"
+            "MAP_REVENUE_APOLLO_BUSINESS_LINE_SUMMARY_V1.yaml"
+        )
+        business_line_mapping = documents.get(business_line_mapping_path, {})
+        for path, expected in (
+            (
+                "source_schema.unknown_source_field_policy",
+                "notify_and_request_owner_confirmation_without_blocking",
+            ),
+            ("validation.unknown_field_validation_required", True),
+            ("validation.new_raw_field_policy.notify_owner", True),
+            (
+                "validation.new_raw_field_policy.block_confirmed_field_processing",
+                False,
+            ),
+            ("validation.new_raw_field_policy.automatic_registration_allowed", False),
+            ("validation.new_raw_field_policy.automatic_mapping_allowed", False),
+        ):
+            require_exact(
+                business_line_mapping_path,
+                business_line_mapping,
+                path,
+                expected,
+            )
 
         exclusions = nested_value(stage3b_scope, "explicit_exclusions")
         required_exclusions = {

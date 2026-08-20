@@ -168,13 +168,34 @@ class BusinessLineAssetBundle:
             raise AssetContractError(
                 "BUSINESS_LINE_ASSET_MISMATCH", "Result field bindings are incomplete"
             )
+        new_field_policy = self.mapping.get("validation", {}).get(
+            "new_raw_field_policy", {}
+        )
+        if (
+            self.mapping.get("source_schema", {}).get("unknown_source_field_policy")
+            != "notify_and_request_owner_confirmation_without_blocking"
+            or self.mapping.get("validation", {}).get(
+                "unknown_field_validation_required"
+            )
+            is not True
+            or new_field_policy.get("notify_owner") is not True
+            or new_field_policy.get("automatic_registration_allowed") is not False
+            or new_field_policy.get("automatic_mapping_allowed") is not False
+            or new_field_policy.get("block_confirmed_field_processing") is not False
+        ):
+            raise AssetContractError(
+                "BUSINESS_LINE_UNKNOWN_FIELD_POLICY_MISMATCH",
+                "Unknown source field handling does not match the registered Mapping",
+            )
 
     @property
     def query_template(self) -> str:
         return str(self.pipeline["dataset_dependencies"][0]["query_template_parameter"])
 
 
-def _load_weekly_amount(path: Path, assets: BusinessLineAssetBundle) -> Decimal:
+def _load_weekly_amount(
+    path: Path, assets: BusinessLineAssetBundle
+) -> tuple[Decimal, tuple[ExecutionWarning, ...]]:
     entry = assets.mapping["field_mappings"][0]
     raw_field = entry["raw_field_name"]
     try:
@@ -199,6 +220,25 @@ def _load_weekly_amount(path: Path, assets: BusinessLineAssetBundle) -> Decimal:
         raise DatasetValidationError(
             "BUSINESS_LINE_REQUIRED_MAPPING_MISSING", "Mapped calibrated revenue field is missing"
         )
+    registered_raw_fields = {
+        str(item["raw_field_name"]).strip()
+        for item in assets.mapping["raw_field_inventory"]
+    }
+    unknown_fields = tuple(
+        sorted(set(frame.columns).difference(registered_raw_fields))
+    )
+    warnings = (
+        (
+            ExecutionWarning(
+                "BUSINESS_LINE_UNKNOWN_SOURCE_FIELDS",
+                "Owner notification required; unregistered source fields were ignored "
+                "while confirmed fields continued: "
+                + ", ".join(unknown_fields),
+            ),
+        )
+        if unknown_fields
+        else ()
+    )
     raw_value = frame.iloc[0][raw_field]
     if raw_value is None or pd.isna(raw_value) or not str(raw_value).strip():
         raise DatasetValidationError(
@@ -217,7 +257,7 @@ def _load_weekly_amount(path: Path, assets: BusinessLineAssetBundle) -> Decimal:
             "BUSINESS_LINE_REVENUE_VALUE_INVALID",
             "Metric and Result Contract require revenue greater than zero",
         )
-    return value
+    return value, warnings
 
 
 class BusinessLineRevenuePipelineExecutor:
@@ -252,13 +292,13 @@ class BusinessLineRevenuePipelineExecutor:
             self._validate_manifest(entry, context)
             path = self.acquisition_runtime.consume_bound_input(run, current_input_key)
             references = (entry.local_input_reference,)
-            weekly = _load_weekly_amount(path, self.assets)
+            weekly, input_warnings = _load_weekly_amount(path, self.assets)
             previous_qtd, previous_weekly, history_lineage = self._read_history(context)
             if context.report_mode == "quarter_transition_week":
                 qtd = weekly
                 weekly_value = wow = None
                 weekly_status = wow_status = ResultValueStatus.NOT_APPLICABLE
-                warnings: list[ExecutionWarning] = []
+                warnings = list(input_warnings)
             else:
                 if previous_qtd is None:
                     raise Stage3AError(
@@ -268,7 +308,7 @@ class BusinessLineRevenuePipelineExecutor:
                 qtd = previous_qtd + weekly
                 weekly_value = weekly
                 weekly_status = ResultValueStatus.VALID_VALUE
-                warnings = []
+                warnings = list(input_warnings)
                 if previous_weekly is None or previous_weekly <= 0:
                     wow = None
                     wow_status = ResultValueStatus.MISSING

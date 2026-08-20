@@ -302,7 +302,6 @@ class TechnicalPipelineExecutor:
             if exc.code in {
                 "STORE_EXACT_BUSINESS_DATE_NOT_FOUND",
                 "STORE_EXCEL_LINEAGE_BUSINESS_DATE_KEY_NOT_FOUND",
-                "STORE_EXCEL_LINEAGE_METADATA_MISSING",
             }:
                 return self._reconstruct_prior_year_incremental(
                     context, prior, previous_qtd_record, exc
