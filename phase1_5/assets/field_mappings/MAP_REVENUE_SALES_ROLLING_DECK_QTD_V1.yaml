@@ -28,6 +28,16 @@ scope:
     业务线Sheet已由MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1单独映射；
     其他未确认Sheet保持TBD。
   record_grain_reference: Dataset Inventory
+  usage_contexts:
+    - current_quarter_qtd
+    - prior_year_comparable_qtd
+  prior_year_comparable_qtd_registration:
+    input_role: prior_year_comparable
+    performance_source_mapping_entry_id: FM016
+    executed_source_mapping_entry_id: FM017
+    source_raw_fields_must_be_distinct: true
+    complete_quarter_equivalence_allowed: false
+    registration_status: registered
 
 evidence:
   evidence_sources:

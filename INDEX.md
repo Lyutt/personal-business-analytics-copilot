@@ -7,7 +7,7 @@
 - Weekly 与 Customer 可复用已登记输入资产，但彼此不产生文件、输出、Result Contract、Metric Store、Baseline 或 Gate 依赖。
 - 架构方向：已确认。
 - Phase 1：已确认。
-- 当前正式阶段：`Stage 3A CTV Vertical Slice and Local Real-Data Calculation Qualification Completed`。
+- 当前正式阶段：`Stage 3B Revenue Expansion Completed - Later Stages Not Authorized`。
 - Stage 2 已在 PR #8 完成并合并；Pydantic V2 parity 与 Ruff Phase 1、2A、2B 已在 PR #9–#12 完成并合并；Stage 2.5 治理同步已在 PR #13 合并。
 - Stage 3A CTV vertical slice 已在 PR #14 完成并合并；CTV prior-year source authority 修正已在 PR #15 合并，Stage 3A CTV 专项测试 47/47 PASS。
 - Weekly Business Report Baseline 1.0.0与Customer Revenue Detail Baseline 1.0.0继续作为各自冻结历史基线，不因后续实现被追溯改写。
@@ -19,8 +19,8 @@
 - 历史实现入口Gate：[Code Implementation Readiness Gate](phase1_5/assets/readiness/code_implementation_readiness_gate.yaml)；其记录 pre-Stage 2 审查结论，不代表当前阻断状态。
 - 当前已完成设计资产的Workflow：Weekly Business Report与独立的Customer Revenue Detail；Weekly 已完成 Acquisition Runtime Foundation 与 Stage 3A CTV vertical slice，Customer 仍保持独立未授权状态。
 - Runtime Contract v1.2 当前仅为 active execution/validation candidate，尚未晋级，也未重冻结为新的正式 Baseline。
-- CTV 本地真实数据 calculation qualification 已在两个场景中通过；该结论仅覆盖 calculation scope，不包含生产 Excel Store Adapter、Provider、Store write、Scheduler、Draft 或 Runtime Acceptance。当前仍需完成 Stage 3A governance closure；Stage 3B 尚无已登记范围合同且未授权。
-- Provider capability validation 与 Runtime Acceptance 未开始；Scheduler 与 Automatic Draft 未激活、未授权，`auto_send=false`。
+- Stage 3B Revenue Expansion 已完成 implementation 并通过 exit qualification。Technical 本地真实数据 calculation qualification 为 PASS；CTV 复用 Stage 3A PASS evidence；Smart Speaker / Fast Version real-data Source-to-Result qualification 未执行，且不属于 Stage 3B exit requirement。
+- Runtime Acceptance、Stage 3C、Provider、Scheduler、Draft/Send、Cutover 与 Baseline promotion/refreeze 均未授权，`auto_send=false`。
 
 ## 默认读取顺序
 

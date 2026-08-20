@@ -30,9 +30,8 @@
 - 整体 Personal Business Analytics Copilot 架构：不变。
 - Stage 3A：CTV vertical slice 已完成并合并，CTV prior-year source authority 已修正，专项测试 47/47 PASS。
 - Runtime Contract v1.2 仅作为 active execution/validation candidate；Baseline 1.0.0 与历史 v1.1 Candidate 未被改写，v1.2 未晋级。
-- 当前边界：CTV 本地真实数据 calculation qualification 已在 ordinary-week 与 quarter-transition 场景通过；该结论不包含生产 Excel Store Adapter、Provider、Store write、Scheduler、Draft 或 Runtime Acceptance。当前仍需 Stage 3A governance closure；Stage 3B 尚无已登记范围合同且未授权。
-- Provider capability validation与Runtime Acceptance未开始；端到端MVP运行验收保持Conditional。
-- Scheduler与Automatic Draft未激活、未授权；`auto_send=false`。
+- 当前边界：Stage 3B Revenue Expansion 已完成 implementation 并通过 exit qualification。Technical 本地真实数据 calculation qualification 为 PASS；CTV 复用 Stage 3A PASS evidence；Smart Speaker / Fast Version real-data Source-to-Result qualification 未执行，且不属于 Stage 3B exit requirement。
+- Runtime Acceptance、Stage 3C、Provider、Scheduler、Draft/Send、Cutover 与 Baseline promotion/refreeze 均未授权；端到端 MVP 运行验收保持 Conditional，`auto_send=false`。
 
 ## 已确认架构
 

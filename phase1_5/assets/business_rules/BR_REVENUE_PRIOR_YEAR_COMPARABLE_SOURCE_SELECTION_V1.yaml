@@ -31,12 +31,35 @@ inputs:
     - archive_id: ARCHIVE_REVENUE_ROLLING_DECK_PRIOR_YEAR
       dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
   required_standard_fields:
-    - revenue_business_line
+    - business_line_level_1
     - fiscal_quarter
     - performance_revenue_amount
     - executed_revenue_amount
-  required_mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+  required_mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
   required_result_contract_ids: []
+
+technical_qtd_eligibility_binding:
+  binding_type: prior_year_role_context_adapter
+  semantic_authority_rule_id: BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+  input_role: prior_year_comparable
+  source_mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+  source_standard_fields:
+    performance: performance_revenue_amount
+    executed: executed_revenue_amount
+  source_raw_field_independence_required: true
+  fiscal_quarter_binding: >-
+    Standardized fiscal_quarter must equal the fiscal quarter containing the
+    exact target_prior_year_date selected by this Rule.
+  eligibility_semantics_reused_without_change:
+    business_line_level_1_exact_value: 硬广
+    preserve_signed_amount_original_sign: true
+    preserve_executed_amount_original_sign: true
+    duplicate_rows_retained: true
+    automatic_deduplication_allowed: false
+  complete_quarter_business_line_equivalence_allowed: false
+  runtime_reuse_of_customer_workflow_adapter_allowed: false
+  frozen_semantic_authority_modified: false
+  registration_status: registered
 
 date_relationship:
   applicable_workflow_year: 2026
@@ -98,22 +121,59 @@ validation:
   prior_year_source_failure_may_block_valid_current_period_revenue_results: false
 
 technical_incremental_yoy_denominator_contract:
-  owner_confirmed_option: A
-  source_metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
-  source_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
-  source_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
-  source_period: exact prior-year comparable period selected by this Rule
-  validation_status_required: passed
-  unique_source_required: true
-  business_line_executed_revenue_amount_may_substitute_for_incremental_metric: false
+  owner_decision_date: 2026-08-20
+  source_priority:
+    - exact_validated_prior_year_incremental_store_result
+    - deterministic_reconstruction_from_two_exact_authoritative_qtd_executed_snapshots
+  primary_source:
+    source_metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+    source_store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+    source_store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
+    source_period: exact prior-year comparable period selected by this Rule
+    validation_status_required: passed
+    unique_source_required: true
+  fallback_reconstruction:
+    allowed_when: primary_exact_store_result_not_found_only
+    metric_definition_reused: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+    formula: exact current prior-year QTD Executed snapshot minus exact previous-period prior-year QTD Executed snapshot
+    current_snapshot:
+      source: Run Input Manifest-bound prior_year_comparable Dataset
+      mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+      standard_field_id: executed_revenue_amount
+      business_date: exact target_prior_year_date selected by this Rule
+    previous_snapshot:
+      source: MetricStorePort exact physical snapshot read
+      store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+      store_asset_id: STORE_ASSET_WEEKLY_REVENUE_TECHNICAL
+      physical_field_id: E
+      period_role: prior_year_comparable
+      carrier_reporting_period: exactly equals expected_previous_revenue_workflow_reporting_date
+      represented_business_date: apply this Rule to the carrier Result current_revenue_cutoff_date
+      validated_carrier_result_required: true
+    both_snapshots_exact_and_authoritative_required: true
+    single_qtd_snapshot_substitution_allowed: false
+  fallback_prohibited_when_primary_is:
+    - ambiguous
+    - present_but_unverified
+    - present_but_invalid
+  prohibited_fallbacks:
+    - nearby_date
+    - previous_row
+    - latest_row
+    - rounded_weekly_report_value
+    - fuzzy_match
+    - formula_pattern_inference
+    - other_inference
   missing_or_invalid_action: mark weekly_incremental_executed_revenue_yoy missing, warn owner, and retain valid current-period Revenue fields
 
 dependency_gate:
-  blocking_dependency: 业务线 Sheet incremental Field Mapping
+  blocking_dependency: Detailed QTD Sheet prior-year role Mapping registration
   field_mapping_status: passed
-  field_mapping_gate_id: GATE_FIELD_MAPPING_REVENUE_BUSINESS_LINE_DELTA_V1
+  field_mapping_gate_id: GATE_FIELD_MAPPING_WF_WEEKLY_BUSINESS_REPORT_V1
   rule_approval_allowed_before_dependency_passes: false
-  current_rule_status_reason: Required extraction mapping passed the incremental Field Mapping Gate
+  current_rule_status_reason: >-
+    The exact prior-year QTD snapshot uses the already approved detailed QTD
+    Mapping with independent performance and executed source fields.
 
 governance:
   evidence_sources:
@@ -122,6 +182,16 @@ governance:
     - phase1_5/assets/datasets/dataset_inventory.yaml
     - phase1_5/assets/pipelines/pipeline_registry.yaml
   change_reason: Initial confirmed 2026 prior-year comparable source-selection rule
+  authority_registration_correction:
+    correction_date: 2026-08-20
+    classification: authority_exists_but_unregistered
+    corrected_scope: Technical prior-year comparable QTD performance and executed values
+    prior_incorrect_binding: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
+    corrected_binding: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+    business_semantics_changed: false
+    metric_definitions_changed: false
+    result_contracts_changed: false
+    pipeline_dependency_ids_changed: false
   ctv_authority_correction:
     status: superseded_for_ctv_only
     effective_from: 2026-08-14

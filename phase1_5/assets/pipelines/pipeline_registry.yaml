@@ -187,7 +187,20 @@ pipelines:
         dataset_id: DS_REVENUE_SALES_ROLLING_DECK_QTD
         role: Prior-year comparable Rolling Deck input
         required_for_fields: [qtd_performance_revenue_yoy]
+        required_for_store_physical_fields: [D, E]
         relationship_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+        run_input_manifest_required: true
+        run_input_role: prior_year_comparable
+        mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+        technical_qtd_eligibility_binding:
+          rule_id: BR_REVENUE_TECHNICAL_SINGLE_COUNT_ELIGIBILITY_V1
+          binding_type: prior_year_role_context_adapter
+          fiscal_quarter_source: exact target_prior_year_date selected by relationship_rule_id
+          business_semantics_changed: false
+        physical_store_value_bindings:
+          D: { standard_field_id: performance_revenue_amount, metric_variant_id: MV_REVENUE_TECHNICAL_QTD_PERFORMANCE_V1, period_role: prior_year_comparable }
+          E: { standard_field_id: executed_revenue_amount, metric_variant_id: MV_REVENUE_TECHNICAL_QTD_EXECUTED_V1, period_role: prior_year_comparable }
+        complete_quarter_performance_executed_equivalence_allowed: false
         missing_input_action: >
           仅将依赖该历史源的同比字段标记为missing并通知Owner；
           保留有效的当前QTD Performance与Executed结果，禁止使用相近日期文件替代。
@@ -213,9 +226,25 @@ pipelines:
         exact_metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
         exact_period_selection_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
         validation_status_required: passed
-        owner_confirmed_source_option: A
+        owner_confirmed_source_option: primary_exact_store_result_with_exact_dual_qtd_reconstruction_fallback
         required_for_fields: [weekly_incremental_executed_revenue_yoy]
-        missing_or_invalid_action: Mark only weekly_incremental_executed_revenue_yoy missing, warn owner, and retain valid current-period Revenue fields.
+        fallback_reconstruction:
+          allowed_when: primary_exact_store_result_not_found_only
+          current_snapshot:
+            input_role: prior_year_comparable
+            mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
+            standard_field_id: executed_revenue_amount
+            run_input_manifest_required: true
+          previous_snapshot:
+            dependency_type: Metric Store physical snapshot through MetricStorePort
+            exact_carrier_reporting_date_context_field: expected_previous_revenue_workflow_reporting_date
+            physical_field_id: E
+            period_role: prior_year_comparable
+            represented_business_date_rule_id: BR_REVENUE_PRIOR_YEAR_COMPARABLE_SOURCE_SELECTION_V1
+            validated_carrier_result_required: true
+          formula_metric_variant_id: MV_REVENUE_TECHNICAL_WEEKLY_INCREMENTAL_EXECUTED_V1
+          nearby_date_previous_row_latest_row_or_fuzzy_fallback_allowed: false
+        missing_or_invalid_action: Mark only weekly_incremental_executed_revenue_yoy missing after primary and allowed exact reconstruction are unavailable; warn owner and retain valid current-period Revenue fields.
         business_line_full_quarter_equivalence_allowed: false
 
     execution:
@@ -235,7 +264,7 @@ pipelines:
         - MAP_REVENUE_SALES_ROLLING_DECK_QTD_V1
       conditional_mapping_profile_ids:
         - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QTD_BUSINESS_LINE_V1
-          applies_when: Quarter-transition or prior-year comparable business-line result is required
+          applies_when: Quarter-transition previous-quarter complete business-line result is required
         - mapping_profile_id: MAP_REVENUE_SALES_ROLLING_DECK_QUARTER_CLOSE_BUSINESS_LINE_V1
           applies_when: BR_REVENUE_PREVIOUS_QUARTER_RESULT_SOURCE_SELECTION_V1 selects fallback
       ordered_rule_set_ids:
