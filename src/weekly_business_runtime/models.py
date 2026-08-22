@@ -66,6 +66,39 @@ class CtvResultContractInstance:
 
 
 @dataclass(frozen=True)
+class Stage3CResultContractInstance:
+    """Validated non-Revenue Result Contract produced by a Stage 3C executor."""
+
+    result_contract_id: str
+    result_contract_version: str
+    result_id: str
+    workflow_run_id: str
+    pipeline_run_id: str
+    reporting_period: str
+    business_context_id: str
+    dataset_instance_ids: tuple[str, ...]
+    mapping_profile_versions: Mapping[str, str]
+    business_rule_versions: Mapping[str, str]
+    metric_variant_versions: Mapping[str, str]
+    generated_at: str
+    validation_status: str
+    approval_status: str
+    fields: tuple[ResultFieldValue, ...]
+    record_set: tuple[Mapping[str, Any], ...] = ()
+    product_parameter: str = "not_applicable"
+    workflow_reporting_date: str = "not_applicable"
+    context_values: Mapping[str, Any] = field(default_factory=dict)
+    cutoff_date: str = "not_applicable"
+    report_mode: str = "not_applicable"
+
+    def field(self, field_id: str) -> ResultFieldValue:
+        matches = [field for field in self.fields if field.field_id == field_id]
+        if len(matches) != 1:
+            raise KeyError(field_id)
+        return matches[0]
+
+
+@dataclass(frozen=True)
 class PipelineExecutionResult:
     workflow_run_id: str
     pipeline_id: str
@@ -78,4 +111,6 @@ class PipelineExecutionResult:
     error_message: str = "not_applicable"
     produced_result_contract_reference: str = "not_applicable"
     lineage_references: tuple[str, ...] = ()
-    result_contract: CtvResultContractInstance | None = field(default=None, compare=True)
+    result_contract: CtvResultContractInstance | Stage3CResultContractInstance | None = field(
+        default=None, compare=True
+    )
