@@ -48,6 +48,12 @@ DAU_STORE_ID = "STORE_WEEKLY_USER_ANALYTICS_HISTORICAL"
 _METRIC_VERSION = "1.0.0-draft"
 
 
+@dataclass(frozen=True)
+class _PriorHistory:
+    value: Decimal | None
+    issue: str | None = None
+
+
 def _validate_stage3c_contract(instance: Stage3CResultContractInstance) -> None:
     """Small authority-bound validator for the eight Stage 3C result shapes."""
     required = {
@@ -190,9 +196,29 @@ def _field(field_id: str, variant: str, value: Decimal | None, unit: str, lineag
 
 def _contract(*, contract_id: str, result_id: str, run: RuntimeRun, pipeline_run_id: str, context_id: str, fields: Iterable[ResultFieldValue], generated_at: str, inputs: tuple[str, ...], mappings: Mapping[str, str], rules: Mapping[str, str] = {}, record_set: tuple[Mapping[str, Any], ...] = (), product: str = "not_applicable", context_values: Mapping[str, Any] = {}) -> Stage3CResultContractInstance:
     period = f"{run.context.values['reporting_period_start_date']}..{run.context.values['reporting_period_end_date']}"
-    instance = Stage3CResultContractInstance(contract_id, "1.0.0", result_id, run.context.workflow_run_id, pipeline_run_id, period, context_id, inputs, mappings, rules, {field.metric_variant_id: _METRIC_VERSION for field in fields}, generated_at, "pending_validation", "approved", tuple(fields), record_set, product, str(run.context.values["workflow_reporting_date"]), context_values, str(run.context.values.get("cutoff_date", run.context.values["workflow_reporting_date"])), str(run.context.values.get("report_mode", "regular_week")))
+    try:
+        cutoff_date = str(run.context.values["cutoff_date"])
+        report_mode = str(run.context.values["report_mode"])
+    except (KeyError, TypeError) as exc:
+        raise Stage3AError("STAGE3C_REQUIRED_LINEAGE_UNBOUND", "cutoff_date and report_mode must be explicitly locked in Workflow Run Context") from exc
+    instance = Stage3CResultContractInstance(contract_id, "1.0.0", result_id, run.context.workflow_run_id, pipeline_run_id, period, context_id, inputs, mappings, rules, {field.metric_variant_id: _METRIC_VERSION for field in fields}, generated_at, "pending_validation", "approved", tuple(fields), record_set, product, str(run.context.values["workflow_reporting_date"]), context_values, cutoff_date, report_mode)
     _validate_stage3c_contract(instance)
     return replace(instance, validation_status="passed")
+
+
+def _numeric_metadata(unit: str) -> tuple[str, str]:
+    """The five numeric forms registered for Stage 3C Store writes."""
+    metadata = {
+        "inventory_unit": ("integer_count", "integer"),
+        "impression": ("integer_count", "integer"),
+        "user": ("average_count", "preserve_source_precision"),
+        "decimal_ratio": ("ratio", "preserve_source_precision"),
+        "percentage_point": ("percentage_point_change", "preserve_source_precision"),
+    }
+    try:
+        return metadata[unit]
+    except KeyError as exc:
+        raise MetricStoreError("STAGE3C_NUMERIC_METADATA_UNREGISTERED", "Stage 3C metric unit is not registered for Store persistence") from exc
 
 
 def _persist(result: Stage3CResultContractInstance, *, pipeline_id: str, store_id: str, asset_id: str, store: MetricStorePort, product: str = "not_applicable", extra_records: tuple[MetricStoreRecord, ...] = ()) -> tuple[ExecutionWarning, ...]:
@@ -202,10 +228,10 @@ def _persist(result: Stage3CResultContractInstance, *, pipeline_id: str, store_i
             workflow_run_id=result.workflow_run_id, pipeline_id=pipeline_id, pipeline_run_id=result.pipeline_run_id,
             store_id=store_id, store_asset_id=asset_id, metric_variant_id=field.metric_variant_id,
             metric_variant_version=result.metric_variant_versions[field.metric_variant_id], workflow_reporting_date=result.workflow_reporting_date,
-            current_revenue_cutoff_date=result.workflow_reporting_date, business_context_id=result.business_context_id,
+            current_revenue_cutoff_date="not_applicable", business_context_id=result.business_context_id,
             reporting_period=result.reporting_period, value=field.value or Decimal(0),
-            value_status=field.value_status.value, numeric_semantics=("percentage_point_change" if field.unit == "percentage_point" else "ratio" if field.unit == "decimal_ratio" else "average_count" if field.unit == "user" else "integer_count"),
-            unit=field.unit, precision="preserve_source_precision" if field.unit in {"decimal_ratio", "user"} else "integer", validation_status="passed",
+            value_status=field.value_status.value, numeric_semantics=_numeric_metadata(field.unit)[0],
+            unit=field.unit, precision=_numeric_metadata(field.unit)[1], validation_status="passed",
             generated_at=result.generated_at, lineage_references=field.lineage_references, product_parameter=product,
         ) for field in result.fields if field.value_status is ResultValueStatus.VALID_VALUE and field.value is not None
     ) + extra_records
@@ -229,17 +255,20 @@ def _previous_reporting_date(run: RuntimeRun) -> str:
 def _exact_prior(
     store: MetricStorePort, *, store_id: str, asset_id: str, variant_id: str,
     context_id: str, run: RuntimeRun, product: str = "not_applicable",
-) -> Decimal | None:
+) -> _PriorHistory:
     try:
         if hasattr(store, "read_stage3c_exact"):
             current_start = date.fromisoformat(str(run.context.values["reporting_period_start_date"]))
             current_end = date.fromisoformat(str(run.context.values["reporting_period_end_date"]))
-            return store.read_stage3c_exact(Stage3CPhysicalReadKey(store_id, asset_id, variant_id, _METRIC_VERSION, f"{current_start - timedelta(days=7)}..{current_end - timedelta(days=7)}", context_id, product)).value  # type: ignore[attr-defined]
-        return store.read_exact(StoreReadKey(store_id, asset_id, variant_id, _previous_reporting_date(run), context_id, product)).value
+            return _PriorHistory(store.read_stage3c_exact(Stage3CPhysicalReadKey(store_id, asset_id, variant_id, _METRIC_VERSION, f"{current_start - timedelta(days=7)}..{current_end - timedelta(days=7)}", context_id, product)).value)  # type: ignore[attr-defined]
+        return _PriorHistory(store.read_exact(StoreReadKey(store_id, asset_id, variant_id, _previous_reporting_date(run), context_id, product)).value)
     except MetricStoreError as exc:
-        if exc.code == "STORE_EXACT_KEY_NOT_FOUND":
-            return None
-        raise
+        return _PriorHistory(None, "missing" if exc.code == "STORE_EXACT_KEY_NOT_FOUND" else "invalid_or_ambiguous")
+
+
+def _prior_warning(*, pipeline_id: str, prior: _PriorHistory) -> ExecutionWarning:
+    issue = prior.issue or "invalid_denominator"
+    return ExecutionWarning("STAGE3C_PRIOR_REPAIR_REQUIRED", f"{pipeline_id}: prior historical dependency is {issue}; local repair is unavailable and owner notification is required")
 
 
 class InventoryPipelineExecutor:
@@ -263,9 +292,12 @@ class InventoryPipelineExecutor:
             values = self._calculate(rows if self.profile.kind == "full" else selected, rules)
             if self.profile.kind == "full":
                 values["available_inventory_count"] = self._calculate(selected, rules)["available_inventory_count"]
-            fields = self._fields(values, product, rules, run)
+            fields, prior = self._fields(values, product, rules, run)
             lineage = (entry.local_input_reference, f"mapping-consumed://{self.profile.mapping_id}")
             result = _contract(contract_id=self.profile.contract_id, result_id=f"{pipeline_run_id}:{self.profile.contract_id}", run=run, pipeline_run_id=pipeline_run_id, context_id=self.profile.context_id, fields=fields, generated_at=generated_at, inputs=(entry.local_input_reference,), mappings={self.profile.mapping_id: "1.0.0"}, product=product)
+            if prior.issue is not None or prior.value is not None and prior.value <= 0:
+                warning = _prior_warning(pipeline_id=self.profile.pipeline_id, prior=prior)
+                return PipelineExecutionResult(run.context.workflow_run_id, self.profile.pipeline_id, pipeline_run_id, {"business_context_id": self.profile.context_id, "product": product}, (entry.local_input_reference,), PipelineExecutionStatus.BLOCKED, (warning,), "STAGE3C_PRIOR_REPAIR_REQUIRED", warning.message, result_contract=result)
             zero_warnings = tuple(ExecutionWarning("STAGE3C_INVENTORY_ZERO_FINAL", f"{name} is zero; owner notification required") for name, value in values.items() if value == 0)
             warnings = (*zero_warnings, *_persist(result, pipeline_id=self.profile.pipeline_id, store_id=INVENTORY_STORE_ID, asset_id=self.profile.store_asset_id, store=self.metric_store, product=product))
             return PipelineExecutionResult(run.context.workflow_run_id, self.profile.pipeline_id, pipeline_run_id, {"business_context_id": self.profile.context_id, "product": product}, (entry.local_input_reference,), PipelineExecutionStatus.COMPLETED_WITH_WARNING if warnings else PipelineExecutionStatus.COMPLETED, warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=(*lineage, *(f"metric-store://{result.result_id}" for _ in warnings)), result_contract=result)
@@ -307,20 +339,20 @@ class InventoryPipelineExecutor:
         gross, disabled, brand, performance = total(total_name), total(disabled_name), total(brand_name), total(performance_name)
         return {"gross_inventory_count": gross, "disabled_inventory_count": disabled, "available_inventory_count": gross-disabled, "brand_delivery_inventory_count": brand, "performance_delivery_inventory_count": performance, "commercial_delivery_inventory_count": brand+performance}
 
-    def _fields(self, values: Mapping[str, Decimal], product: str, rules: LocalRuleBindings, run: RuntimeRun) -> tuple[ResultFieldValue, ...]:
+    def _fields(self, values: Mapping[str, Decimal], product: str, rules: LocalRuleBindings, run: RuntimeRun) -> tuple[tuple[ResultFieldValue, ...], _PriorHistory]:
         names = ("GROSS_VOLUME", "DISABLED_VOLUME", "AVAILABLE_VOLUME", "BRAND_DELIVERY_VOLUME", "PERFORMANCE_DELIVERY_VOLUME", "COMMERCIAL_DELIVERY_VOLUME")
         ids = ("gross_inventory_count", "disabled_inventory_count", "available_inventory_count", "brand_delivery_inventory_count", "performance_delivery_inventory_count", "commercial_delivery_inventory_count")
         lineage = (f"mapping-consumed://{self.profile.mapping_id}",)
         fields = [_field(field_id, f"{self.profile.variant_prefix}_{name}_V1", values[field_id], "inventory_unit", lineage) for field_id, name in zip(ids, names, strict=True)]
         available_variant = f"{self.profile.variant_prefix}_AVAILABLE_VOLUME_V1"
         prior_available = _exact_prior(self.metric_store, store_id=INVENTORY_STORE_ID, asset_id=self.profile.store_asset_id, variant_id=available_variant, context_id=self.profile.context_id, run=run, product=product)
-        wow = None if prior_available is None or prior_available <= 0 else values["available_inventory_count"] / prior_available - 1
+        wow = None if prior_available.value is None or prior_available.value <= 0 else values["available_inventory_count"] / prior_available.value - 1
         fields.append(_field("available_inventory_wow", f"{self.profile.variant_prefix}_AVAILABLE_VOLUME_WOW_V1", wow, "decimal_ratio", lineage, status=ResultValueStatus.VALID_VALUE if wow is not None else ResultValueStatus.MISSING))
         if self.profile.kind == "non_patch":
             rules.require("BR_APOLLO_PRODUCT_FILTER_MAPPING")
             if rules.product_route_by_name.get(product) == "brand_moment": fields.append(_field("brand_moment_available_inventory_count", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", values["available_inventory_count"], "inventory_unit", lineage))
             else: fields.append(_field("brand_moment_available_inventory_count", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", None, "inventory_unit", lineage, status=ResultValueStatus.NOT_APPLICABLE))
-        return tuple(fields)
+        return tuple(fields), prior_available
 
 
 class BrandMomentDeliveryExecutor:
@@ -374,12 +406,14 @@ class PlatformDauExecutor:
             average = sum(values, Decimal(0)) / Decimal(7)
             lineage = (entry.local_input_reference, "mapping-consumed://MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1")
             prior = _exact_prior(self.metric_store, store_id=DAU_STORE_ID, asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", variant_id="MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1", context_id=self.context_id, run=run)
-            wow = None if prior is None or prior <= 0 else average / prior - 1
+            wow = None if prior.value is None or prior.value <= 0 else average / prior.value - 1
             fields = (_field("weekly_average_dau", "MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1", average, "user", lineage), _field("weekly_average_dau_wow", "MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1", wow, "decimal_ratio", lineage, status=ResultValueStatus.VALID_VALUE if wow is not None else ResultValueStatus.MISSING))
             daily = tuple({"activity_date": str(row["日期"]), "platform_scope": "full_platform", "dau_count": value} for row, value in sorted(zip(rows, values, strict=True), key=lambda item: str(item[0]["日期"])))
             result = _contract(contract_id="RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY", result_id=f"{pipeline_run_id}:RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=fields, generated_at=generated_at, inputs=(entry.local_input_reference,), mappings={"MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1": "1.0.0"}, record_set=daily)
-            daily_records = tuple(MetricStoreRecord(result_id=f"{result.result_id}:DAU:{item['activity_date']}", workflow_id=WORKFLOW_ID, workflow_run_id=result.workflow_run_id, pipeline_id=self.pipeline_id, pipeline_run_id=result.pipeline_run_id, store_id=DAU_STORE_ID, store_asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", metric_variant_id="MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1", metric_variant_version=_METRIC_VERSION, workflow_reporting_date=result.workflow_reporting_date, current_revenue_cutoff_date=result.workflow_reporting_date, business_context_id=self.context_id, reporting_period=result.reporting_period, value=item["dau_count"], value_status="valid_value", numeric_semantics="integer_count", unit="user", precision="integer", validation_status="passed", generated_at=generated_at, lineage_references=lineage, canonical_dimensions={"activity_date": item["activity_date"], "platform_scope": "full_platform"}) for item in daily)
+            daily_records = tuple(MetricStoreRecord(result_id=f"{result.result_id}:DAU:{item['activity_date']}", workflow_id=WORKFLOW_ID, workflow_run_id=result.workflow_run_id, pipeline_id=self.pipeline_id, pipeline_run_id=result.pipeline_run_id, store_id=DAU_STORE_ID, store_asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", metric_variant_id="MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1", metric_variant_version=_METRIC_VERSION, workflow_reporting_date=result.workflow_reporting_date, current_revenue_cutoff_date="not_applicable", business_context_id=self.context_id, reporting_period=result.reporting_period, value=item["dau_count"], value_status="valid_value", numeric_semantics="integer_count", unit="user", precision="integer", validation_status="passed", generated_at=generated_at, lineage_references=lineage, canonical_dimensions={"activity_date": item["activity_date"], "platform_scope": "full_platform"}) for item in daily)
             warnings = _persist(result, pipeline_id=self.pipeline_id, store_id=DAU_STORE_ID, asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", store=self.metric_store, extra_records=daily_records)
+            if prior.issue is not None or prior.value is not None and prior.value <= 0:
+                warnings = (*warnings, _prior_warning(pipeline_id=self.pipeline_id, prior=prior))
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, (entry.local_input_reference,), PipelineExecutionStatus.COMPLETED_WITH_WARNING if warnings else PipelineExecutionStatus.COMPLETED, warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=lineage, result_contract=result)
         except DatasetValidationError as exc:
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, (), PipelineExecutionStatus.COMPLETED_WITH_WARNING, (ExecutionWarning("STAGE3C_DAU_CONTENT_OMITTED", str(exc)),), produced_result_contract_reference="omitted://invalid-dau-input")
@@ -410,10 +444,13 @@ class BrandMomentSellThroughExecutor:
             rate = impression / available
             prior_available = _exact_prior(self.metric_store, store_id=INVENTORY_STORE_ID, asset_id="STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT", variant_id="MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", context_id="CTX_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", run=run, product=inventory.product_parameter)
             prior_rate = _exact_prior(self.metric_store, store_id=INVENTORY_STORE_ID, asset_id="STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH", variant_id="MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1", context_id=self.context_id, run=run)
-            available_wow = None if prior_available is None or prior_available <= 0 else available / prior_available - 1
-            rate_wow = None if prior_rate is None else (rate - prior_rate) * 100
+            available_wow = None if prior_available.value is None or prior_available.value <= 0 else available / prior_available.value - 1
+            rate_wow = None if prior_rate.value is None else (rate - prior_rate.value) * 100
             fields = (_field("available_inventory_wow", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1", available_wow, "decimal_ratio", lineage, status=ResultValueStatus.VALID_VALUE if available_wow is not None else ResultValueStatus.MISSING), _field("sell_through_rate", "MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1", rate, "decimal_ratio", lineage), _field("sell_through_wow_change_pp", "MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1", rate_wow, "percentage_point", lineage, status=ResultValueStatus.VALID_VALUE if rate_wow is not None else ResultValueStatus.MISSING))
             result = _contract(contract_id="RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY", result_id=f"{pipeline_run_id}:RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=fields, generated_at=generated_at, inputs=lineage, mappings={})
+            if prior_available.issue is not None or prior_rate.issue is not None or prior_available.value is not None and prior_available.value <= 0 or prior_rate.value is not None and prior_rate.value <= 0:
+                warning = _prior_warning(pipeline_id=self.pipeline_id, prior=prior_available if prior_available.issue is not None or prior_available.value is not None and prior_available.value <= 0 else prior_rate)
+                return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, lineage, PipelineExecutionStatus.BLOCKED, (warning,), "STAGE3C_PRIOR_REPAIR_REQUIRED", warning.message, result_contract=result)
             warnings = _persist(result, pipeline_id=self.pipeline_id, store_id=INVENTORY_STORE_ID, asset_id="STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH", store=self.metric_store)
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, lineage, PipelineExecutionStatus.COMPLETED_WITH_WARNING if warnings else PipelineExecutionStatus.COMPLETED, warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=lineage, result_contract=result)
         except Stage3AError as exc:
@@ -443,9 +480,12 @@ class ProductSellThroughExecutor:
             patch = route == "patch"
             rate_variant = "MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1" if patch else "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1"
             prior_rate = _exact_prior(self.metric_store, store_id=INVENTORY_STORE_ID, asset_id="STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH", variant_id=rate_variant, context_id=self.context_id, run=run, product=product)
-            change = None if prior_rate is None else (rate - prior_rate) * 100
+            change = None if prior_rate.value is None else (rate - prior_rate.value) * 100
             fields = (_field("patch_brand_sell_through_rate", "MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1", rate if patch else None, "decimal_ratio", lineage, status=ResultValueStatus.VALID_VALUE if patch else ResultValueStatus.NOT_APPLICABLE), _field("patch_brand_sell_through_wow_change_pp", "MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1", change if patch else None, "percentage_point", lineage, status=ResultValueStatus.VALID_VALUE if patch and change is not None else ResultValueStatus.MISSING if patch else ResultValueStatus.NOT_APPLICABLE), _field("non_patch_product_brand_sell_through_rate", "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1", rate if not patch else None, "decimal_ratio", lineage, status=ResultValueStatus.NOT_APPLICABLE if patch else ResultValueStatus.VALID_VALUE), _field("non_patch_product_brand_sell_through_wow_change_pp", "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1", change if not patch else None, "percentage_point", lineage, status=ResultValueStatus.NOT_APPLICABLE if patch else ResultValueStatus.VALID_VALUE if change is not None else ResultValueStatus.MISSING))
             result = _contract(contract_id="RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", result_id=f"{pipeline_run_id}:RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=fields, generated_at=generated_at, inputs=lineage, mappings={}, rules={"BR_APOLLO_PRODUCT_FILTER_MAPPING": "1.0.0"}, product=product)
+            if prior_rate.issue is not None or prior_rate.value is not None and prior_rate.value <= 0:
+                warning = _prior_warning(pipeline_id=self.pipeline_id, prior=prior_rate)
+                return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, lineage, PipelineExecutionStatus.BLOCKED, (warning,), "STAGE3C_PRIOR_REPAIR_REQUIRED", warning.message, result_contract=result)
             warnings = _persist(result, pipeline_id=self.pipeline_id, store_id=INVENTORY_STORE_ID, asset_id="STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH", store=self.metric_store, product=product)
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, lineage, PipelineExecutionStatus.COMPLETED_WITH_WARNING if warnings else PipelineExecutionStatus.COMPLETED, warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=lineage, result_contract=result)
         except Stage3AError as exc:

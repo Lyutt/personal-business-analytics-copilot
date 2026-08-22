@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from weekly_acquisition_runtime.contracts import BusinessKey
+from weekly_business_runtime.errors import Stage3AError
 from weekly_business_runtime.models import (
     PipelineExecutionStatus,
     ResultFieldValue,
@@ -26,9 +27,10 @@ from weekly_business_runtime.stage3c import (
     LocalRuleBindings,
     PlatformDauExecutor,
     ProductSellThroughExecutor,
+    _contract,
     _validate_stage3c_contract,
 )
-from weekly_business_runtime.store import InMemoryMetricStore
+from weekly_business_runtime.store import InMemoryMetricStore, MetricStoreRecord
 
 
 @dataclass(frozen=True)
@@ -49,6 +51,7 @@ class _Runtime:
 def _run(entries):
     values = {
         "workflow_run_id": "RUN_3C", "workflow_reporting_date": "2026-08-21",
+        "cutoff_date": "2026-08-21", "report_mode": "regular_week",
         "reporting_period_start_date": "2026-08-17", "reporting_period_end_date": "2026-08-23",
         "current_period_start_date": "2026-08-17", "current_period_end_date": "2026-08-23",
         "comparison_period_start_date": "2026-08-10", "comparison_period_end_date": "2026-08-16",
@@ -83,6 +86,18 @@ def _rules():
     )
 
 
+def _seed_prior(store, *, asset, variant, context, product="not_applicable", value=Decimal("4")):
+    record = MetricStoreRecord(
+        result_id=f"PRIOR:{variant}", workflow_id="WF_WEEKLY_BUSINESS_REPORT", workflow_run_id="PRIOR",
+        pipeline_id="PRIOR", pipeline_run_id="PRIOR", store_id="STORE_WEEKLY_INVENTORY_HISTORICAL" if "INVENTORY" in asset else "STORE_WEEKLY_USER_ANALYTICS_HISTORICAL",
+        store_asset_id=asset, metric_variant_id=variant, metric_variant_version="1.0.0-draft",
+        workflow_reporting_date="2026-08-14", current_revenue_cutoff_date="not_applicable", business_context_id=context,
+        reporting_period="2026-08-10..2026-08-16", value=value, value_status="valid_value", numeric_semantics="integer_count",
+        unit="inventory_unit", precision="integer", validation_status="passed", generated_at="now", lineage_references=("fixture://prior",), product_parameter=product,
+    )
+    store.seed_historical(record)
+
+
 @pytest.mark.parametrize("profile,row,product", [
     (FULL_SITE, {"广告位ID": "full", "是否VIP": "vip", "库存": "10", "禁用库存": "2", "品牌商广整体投放库存": "3", "效果投放库存": "4"}, "not_applicable"),
     (PATCH, {"时段片ID": "keep", "库存": "10", "禁用库存": "2", "品牌投放库存": "3", "效果投放库存": "4"}, "not_applicable"),
@@ -92,7 +107,9 @@ def test_inventory_executors_are_manifest_bound_and_persist(tmp_path, profile, r
     key = _key(profile.dataset_id, product=product)
     path = _input(tmp_path, profile.kind, [row])
     run = _run({key: _Entry(f"fixture://{profile.kind}")})
-    result = InventoryPipelineExecutor(profile, _Runtime({key: path}), InMemoryMetricStore()).execute(
+    store = InMemoryMetricStore()
+    _seed_prior(store, asset=profile.store_asset_id, variant=f"{profile.variant_prefix}_AVAILABLE_VOLUME_V1", context=profile.context_id, product=product)
+    result = InventoryPipelineExecutor(profile, _Runtime({key: path}), store).execute(
         run=run, pipeline_run_id=f"RUN_{profile.kind}", input_key=key,
         generated_at="2026-08-22T00:00:00+08:00", rules=_rules(),
     )
@@ -108,6 +125,9 @@ def test_delivery_dau_and_downstream_contract_bindings(tmp_path):
     run = _run({delivery_key: _Entry("fixture://delivery"), dau_key: _Entry("fixture://dau")})
     runtime = _Runtime({delivery_key: delivery_path, dau_key: dau_path})
     store = InMemoryMetricStore()
+    _seed_prior(store, asset="STORE_ASSET_WEEKLY_PLATFORM_DAU", variant="MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1", context="CTX_USER_ANALYTICS_PLATFORM_DAU_WEEKLY")
+    _seed_prior(store, asset="STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT", variant="MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", context="CTX_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", product="Brand Moment")
+    _seed_prior(store, asset="STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH", variant="MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1", context="CTX_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY")
     delivery = BrandMomentDeliveryExecutor(runtime, store).execute(run=run, pipeline_run_id="DELIVERY", input_key=delivery_key, generated_at="2026-08-22T00:00:00+08:00")
     dau = PlatformDauExecutor(runtime, store).execute(run=run, pipeline_run_id="DAU", input_key=dau_key, generated_at="2026-08-22T00:00:00+08:00")
     inventory = Stage3CResultContractInstance("RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", "1.0.0", "INV", "RUN_3C", "INV", "2026-08-17..2026-08-23", "CTX_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", (), {}, {}, {}, "now", "passed", "approved", (ResultFieldValue("brand_moment_available_inventory_count", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", Decimal("5"), ResultValueStatus.VALID_VALUE, "inventory_count", ()),), product_parameter="Brand Moment")
@@ -121,11 +141,13 @@ def test_delivery_dau_and_downstream_contract_bindings(tmp_path):
 def test_product_and_customer_paths_fail_closed_or_return_normal_omission(tmp_path):
     run = _run({})
     store = InMemoryMetricStore()
+    _seed_prior(store, asset="STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH", variant="MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1", context="CTX_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", product="Product A")
     upstream = Stage3CResultContractInstance("RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", "1.0.0", "UP", "RUN_3C", "UP", "2026-08-17..2026-08-23", "CTX_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", (), {}, {}, {}, "now", "passed", "approved", (ResultFieldValue("brand_delivery_inventory_count", "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1", Decimal("3"), ResultValueStatus.VALID_VALUE, "inventory_count", ()), ResultFieldValue("available_inventory_count", "MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1", Decimal("6"), ResultValueStatus.VALID_VALUE, "inventory_count", ())), product_parameter="Product A")
     product = ProductSellThroughExecutor(store).execute(run=run, pipeline_run_id="PRODUCT", product="Product A", rules=_rules(), upstream=upstream, generated_at="2026-08-22T00:00:00+08:00")
     assert product.execution_status is PipelineExecutionStatus.COMPLETED
     assert product.result_contract.field("non_patch_product_brand_sell_through_rate").value == Decimal("0.5")
-    omitted = CustomerChangeAnalysisExecutor(_Runtime({})).execute(run=run, pipeline_run_id="CUSTOMER", product="Product A", rules=_rules(), trigger_contract=product.result_contract, current_key=None, comparison_key=None, generated_at="2026-08-22T00:00:00+08:00")
+    no_trigger = replace(product.result_contract, fields=tuple(replace(field, value=None, value_status=ResultValueStatus.MISSING) if field.field_id == "non_patch_product_brand_sell_through_wow_change_pp" else field for field in product.result_contract.fields))
+    omitted = CustomerChangeAnalysisExecutor(_Runtime({})).execute(run=run, pipeline_run_id="CUSTOMER", product="Product A", rules=_rules(), trigger_contract=no_trigger, current_key=None, comparison_key=None, generated_at="2026-08-22T00:00:00+08:00")
     assert omitted.execution_status is PipelineExecutionStatus.COMPLETED
     assert omitted.produced_result_contract_reference == "normal-omission://trigger-not-met"
 
@@ -168,7 +190,9 @@ def test_full_site_uses_complete_rows_except_available_and_mapping_fallback(tmp_
     path = _input(tmp_path, "full-scope", rows)
     rules = _rules()
     rules = LocalRuleBindings(versions=rules.versions, commercial_sellability_by_placement={"off": False}, special_placement_ids=frozenset({"special"}), product_by_placement_id=rules.product_by_placement_id, product_route_by_name=rules.product_route_by_name, customer_analysis_by_product=rules.customer_analysis_by_product)
-    result = InventoryPipelineExecutor(FULL_SITE, _Runtime({key: path}), InMemoryMetricStore()).execute(run=_run({key: _Entry("fixture://full")}), pipeline_run_id="FULL", input_key=key, generated_at="2026-08-22T00:00:00+08:00", rules=rules)
+    store = InMemoryMetricStore()
+    _seed_prior(store, asset=FULL_SITE.store_asset_id, variant="MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1", context=FULL_SITE.context_id)
+    result = InventoryPipelineExecutor(FULL_SITE, _Runtime({key: path}), store).execute(run=_run({key: _Entry("fixture://full")}), pipeline_run_id="FULL", input_key=key, generated_at="2026-08-22T00:00:00+08:00", rules=rules)
     assert result.execution_status is PipelineExecutionStatus.COMPLETED
     assert result.result_contract.field("gross_inventory_count").value == Decimal("100")
     assert result.result_contract.field("available_inventory_count").value == Decimal("54")
@@ -196,3 +220,39 @@ def test_dau_composite_contract_contains_daily_records_and_blocks_invalid_covera
     assert blocked.execution_status is PipelineExecutionStatus.COMPLETED_WITH_WARNING
     assert blocked.result_contract is None
     assert blocked.warnings[0].code == "STAGE3C_DAU_CONTENT_OMITTED"
+
+
+def test_prior_history_repair_actions_are_local_and_exact(tmp_path):
+    inventory_key = _key(FULL_SITE.dataset_id)
+    inventory_path = _input(tmp_path, "prior-inventory", [{"广告位ID": "full", "是否VIP": "vip", "库存": "10", "禁用库存": "2", "品牌商广整体投放库存": "3", "效果投放库存": "4"}])
+    run = _run({inventory_key: _Entry("fixture://inventory")})
+    inventory = InventoryPipelineExecutor(FULL_SITE, _Runtime({inventory_key: inventory_path}), InMemoryMetricStore()).execute(run=run, pipeline_run_id="MISSING_INV", input_key=inventory_key, generated_at="now", rules=_rules())
+    assert inventory.execution_status is PipelineExecutionStatus.BLOCKED
+    assert inventory.error_code == "STAGE3C_PRIOR_REPAIR_REQUIRED"
+    assert inventory.result_contract.field("available_inventory_wow").value_status is ResultValueStatus.MISSING
+
+    upstream = Stage3CResultContractInstance("RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", "1.0.0", "UP", "RUN_3C", "UP", "2026-08-17..2026-08-23", "CTX_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", (), {}, {}, {}, "now", "passed", "approved", (ResultFieldValue("brand_delivery_inventory_count", "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1", Decimal("3"), ResultValueStatus.VALID_VALUE, "inventory_unit", ()), ResultFieldValue("available_inventory_count", "MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1", Decimal("6"), ResultValueStatus.VALID_VALUE, "inventory_unit", ())), product_parameter="Product A")
+    product = ProductSellThroughExecutor(InMemoryMetricStore()).execute(run=run, pipeline_run_id="MISSING_PRODUCT", product="Product A", rules=_rules(), upstream=upstream, generated_at="now")
+    assert product.execution_status is PipelineExecutionStatus.BLOCKED
+    assert product.error_code == "STAGE3C_PRIOR_REPAIR_REQUIRED"
+
+    delivery = Stage3CResultContractInstance("RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", "1.0.0", "DEL", "RUN_3C", "DEL", "2026-08-17..2026-08-23", "CTX_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", (), {}, {}, {}, "now", "passed", "approved", (ResultFieldValue("impression_count", "MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1", Decimal("10"), ResultValueStatus.VALID_VALUE, "impression", ()),))
+    brand_inventory = replace(upstream, product_parameter="Brand Moment", fields=(ResultFieldValue("brand_moment_available_inventory_count", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", Decimal("5"), ResultValueStatus.VALID_VALUE, "inventory_unit", ()),))
+    brand = BrandMomentSellThroughExecutor(InMemoryMetricStore()).execute(run=run, pipeline_run_id="MISSING_BRAND", delivery=delivery, inventory=brand_inventory, generated_at="now")
+    assert brand.execution_status is PipelineExecutionStatus.BLOCKED
+    assert brand.error_code == "STAGE3C_PRIOR_REPAIR_REQUIRED"
+
+    dau_key = _key("DS_NOVABI_PLATFORM_DAU")
+    dau_path = _input(tmp_path, "prior-dau", [{"日期": f"2026-08-{day:02d}", "全平台日活跃用户数": "70"} for day in range(17, 24)])
+    dau_run = _run({dau_key: _Entry("fixture://dau")})
+    dau = PlatformDauExecutor(_Runtime({dau_key: dau_path}), InMemoryMetricStore()).execute(run=dau_run, pipeline_run_id="MISSING_DAU", input_key=dau_key, generated_at="now")
+    assert dau.execution_status is PipelineExecutionStatus.COMPLETED_WITH_WARNING
+    assert dau.result_contract.field("weekly_average_dau_wow").value_status is ResultValueStatus.MISSING
+    assert {warning.code for warning in dau.warnings} >= {"STAGE3C_PRIOR_REPAIR_REQUIRED"}
+
+
+def test_result_contract_requires_explicit_context_lineage():
+    run = _run({})
+    del run.context.values["cutoff_date"]
+    with pytest.raises(Stage3AError, match="cutoff_date"):
+        _contract(contract_id="RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS", result_id="RESULT", run=run, pipeline_run_id="PIPE", context_id="CTX_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS", fields=(), generated_at="now", inputs=(), mappings={})

@@ -57,11 +57,27 @@ def test_sqlite_canonical_key_ignores_lineage_and_uses_version_period_and_dimens
     with pytest.raises(MetricStoreError, match="conflicts"):
         store.preflight_write((replace(same, value=Decimal("2")),))
     changed_version = replace(original, metric_variant_version="2.0.0")
-    store.write_validated(store.preflight_write((changed_version,)))
+    changed_version_receipt = store.write_validated(store.preflight_write((changed_version,)))
+    assert store.verify_write(changed_version_receipt)
     changed_period = replace(original, reporting_period="2026-08-24..2026-08-30")
-    store.write_validated(store.preflight_write((changed_period,)))
+    changed_period_receipt = store.write_validated(store.preflight_write((changed_period,)))
+    assert store.verify_write(changed_period_receipt)
     assert store.read_stage3c_exact(Stage3CPhysicalReadKey("STORE", original.store_asset_id, "MV_TEST_V1", "1.0.0", original.reporting_period, "CTX_TEST")).value == Decimal("1")
     assert store.read_stage3c_exact(Stage3CPhysicalReadKey("STORE", original.store_asset_id, "MV_TEST_V1", "2.0.0", original.reporting_period, "CTX_TEST")).value == Decimal("1")
     assert store.read_stage3c_exact(Stage3CPhysicalReadKey("STORE", original.store_asset_id, "MV_TEST_V1", "1.0.0", changed_period.reporting_period, "CTX_TEST")).value == Decimal("1")
     with sqlite3.connect(store.database_path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM metric_results").fetchone()[0] == 3
+
+
+@pytest.mark.parametrize(("unit", "numeric_semantics", "precision", "integer_only"), [
+    ("inventory_unit", "integer_count", "integer", 1),
+    ("user", "average_count", "preserve_source_precision", 0),
+    ("percentage_point", "percentage_point_change", "preserve_source_precision", 0),
+])
+def test_sqlite_preserves_registered_non_revenue_metadata(tmp_path, unit, numeric_semantics, precision, integer_only):
+    store = SqliteMetricStore(tmp_path / "metric_results.sqlite")
+    item = replace(record("STORE_ASSET_WEEKLY_PLATFORM_DAU"), unit=unit, numeric_semantics=numeric_semantics, precision=precision)
+    store.write_validated(store.preflight_write((item,)))
+    with sqlite3.connect(store.database_path) as connection:
+        row = connection.execute("SELECT current_revenue_cutoff_date, integer_only, precision FROM metric_results").fetchone()
+    assert row == ("not_applicable", integer_only, precision)

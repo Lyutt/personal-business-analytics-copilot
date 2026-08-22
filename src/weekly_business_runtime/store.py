@@ -77,13 +77,14 @@ class StorePhysicalSnapshot:
 
 @dataclass(frozen=True)
 class StoreWriteIdentity:
-    """Frozen Revenue duplicate identity based on the Store business date."""
+    """Revenue business-date identity with a local Stage 3C period discriminator."""
 
     store_id: str
     store_asset_id: str
     current_revenue_cutoff_date: str
     business_context_id: str
     product_parameter: str = "not_applicable"
+    non_revenue_reporting_period: str = "not_applicable"
 
 
 @dataclass(frozen=True)
@@ -132,6 +133,7 @@ class MetricStoreRecord:
             self.current_revenue_cutoff_date,
             self.business_context_id,
             self.product_parameter,
+            self.reporting_period if self.current_revenue_cutoff_date == "not_applicable" else "not_applicable",
         )
 
     @property
@@ -177,6 +179,7 @@ class StoreWriteReceipt:
     result_ids: tuple[str, ...]
     business_digest: str
     idempotent_replay: bool
+    stage3c_physical_read_keys: tuple[Stage3CPhysicalReadKey, ...] = ()
 
 
 class MetricStorePort(Protocol):
@@ -678,12 +681,22 @@ class SqliteMetricStore:
                     )
         return StoreWriteReceipt(
             plan.write_identity, tuple(record.read_key for record in plan.records),
-            tuple(record.result_id for record in plan.records), plan.business_digest, plan.idempotent_replay
+            tuple(record.result_id for record in plan.records), plan.business_digest, plan.idempotent_replay,
+            tuple(Stage3CPhysicalReadKey(
+                record.store_id, record.store_asset_id, record.metric_variant_id,
+                record.metric_variant_version, record.reporting_period,
+                record.business_context_id, record.product_parameter,
+                tuple(sorted(record.canonical_dimensions.items())),
+            ) for record in plan.records),
         )
 
     def verify_write(self, receipt: StoreWriteReceipt) -> bool:
         try:
-            records = tuple(self.read_exact(key) for key in receipt.read_keys)
+            records = (
+                tuple(self.read_stage3c_exact(key) for key in receipt.stage3c_physical_read_keys)
+                if receipt.stage3c_physical_read_keys
+                else tuple(self.read_exact(key) for key in receipt.read_keys)
+            )
         except MetricStoreError:
             return False
         return _business_digest(records) == receipt.business_digest
