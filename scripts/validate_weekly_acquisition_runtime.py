@@ -283,7 +283,8 @@ def main() -> int:
     assert active_index["automatic_next_stage_allowed"] is False
     assert status_index["current_stage"] == (
         "Stage 3D Weekly Workflow Runner Implementation Completed - "
-        "Exit Qualified; Later Stages Not Authorized"
+        "Exit Qualified; Stage 3E Exact Scope Owner Confirmed - "
+        "Implementation Not Authorized"
     )
     assert status_index["phase_status"]["code_implementation"] == (
         "stage3d_weekly_workflow_runner_completed_exit_qualified"
@@ -380,6 +381,27 @@ def main() -> int:
     assert stage3d["stage3f_authorized"] is False
     assert stage3d["runtime_acceptance_authorized"] is False
     assert stage3d["automatic_next_stage_allowed"] is False
+    stage3e = status_index[
+        "stage3e_weekly_output_assembly_review_preview_scope_registration"
+    ]
+    assert stage3e["scope_contract_id"] == (
+        "SCOPE_STAGE3E_WEEKLY_OUTPUT_ASSEMBLY_REVIEW_PREVIEW_V1"
+    )
+    assert stage3e["owner_scope_decision_received"] is True
+    assert stage3e["weekly_output_assembly_in_scope"] is True
+    assert stage3e["review_preview_in_scope"] is True
+    assert stage3e["configured_display_value_resolver_in_scope"] is True
+    assert stage3e["configured_display_values_sqlite_persistence_in_scope"] is True
+    assert stage3e["output_assembly_consumes_resolved_value_only"] is True
+    assert stage3e["configured_display_state_is_metric_store"] is False
+    assert stage3e["generic_state_store_added"] is False
+    assert stage3e["repository_or_persistence_framework_added"] is False
+    assert stage3e["outlook_draft_or_send_in_scope"] is False
+    assert stage3e["stage3f_qualification_in_scope"] is False
+    assert stage3e["runtime_acceptance_in_scope"] is False
+    assert stage3e["implementation_authorized"] is False
+    assert stage3e["implementation_started"] is False
+    assert stage3e["automatic_next_stage_allowed"] is False
     revenue_store = next(
         item
         for item in store_registry["metric_result_stores"]

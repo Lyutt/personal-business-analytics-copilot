@@ -4375,7 +4375,7 @@ def validate_status_consistency(
 def validate_stage3a_qualification_status_consistency(
     documents: dict[str, Any], errors: list[str]
 ) -> int:
-    """Fail closed when Stage 3A-3D qualification and governance records drift."""
+    """Fail closed when Stage 3A-3E qualification and governance records drift."""
     qualification_path = (
         "phase1_5/assets/readiness/stage3a_ctv_qualification_status.yaml"
     )
@@ -4742,7 +4742,7 @@ def validate_stage3a_qualification_status_consistency(
                 status_index_path,
                 status_index,
                 "current_next_stage_boundary.status",
-                "stage3d_completed_exit_qualified_later_stages_not_authorized",
+                "stage3e_exact_scope_owner_confirmed_implementation_not_authorized",
             ),
             (
                 status_index_path,
@@ -5427,7 +5427,7 @@ def validate_stage3a_qualification_status_consistency(
                 status_index_path,
                 status_index,
                 "current_stage",
-                "Stage 3D Weekly Workflow Runner Implementation Completed - Exit Qualified; Later Stages Not Authorized",
+                "Stage 3D Weekly Workflow Runner Implementation Completed - Exit Qualified; Stage 3E Exact Scope Owner Confirmed - Implementation Not Authorized",
             ),
             (
                 status_index_path,
@@ -5519,6 +5519,109 @@ def validate_stage3a_qualification_status_consistency(
             errors.append(
                 f"{stage3c_scope_path}:explicit_exclusions: missing fail-closed "
                 "Stage 3C exclusions"
+            )
+        checked += 1
+
+    stage3e_scope_path = (
+        "phase1_5/assets/readiness/"
+        "stage3e_weekly_output_assembly_review_preview_exact_scope.yaml"
+    )
+    stage3e_scope = documents.get(stage3e_scope_path)
+    if not isinstance(stage3e_scope, dict):
+        errors.append(f"{stage3e_scope_path}: missing or invalid Stage 3E scope contract")
+    else:
+        for file, document, path, expected in (
+            (stage3e_scope_path, stage3e_scope, "config_type", "stage_scope_contract"),
+            (
+                stage3e_scope_path,
+                stage3e_scope,
+                "scope_contract_id",
+                "SCOPE_STAGE3E_WEEKLY_OUTPUT_ASSEMBLY_REVIEW_PREVIEW_V1",
+            ),
+            (stage3e_scope_path, stage3e_scope, "scope_contract_version", "1.0.0"),
+            (
+                stage3e_scope_path,
+                stage3e_scope,
+                "status",
+                "owner_confirmed_registered_implementation_not_authorized",
+            ),
+            (
+                stage3e_scope_path,
+                stage3e_scope,
+                "stage_name",
+                "Weekly Output Assembly and Review Preview",
+            ),
+            (stage3e_scope_path, stage3e_scope, "owner_decision.exact_scope_owner_confirmed", True),
+            (stage3e_scope_path, stage3e_scope, "owner_decision.decision_classification", "scope_authority_only"),
+            (stage3e_scope_path, stage3e_scope, "owner_decision.implementation_authorized", False),
+            (
+                stage3e_scope_path,
+                stage3e_scope,
+                "included_scope.weekly_output_assembly.output_mapping_id",
+                "OM_WEEKLY_BUSINESS_REPORT_V1",
+            ),
+            (stage3e_scope_path, stage3e_scope, "included_scope.weekly_output_assembly.consumes_resolved_configured_display_value_only", True),
+            (stage3e_scope_path, stage3e_scope, "included_scope.review_preview.outlook_draft_creation", False),
+            (
+                stage3e_scope_path,
+                stage3e_scope,
+                "included_scope.configured_display_value_pre_assembly_resolution.policy_id",
+                "POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1",
+            ),
+            (stage3e_scope_path, stage3e_scope, "included_scope.configured_display_value_pre_assembly_resolution.current_period_saved_value_precedence", "reuse_without_reselection"),
+            (stage3e_scope_path, stage3e_scope, "included_scope.configured_display_value_pre_assembly_resolution.consecutive_period_repeat_allowed", False),
+            (stage3e_scope_path, stage3e_scope, "included_scope.configured_display_value_pre_assembly_resolution.same_period_conflict_action", "reject_write_notify_owner"),
+            (stage3e_scope_path, stage3e_scope, "included_scope.configured_display_value_pre_assembly_resolution.output_assembly_performs_resolution", False),
+            (stage3e_scope_path, stage3e_scope, "included_scope.configured_display_value_persistence.table_name", "configured_display_values"),
+            (stage3e_scope_path, stage3e_scope, "included_scope.configured_display_value_persistence.metric_result_store", False),
+            (stage3e_scope_path, stage3e_scope, "included_scope.configured_display_value_persistence.generic_state_store", False),
+            (stage3e_scope_path, stage3e_scope, "included_scope.configured_display_value_persistence.repository_abstraction", False),
+            (stage3e_scope_path, stage3e_scope, "included_scope.configured_display_value_persistence.persistence_framework", False),
+            (stage3e_scope_path, stage3e_scope, "authorization.exact_scope_owner_confirmed", True),
+            (stage3e_scope_path, stage3e_scope, "authorization.implementation_authorized", False),
+            (stage3e_scope_path, stage3e_scope, "authorization.exit_qualification_authorized", False),
+            (stage3e_scope_path, stage3e_scope, "authorization.outlook_draft_or_send_authorized", False),
+            (stage3e_scope_path, stage3e_scope, "authorization.stage3f_authorized", False),
+            (stage3e_scope_path, stage3e_scope, "authorization.runtime_acceptance_authorized", False),
+            (stage3e_scope_path, stage3e_scope, "authorization.automatic_next_stage_allowed", False),
+            (status_index_path, status_index, "current_next_stage_boundary.stage3e_scope_contract_source", stage3e_scope_path),
+            (status_index_path, status_index, "current_next_stage_boundary.stage3e_exact_scope_owner_confirmed", True),
+            (status_index_path, status_index, "current_next_stage_boundary.stage3e_implementation_authorized", False),
+            (status_index_path, status_index, "current_next_stage_boundary.stage3e_implementation_started", False),
+            (
+                status_index_path,
+                status_index,
+                "stage3e_weekly_output_assembly_review_preview_scope_registration.scope_contract_id",
+                "SCOPE_STAGE3E_WEEKLY_OUTPUT_ASSEMBLY_REVIEW_PREVIEW_V1",
+            ),
+            (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.configured_display_value_resolver_in_scope", True),
+            (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.configured_display_state_is_metric_store", False),
+            (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.outlook_draft_or_send_in_scope", False),
+            (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.implementation_authorized", False),
+            (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.automatic_next_stage_allowed", False),
+        ):
+            require_exact(file, document, path, expected)
+
+        required_stage3e_exclusions = {
+            "Outlook Draft creation",
+            "Outlook Send",
+            "Provider acquisition or capability validation",
+            "Scheduler and Queue",
+            "Generic State Store",
+            "Repository or persistence framework",
+            "Metric Store expansion for configured display values",
+            "Stage 3F local real-data or end-to-end qualification",
+            "Runtime Acceptance",
+            "Cutover",
+            "Baseline promotion or refreeze",
+        }
+        stage3e_exclusions = nested_value(stage3e_scope, "explicit_exclusions")
+        if not isinstance(stage3e_exclusions, list) or not required_stage3e_exclusions.issubset(
+            set(stage3e_exclusions)
+        ):
+            errors.append(
+                f"{stage3e_scope_path}:explicit_exclusions: missing fail-closed "
+                "Stage 3E exclusions"
             )
         checked += 1
 
@@ -5771,7 +5874,7 @@ def main() -> int:
         f"{len(references)} asset references resolved; "
         f"{checked_paths} Required paths checked across {matched_assets} assets; "
         f"{checked_status_entries} Gate status links and "
-        f"{qualification_status_checks} Stage 3A-3D qualification and governance "
+        f"{qualification_status_checks} Stage 3A-3E qualification and governance "
         "boundaries are consistent."
     )
     return 0

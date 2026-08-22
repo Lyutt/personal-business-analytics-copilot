@@ -33,7 +33,8 @@
 - 当前边界：Stage 3B Revenue Expansion 已完成 implementation 并通过 exit qualification。Technical 本地真实数据 calculation qualification 为 PASS；CTV 复用 Stage 3A PASS evidence；Smart Speaker / Fast Version real-data Source-to-Result qualification 未执行，且不属于 Stage 3B exit requirement。
 - Stage 3C 已在 PR #18 完成其余 8 条 Weekly executor 与 7 个共享 SQLite Store Asset 最小实现；[追溯 Scope 登记](assets/readiness/stage3c_weekly_executor_completion_retrospective_scope.yaml)基于 exact merged diff，不追溯声称事前 scope authorization。
 - Stage 3D deterministic sequential Weekly Workflow Runner 已完成 implementation 与 exit qualification；[Exact Scope](assets/readiness/stage3d_weekly_workflow_runner_exact_scope.yaml)保持显式 Pipeline activation、dependency、Result Contract handoff 与 failure-isolation 边界。
-- Runtime Acceptance、Stage 3E、Stage 3F、Provider、Scheduler、Draft/Send、Cutover 与 Baseline promotion/refreeze 均未授权；端到端 MVP 运行验收保持 Conditional，`auto_send=false`。
+- Stage 3E 正式范围已确认为 `Weekly Output Assembly and Review Preview`；[Exact Scope](assets/readiness/stage3e_weekly_output_assembly_review_preview_exact_scope.yaml)包含 Output Assembly 前最小 configured display-value resolver 与 `configured_display_values` SQLite state persistence，但不授权 implementation。
+- Runtime Acceptance、Stage 3E implementation、Stage 3F、Provider、Scheduler/Queue、Outlook Draft/Send、Cutover 与 Baseline promotion/refreeze 均未授权；端到端 MVP 运行验收保持 Conditional，`auto_send=false`。
 
 ## 已确认架构
 
@@ -83,6 +84,7 @@ Phase 1 旧版 `phase1/workflows/weekly_business_report/WORKFLOW.md` 保留，�
 - [Versioned External Asset Reference Registry](assets/external_asset_references.yaml)
 - [Output Mapping Initialization 阶段归档](Output_Mapping_Initialization_Archive_2026-08-02.md)
 - [统一状态索引](assets/readiness/status_index.yaml)
+- [Stage 3E Weekly Output Assembly and Review Preview Exact Scope](assets/readiness/stage3e_weekly_output_assembly_review_preview_exact_scope.yaml)
 - [Stage 3D Weekly Workflow Runner Exact Scope](assets/readiness/stage3d_weekly_workflow_runner_exact_scope.yaml)
 - [Stage 3C Weekly Executor Completion Retrospective Scope](assets/readiness/stage3c_weekly_executor_completion_retrospective_scope.yaml)
 - [Code Implementation Readiness Gate](assets/readiness/code_implementation_readiness_gate.yaml)
