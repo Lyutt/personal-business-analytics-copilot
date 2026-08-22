@@ -282,12 +282,11 @@ def main() -> int:
     assert active_index["runtime_acceptance_authorized"] is False
     assert active_index["automatic_next_stage_allowed"] is False
     assert status_index["current_stage"] == (
-        "Stage 3D Weekly Workflow Runner Implementation Completed - "
-        "Exit Qualified; Stage 3E Exact Scope Owner Confirmed - "
-        "Implementation Not Authorized"
+        "Stage 3E Weekly Output Assembly and Review Preview Implementation "
+        "Completed - Exit Qualified; Stage 3F Not Authorized"
     )
     assert status_index["phase_status"]["code_implementation"] == (
-        "stage3d_weekly_workflow_runner_completed_exit_qualified"
+        "stage3e_weekly_output_assembly_review_preview_completed_exit_qualified"
     )
     stage3b = status_index["stage3b_revenue_expansion_implementation"]
     assert stage3b["scope_contract_id"] == "SCOPE_STAGE3B_REVENUE_EXPANSION_V1"
@@ -399,8 +398,18 @@ def main() -> int:
     assert stage3e["outlook_draft_or_send_in_scope"] is False
     assert stage3e["stage3f_qualification_in_scope"] is False
     assert stage3e["runtime_acceptance_in_scope"] is False
-    assert stage3e["implementation_authorized"] is False
-    assert stage3e["implementation_started"] is False
+    assert stage3e["implementation_authorized"] is True
+    assert stage3e["implementation_started"] is True
+    assert stage3e["implementation_completed"] is True
+    assert stage3e["exit_qualification_passed"] is True
+    assert stage3e["stage3e_completed"] is True
+    assert stage3e["validation_evidence"]["stage3e_total_test_count"] == 11
+    assert stage3e["generic_renderer_added"] is False
+    assert stage3e["repository_added"] is False
+    assert stage3e["metric_store_extended_for_configured_values"] is False
+    assert stage3e["outlook_draft_or_send_added"] is False
+    assert stage3e["stage3f_work_added"] is False
+    assert stage3e["stage3_completed"] is False
     assert stage3e["automatic_next_stage_allowed"] is False
     revenue_store = next(
         item

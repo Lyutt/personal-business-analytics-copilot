@@ -48,16 +48,18 @@ Pipeline executors and seven registered shared-SQLite Store Assets in PR #18.
 Its scope is retrospectively registered from the exact merged implementation
 and does not claim pre-implementation scope authorization. Stage 3D implements
 the deterministic sequential Weekly Workflow Runner over the existing 12
-Pipeline executors and has passed its scoped exit qualification. Runtime
-Acceptance, Stage 3E implementation, Stage 3F, Provider, Scheduler/Queue,
-Outlook Draft/Send, Cutover, and Baseline promotion/refreeze remain
-unauthorized. Automated checks, readiness Gates,
+Pipeline executors and has passed its scoped exit qualification. Stage 3E
+implements Weekly Output Assembly, the minimum configured display-value
+resolver and SQLite state, and a review-only Preview; its scoped exit
+qualification has passed. Runtime Acceptance, Stage 3F, Provider,
+Scheduler/Queue, Outlook Draft/Send, Cutover, and Baseline promotion/refreeze
+remain unauthorized. Automated checks, readiness Gates,
 qualification evidence, and merge status do not grant any later-stage approval.
 
 The Owner-confirmed Stage 3E exact scope is Weekly Output Assembly and Review
 Preview, including only the minimum pre-assembly configured display-value
 resolver and its registered `configured_display_values` SQLite state path.
-This scope registration does not authorize implementation. Outlook Draft/Send,
+Implementation and exit qualification are complete. Outlook Draft/Send,
 Provider, Scheduler/Queue, Stage 3F, Runtime Acceptance, Cutover, and Baseline
 promotion/refreeze remain excluded and unauthorized.
 
@@ -65,9 +67,9 @@ The two Workflows remain isolated: they may reuse registered source and Mapping
 assets, but neither consumes the other Workflow's files or outputs. The initial
 MVP remains sequential. The Acquisition Runtime Foundation, all 12 Weekly
 Pipeline executors, their registered minimum Store paths, and the Stage 3D
-deterministic Runner are implemented. The Output Engine, Provider acquisition,
-Scheduler, Draft/Send, and production Runtime Acceptance remain unimplemented
-and unauthorized.
+deterministic Runner, and Stage 3E review-only Output Assembly are implemented.
+Provider acquisition, Scheduler, Draft/Send, and production Runtime Acceptance
+remain unimplemented and unauthorized.
 
 Local business data, customer rows, emails, templates, recipients, credentials,
 paths, resolved External Asset versions, and content fingerprints must remain
