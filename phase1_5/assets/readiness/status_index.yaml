@@ -658,9 +658,9 @@ stage3e_weekly_output_assembly_review_preview_scope_registration:
   exit_qualification_passed: true
   stage3e_completed: true
   validation_evidence:
-    targeted_test_count: 10
+    targeted_test_count: 12
     integrated_synthetic_qualification_count: 1
-    stage3e_total_test_count: 11
+    stage3e_total_test_count: 13
     lint_status: passed
     python_compile_status: passed
     asset_integrity_status: passed

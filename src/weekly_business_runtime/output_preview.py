@@ -60,13 +60,44 @@ class WeeklyOutputAssembler:
             raise Stage3AError(
                 "STAGE3E_OUTPUT_MAPPING_INVALID", "Output Mapping is invalid"
             )
-        self.requirement = {
-            item["pipeline_id"]: item["workflow_bindings"][0]["required_or_optional"]
-            for item in registry["pipelines"]
-            if item.get("workflow_bindings")
-            and item["workflow_bindings"][0].get("workflow_id")
-            == "WF_WEEKLY_BUSINESS_REPORT"
-        }
+        self.requirement = {}
+        self.approved_fallback = {}
+        for item in registry["pipelines"]:
+            binding = next(
+                (
+                    value
+                    for value in item.get("workflow_bindings", ())
+                    if value.get("workflow_id") == "WF_WEEKLY_BUSINESS_REPORT"
+                ),
+                None,
+            )
+            if binding is None:
+                continue
+            pipeline_id = item["pipeline_id"]
+            self.requirement[pipeline_id] = binding["required_or_optional"]
+            failure = binding.get("failure_handling", {})
+            if failure.get("friday_fallback") and failure.get(
+                "revenue_section_representation_in_fallback_draft"
+            ):
+                self.approved_fallback[pipeline_id] = "revenue_section_failure"
+            elif failure.get("friday_fallback") and failure.get(
+                "inventory_section_representation_in_fallback_draft"
+            ):
+                self.approved_fallback[pipeline_id] = "inventory_product_failure"
+            elif failure.get("inventory_section_product_representation"):
+                self.approved_fallback[pipeline_id] = "inventory_product_failure"
+            elif failure.get("inventory_section_brand_moment_representation"):
+                self.approved_fallback[pipeline_id] = (
+                    "brand_moment_sell_through_failure"
+                )
+            elif failure.get("query_or_access_failure") and not failure.get(
+                "block_workflow"
+            ):
+                self.approved_fallback[pipeline_id] = "dau_failure"
+            elif pipeline_id == CUSTOMER_CONTRACT_ID.replace(
+                "RC_", "PL_"
+            ) and not failure.get("block_workflow"):
+                self.approved_fallback[pipeline_id] = "customer_analysis_failure"
 
     def _yaml(self, relative: str) -> Mapping[str, Any]:
         value = yaml.safe_load((self.root / relative).read_text(encoding="utf-8"))
@@ -109,7 +140,13 @@ class WeeklyOutputAssembler:
                 1,
             )
         sections = tuple(
-            self._section(section, contracts, bindings, configured_display_value)
+            self._section(
+                section,
+                contracts,
+                bindings,
+                configured_display_value,
+                report_mode,
+            )
             for section in sorted(
                 self.mapping["section_order"], key=lambda x: x["display_order"]
             )
@@ -178,8 +215,10 @@ class WeeklyOutputAssembler:
             ]
             if (
                 len(occurrences) != 1
-                or not occurrences[0].anchor_reference
+                or template.body.count(occurrences[0].anchor_reference) != 1
                 or template.body.count(occurrences[0].placeholder_reference) != 1
+                or occurrences[0].placeholder_reference
+                not in occurrences[0].anchor_reference
             ):
                 raise Stage3AError(
                     "STAGE3E_TEMPLATE_BINDING_INVALID",
@@ -247,6 +286,7 @@ class WeeklyOutputAssembler:
         contracts: Mapping[tuple[str, str], object],
         bindings: Mapping[str, PreviewProductBinding],
         configured: str,
+        report_mode: object,
     ) -> Mapping[str, Any]:
         rows = []
         for entry in sorted(
@@ -260,6 +300,10 @@ class WeeklyOutputAssembler:
             for product in self._products(entry["output_slot_id"], bindings):
                 values = {}
                 for output in entry.get("output_fields", ()):
+                    if self._hidden_quarter_field(
+                        report_mode, entry["output_slot_id"], output["output_field_id"]
+                    ):
+                        continue
                     field_binding = output["result_field_binding"]
                     contract_id = field_binding["result_contract_id"]
                     key_product = (
@@ -280,6 +324,18 @@ class WeeklyOutputAssembler:
                 "rows": tuple(rows),
             }
         )
+
+    def _hidden_quarter_field(
+        self, report_mode: object, output_slot_id: str, output_field_id: str
+    ) -> bool:
+        if report_mode != "quarter_transition_week":
+            return False
+        rules = self.mapping["quarter_transition_display_rules"]
+        key = {
+            "SLOT_REVENUE_SMART_SPEAKER": "smart_speaker",
+            "SLOT_REVENUE_FAST_VERSION": "fast_version",
+        }.get(output_slot_id)
+        return key is not None and output_field_id in rules[key]["hide_fields"]
 
     @staticmethod
     def _products(
@@ -333,9 +389,13 @@ class WeeklyOutputAssembler:
             return f"{(value / Decimal('10000')).quantize(Decimal('1'), rounding=ROUND_HALF_UP):,}万"
         if unit in {"ratio", "Decimal ratio"}:
             places = Decimal("0.1") if "dau" in output_id else Decimal("1")
-            return f"{(value * 100).quantize(places, rounding=ROUND_HALF_UP)}%"
+            rounded = (value * 100).quantize(places, rounding=ROUND_HALF_UP)
+            if rounded == 0 and ("wow" in output_id or "yoy" in output_id):
+                return "持平"
+            return f"{rounded}%"
         if unit == "percentage_point":
-            return f"{value.quantize(Decimal('1'), rounding=ROUND_HALF_UP):+}pp"
+            rounded = value.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            return "持平" if rounded == 0 else f"{rounded:+}pp"
         if output_id == "full_site_available_inventory_cpm":
             return f"{(value / Decimal('10000')).quantize(Decimal('1'), rounding=ROUND_HALF_UP):,}万CPM"
         return f"{int(value):,}" if value == value.to_integral_value() else str(value)
@@ -410,33 +470,35 @@ class WeeklyOutputAssembler:
         )
         if not completed:
             return "blocked"
-        required_blocked = any(
-            x.execution_status is PipelineExecutionStatus.BLOCKED
-            and self.requirement.get(x.pipeline_id, "required").startswith("required")
+        required_blocked = tuple(
+            x
             for x in results
+            if x.execution_status is PipelineExecutionStatus.BLOCKED
+            and self.requirement.get(x.pipeline_id, "required").startswith("required")
         )
+        if any(x.pipeline_id not in self.approved_fallback for x in required_blocked):
+            return "blocked"
         return "partial_draft" if required_blocked else "complete_draft"
 
-    @staticmethod
     def _warnings(
-        summary: Mapping[str, Any], results: tuple[PipelineExecutionResult, ...]
+        self, summary: Mapping[str, Any], results: tuple[PipelineExecutionResult, ...]
     ) -> tuple[Mapping[str, str], ...]:
         warnings = [
             MappingProxyType({"code": x.code, "message": x.message})
             for x in summary.get("warnings", ())
         ]
-        warnings.extend(
-            MappingProxyType(
-                {
-                    "pipeline_id": x.pipeline_id,
-                    "affected_report_scope": str(x.business_context),
-                    "fallback_used": "approved_partial_draft_fallback",
-                    "failure_summary": x.error_message,
-                }
-            )
-            for x in results
-            if x.execution_status is PipelineExecutionStatus.BLOCKED
-        )
+        for result in results:
+            if result.execution_status is not PipelineExecutionStatus.BLOCKED:
+                continue
+            warning = {
+                "pipeline_id": result.pipeline_id,
+                "affected_report_scope": str(result.business_context),
+                "failure_summary": result.error_message,
+            }
+            fallback = self.approved_fallback.get(result.pipeline_id)
+            if fallback is not None:
+                warning["fallback_used"] = fallback
+            warnings.append(MappingProxyType(warning))
         return tuple(warnings)
 
     @staticmethod

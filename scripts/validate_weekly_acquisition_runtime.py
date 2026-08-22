@@ -403,7 +403,7 @@ def main() -> int:
     assert stage3e["implementation_completed"] is True
     assert stage3e["exit_qualification_passed"] is True
     assert stage3e["stage3e_completed"] is True
-    assert stage3e["validation_evidence"]["stage3e_total_test_count"] == 11
+    assert stage3e["validation_evidence"]["stage3e_total_test_count"] == 13
     assert stage3e["generic_renderer_added"] is False
     assert stage3e["repository_added"] is False
     assert stage3e["metric_store_extended_for_configured_values"] is False

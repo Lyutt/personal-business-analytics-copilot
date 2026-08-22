@@ -5582,7 +5582,7 @@ def validate_stage3a_qualification_status_consistency(
             (stage3e_scope_path, stage3e_scope, "authorization.exit_qualification_authorized", True),
             (stage3e_scope_path, stage3e_scope, "completion.stage3e_completed", True),
             (stage3e_scope_path, stage3e_scope, "completion.stage3_completed", False),
-            (stage3e_scope_path, stage3e_scope, "implementation_evidence.stage3e_total_test_count", 11),
+            (stage3e_scope_path, stage3e_scope, "implementation_evidence.stage3e_total_test_count", 13),
             (stage3e_scope_path, stage3e_scope, "authorization.outlook_draft_or_send_authorized", False),
             (stage3e_scope_path, stage3e_scope, "authorization.stage3f_authorized", False),
             (stage3e_scope_path, stage3e_scope, "authorization.runtime_acceptance_authorized", False),
@@ -5604,7 +5604,7 @@ def validate_stage3a_qualification_status_consistency(
             (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.implementation_authorized", True),
             (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.implementation_completed", True),
             (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.exit_qualification_passed", True),
-            (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.validation_evidence.stage3e_total_test_count", 11),
+            (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.validation_evidence.stage3e_total_test_count", 13),
             (status_index_path, status_index, "stage3e_weekly_output_assembly_review_preview_scope_registration.automatic_next_stage_allowed", False),
         ):
             require_exact(file, document, path, expected)

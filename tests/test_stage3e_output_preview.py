@@ -306,15 +306,28 @@ def _bindings():
 
 
 def _template(
-    mode="regular_week", duplicate=False, missing=False, bad_fingerprint=False
+    mode="regular_week",
+    duplicate=False,
+    missing=False,
+    duplicate_placeholder=False,
+    anchor_without_placeholder=False,
+    bad_fingerprint=False,
 ):
     body = "HEADER\nANCHOR_PATCH:<PATCH_COMMENT>\nANCHOR_PAGE:<PAGE_COMMENT>"
+    if duplicate_placeholder:
+        body += "\n<PATCH_COMMENT>"
     occurrences = (
         TemplateAnchorOccurrence(
-            "patch_and_similar_resource_commentary", "ANCHOR_PATCH", "<PATCH_COMMENT>"
+            "patch_and_similar_resource_commentary",
+            "ANCHOR_PATCH"
+            if anchor_without_placeholder
+            else "ANCHOR_PATCH:<PATCH_COMMENT>",
+            "<PATCH_COMMENT>",
         ),
         TemplateAnchorOccurrence(
-            "page_resource_commentary", "ANCHOR_PAGE", "<PAGE_COMMENT>"
+            "page_resource_commentary",
+            "ANCHOR_PAGE:<PAGE_COMMENT>",
+            "<PAGE_COMMENT>",
         ),
     )
     if duplicate:
@@ -370,11 +383,31 @@ def test_integrated_synthetic_regular_preview_and_fixed_narrative(tmp_path):
 
 
 def test_quarter_transition_uses_exact_template_variant():
+    regular = _assemble()
     preview = _assemble("quarter_transition_week")
     assert (
         preview["template_asset_id"]
         == "TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_LOCAL_ONLY"
     )
+    assert preview["sections"][0] == regular["sections"][0]
+    revenue = {
+        row["output_slot_id"]: row["values"] for row in preview["sections"][1]["rows"]
+    }
+    assert set(revenue["SLOT_REVENUE_TECHNICAL"]) == {
+        "qtd_performance_revenue",
+        "qtd_performance_revenue_yoy",
+        "qtd_executed_revenue",
+        "weekly_incremental_executed_revenue",
+        "weekly_incremental_executed_revenue_wow",
+        "weekly_incremental_executed_revenue_yoy",
+    }
+    assert set(revenue["SLOT_REVENUE_CTV"]) == {
+        "qtd_performance_revenue",
+        "qtd_performance_revenue_yoy",
+        "qtd_executed_revenue",
+    }
+    assert set(revenue["SLOT_REVENUE_SMART_SPEAKER"]) == {"qtd_executed_revenue"}
+    assert set(revenue["SLOT_REVENUE_FAST_VERSION"]) == {"qtd_executed_revenue"}
 
 
 def test_product_rows_follow_explicit_bindings():
@@ -426,12 +459,66 @@ def test_required_blocked_result_produces_partial_draft_warning():
     preview = _assemble(summary=summary)
     assert preview["completion_status"] == "partial_draft"
     assert "数据质量提醒" in preview["rendered_body"]
+    assert preview["warnings"][-1]["fallback_used"] == "revenue_section_failure"
+
+
+def test_required_blocked_without_approved_fallback_blocks_preview():
+    summary = _summary()
+    results = list(summary["pipeline_run_results"])
+    target = next(
+        i
+        for i, item in enumerate(results)
+        if item.pipeline_id == "PL_REVENUE_TECHNICAL_WEEKLY"
+    )
+    results[target] = replace(
+        results[target],
+        pipeline_id="PL_SYNTHETIC_REQUIRED_NO_FALLBACK",
+        execution_status=PipelineExecutionStatus.BLOCKED,
+        result_contract=None,
+        error_code="SYNTH_BLOCKED",
+        error_message="synthetic failure",
+    )
+    summary["pipeline_run_results"] = tuple(results)
+    preview = _assemble(summary=summary)
+    assert preview["completion_status"] == "blocked"
+    assert "fallback_used" not in preview["warnings"][-1]
+
+
+def test_zero_growth_and_sell_through_change_display_as_flat():
+    assert (
+        WeeklyOutputAssembler._format(
+            Decimal("0.004"), "ratio", "weekly_executed_revenue_wow"
+        )
+        == "持平"
+    )
+    assert (
+        WeeklyOutputAssembler._format(
+            Decimal("-0.004"), "ratio", "qtd_performance_revenue_yoy"
+        )
+        == "持平"
+    )
+    assert (
+        WeeklyOutputAssembler._format(
+            Decimal("0.4"),
+            "percentage_point",
+            "product_brand_sell_through_wow_change_pp",
+        )
+        == "持平"
+    )
+    assert (
+        WeeklyOutputAssembler._format(
+            Decimal("0"), "ratio", "product_brand_sell_through_rate"
+        )
+        == "0%"
+    )
 
 
 def test_template_identity_or_exact_once_failure_is_closed():
     for template in (
         _template(duplicate=True),
         _template(missing=True),
+        _template(duplicate_placeholder=True),
+        _template(anchor_without_placeholder=True),
         _template(bad_fingerprint=True),
     ):
         with pytest.raises(Stage3AError):

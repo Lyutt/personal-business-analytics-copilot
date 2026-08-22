@@ -148,9 +148,9 @@ implementation_evidence:
     - src/weekly_business_runtime/__init__.py
   test_files:
     - tests/test_stage3e_output_preview.py
-  targeted_test_count: 10
+  targeted_test_count: 12
   integrated_synthetic_qualification_count: 1
-  stage3e_total_test_count: 11
+  stage3e_total_test_count: 13
   stage3e_test_status: passed
   lint_status: passed
   python_compile_status: passed
