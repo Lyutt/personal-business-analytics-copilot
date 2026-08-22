@@ -267,8 +267,12 @@ def _exact_prior(
 
 
 def _prior_warning(*, pipeline_id: str, prior: _PriorHistory) -> ExecutionWarning:
-    issue = prior.issue or "invalid_denominator"
+    issue = prior.issue or "negative_value"
     return ExecutionWarning("STAGE3C_PRIOR_REPAIR_REQUIRED", f"{pipeline_id}: prior historical dependency is {issue}; local repair is unavailable and owner notification is required")
+
+
+def _prior_denominator_warning(*, pipeline_id: str) -> ExecutionWarning:
+    return ExecutionWarning("STAGE3C_PRIOR_DENOMINATOR_INVALID", f"{pipeline_id}: exact validated prior denominator is zero; growth result is missing and owner notification is required")
 
 
 class InventoryPipelineExecutor:
@@ -295,11 +299,12 @@ class InventoryPipelineExecutor:
             fields, prior = self._fields(values, product, rules, run)
             lineage = (entry.local_input_reference, f"mapping-consumed://{self.profile.mapping_id}")
             result = _contract(contract_id=self.profile.contract_id, result_id=f"{pipeline_run_id}:{self.profile.contract_id}", run=run, pipeline_run_id=pipeline_run_id, context_id=self.profile.context_id, fields=fields, generated_at=generated_at, inputs=(entry.local_input_reference,), mappings={self.profile.mapping_id: "1.0.0"}, product=product)
-            if prior.issue is not None or prior.value is not None and prior.value <= 0:
+            if prior.issue is not None or prior.value is not None and prior.value < 0:
                 warning = _prior_warning(pipeline_id=self.profile.pipeline_id, prior=prior)
                 return PipelineExecutionResult(run.context.workflow_run_id, self.profile.pipeline_id, pipeline_run_id, {"business_context_id": self.profile.context_id, "product": product}, (entry.local_input_reference,), PipelineExecutionStatus.BLOCKED, (warning,), "STAGE3C_PRIOR_REPAIR_REQUIRED", warning.message, result_contract=result)
             zero_warnings = tuple(ExecutionWarning("STAGE3C_INVENTORY_ZERO_FINAL", f"{name} is zero; owner notification required") for name, value in values.items() if value == 0)
-            warnings = (*zero_warnings, *_persist(result, pipeline_id=self.profile.pipeline_id, store_id=INVENTORY_STORE_ID, asset_id=self.profile.store_asset_id, store=self.metric_store, product=product))
+            denominator_warnings = (_prior_denominator_warning(pipeline_id=self.profile.pipeline_id),) if prior.value == 0 else ()
+            warnings = (*zero_warnings, *denominator_warnings, *_persist(result, pipeline_id=self.profile.pipeline_id, store_id=INVENTORY_STORE_ID, asset_id=self.profile.store_asset_id, store=self.metric_store, product=product))
             return PipelineExecutionResult(run.context.workflow_run_id, self.profile.pipeline_id, pipeline_run_id, {"business_context_id": self.profile.context_id, "product": product}, (entry.local_input_reference,), PipelineExecutionStatus.COMPLETED_WITH_WARNING if warnings else PipelineExecutionStatus.COMPLETED, warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=(*lineage, *(f"metric-store://{result.result_id}" for _ in warnings)), result_contract=result)
         except (Stage3AError, AcquisitionError, KeyError) as exc:
             return PipelineExecutionResult(run.context.workflow_run_id, self.profile.pipeline_id, pipeline_run_id, {"business_context_id": self.profile.context_id}, (), PipelineExecutionStatus.BLOCKED, error_code=getattr(exc, "code", "STAGE3C_EXECUTION_BLOCKED"), error_message=str(exc))
@@ -448,10 +453,11 @@ class BrandMomentSellThroughExecutor:
             rate_wow = None if prior_rate.value is None else (rate - prior_rate.value) * 100
             fields = (_field("available_inventory_wow", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1", available_wow, "decimal_ratio", lineage, status=ResultValueStatus.VALID_VALUE if available_wow is not None else ResultValueStatus.MISSING), _field("sell_through_rate", "MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1", rate, "decimal_ratio", lineage), _field("sell_through_wow_change_pp", "MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1", rate_wow, "percentage_point", lineage, status=ResultValueStatus.VALID_VALUE if rate_wow is not None else ResultValueStatus.MISSING))
             result = _contract(contract_id="RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY", result_id=f"{pipeline_run_id}:RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=fields, generated_at=generated_at, inputs=lineage, mappings={})
-            if prior_available.issue is not None or prior_rate.issue is not None or prior_available.value is not None and prior_available.value <= 0 or prior_rate.value is not None and prior_rate.value <= 0:
-                warning = _prior_warning(pipeline_id=self.pipeline_id, prior=prior_available if prior_available.issue is not None or prior_available.value is not None and prior_available.value <= 0 else prior_rate)
+            if prior_available.issue is not None or prior_rate.issue is not None or prior_available.value is not None and prior_available.value < 0 or prior_rate.value is not None and prior_rate.value < 0:
+                warning = _prior_warning(pipeline_id=self.pipeline_id, prior=prior_available if prior_available.issue is not None or prior_available.value is not None and prior_available.value < 0 else prior_rate)
                 return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, lineage, PipelineExecutionStatus.BLOCKED, (warning,), "STAGE3C_PRIOR_REPAIR_REQUIRED", warning.message, result_contract=result)
-            warnings = _persist(result, pipeline_id=self.pipeline_id, store_id=INVENTORY_STORE_ID, asset_id="STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH", store=self.metric_store)
+            denominator_warnings = (_prior_denominator_warning(pipeline_id=self.pipeline_id),) if prior_available.value == 0 else ()
+            warnings = (*denominator_warnings, *_persist(result, pipeline_id=self.pipeline_id, store_id=INVENTORY_STORE_ID, asset_id="STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH", store=self.metric_store))
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, lineage, PipelineExecutionStatus.COMPLETED_WITH_WARNING if warnings else PipelineExecutionStatus.COMPLETED, warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=lineage, result_contract=result)
         except Stage3AError as exc:
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, (), PipelineExecutionStatus.BLOCKED, error_code=exc.code, error_message=str(exc))
@@ -483,7 +489,7 @@ class ProductSellThroughExecutor:
             change = None if prior_rate.value is None else (rate - prior_rate.value) * 100
             fields = (_field("patch_brand_sell_through_rate", "MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1", rate if patch else None, "decimal_ratio", lineage, status=ResultValueStatus.VALID_VALUE if patch else ResultValueStatus.NOT_APPLICABLE), _field("patch_brand_sell_through_wow_change_pp", "MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1", change if patch else None, "percentage_point", lineage, status=ResultValueStatus.VALID_VALUE if patch and change is not None else ResultValueStatus.MISSING if patch else ResultValueStatus.NOT_APPLICABLE), _field("non_patch_product_brand_sell_through_rate", "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1", rate if not patch else None, "decimal_ratio", lineage, status=ResultValueStatus.NOT_APPLICABLE if patch else ResultValueStatus.VALID_VALUE), _field("non_patch_product_brand_sell_through_wow_change_pp", "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1", change if not patch else None, "percentage_point", lineage, status=ResultValueStatus.NOT_APPLICABLE if patch else ResultValueStatus.VALID_VALUE if change is not None else ResultValueStatus.MISSING))
             result = _contract(contract_id="RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", result_id=f"{pipeline_run_id}:RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=fields, generated_at=generated_at, inputs=lineage, mappings={}, rules={"BR_APOLLO_PRODUCT_FILTER_MAPPING": "1.0.0"}, product=product)
-            if prior_rate.issue is not None or prior_rate.value is not None and prior_rate.value <= 0:
+            if prior_rate.issue is not None or prior_rate.value is not None and prior_rate.value < 0:
                 warning = _prior_warning(pipeline_id=self.pipeline_id, prior=prior_rate)
                 return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, lineage, PipelineExecutionStatus.BLOCKED, (warning,), "STAGE3C_PRIOR_REPAIR_REQUIRED", warning.message, result_contract=result)
             warnings = _persist(result, pipeline_id=self.pipeline_id, store_id=INVENTORY_STORE_ID, asset_id="STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH", store=self.metric_store, product=product)

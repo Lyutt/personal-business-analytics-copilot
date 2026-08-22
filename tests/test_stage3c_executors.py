@@ -251,6 +251,50 @@ def test_prior_history_repair_actions_are_local_and_exact(tmp_path):
     assert {warning.code for warning in dau.warnings} >= {"STAGE3C_PRIOR_REPAIR_REQUIRED"}
 
 
+def test_valid_prior_zero_is_not_missing_history(tmp_path):
+    key = _key(FULL_SITE.dataset_id)
+    path = _input(tmp_path, "zero-inventory", [{"广告位ID": "full", "是否VIP": "vip", "库存": "10", "禁用库存": "2", "品牌商广整体投放库存": "3", "效果投放库存": "4"}])
+    run = _run({key: _Entry("fixture://zero-inventory")})
+    store = InMemoryMetricStore()
+    _seed_prior(store, asset=FULL_SITE.store_asset_id, variant="MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1", context=FULL_SITE.context_id, value=Decimal(0))
+    inventory = InventoryPipelineExecutor(FULL_SITE, _Runtime({key: path}), store).execute(run=run, pipeline_run_id="ZERO_INV", input_key=key, generated_at="now", rules=_rules())
+    assert inventory.execution_status is PipelineExecutionStatus.COMPLETED_WITH_WARNING
+    assert inventory.result_contract.field("available_inventory_wow").value_status is ResultValueStatus.MISSING
+    assert inventory.result_contract.field("available_inventory_count").value == Decimal("8")
+    assert {warning.code for warning in inventory.warnings} >= {"STAGE3C_PRIOR_DENOMINATOR_INVALID"}
+    assert "STAGE3C_PRIOR_REPAIR_REQUIRED" not in {warning.code for warning in inventory.warnings}
+
+    upstream = Stage3CResultContractInstance("RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", "1.0.0", "UP", "RUN_3C", "UP", "2026-08-17..2026-08-23", "CTX_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", (), {}, {}, {}, "now", "passed", "approved", (ResultFieldValue("brand_delivery_inventory_count", "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_DELIVERY_VOLUME_V1", Decimal("3"), ResultValueStatus.VALID_VALUE, "inventory_unit", ()), ResultFieldValue("available_inventory_count", "MV_INVENTORY_NON_PATCH_PRODUCT_AVAILABLE_VOLUME_V1", Decimal("6"), ResultValueStatus.VALID_VALUE, "inventory_unit", ())), product_parameter="Product A")
+    product_store = InMemoryMetricStore()
+    _seed_prior(product_store, asset="STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH", variant="MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1", context="CTX_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", product="Product A", value=Decimal(0))
+    product = ProductSellThroughExecutor(product_store).execute(run=run, pipeline_run_id="ZERO_PRODUCT", product="Product A", rules=_rules(), upstream=upstream, generated_at="now")
+    assert product.execution_status is PipelineExecutionStatus.COMPLETED
+    assert product.result_contract.field("non_patch_product_brand_sell_through_wow_change_pp").value == Decimal("50")
+
+    delivery = Stage3CResultContractInstance("RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", "1.0.0", "DEL", "RUN_3C", "DEL", "2026-08-17..2026-08-23", "CTX_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", (), {}, {}, {}, "now", "passed", "approved", (ResultFieldValue("impression_count", "MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1", Decimal("10"), ResultValueStatus.VALID_VALUE, "impression", ()),))
+    brand_inventory = replace(upstream, product_parameter="Brand Moment", fields=(ResultFieldValue("brand_moment_available_inventory_count", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", Decimal("5"), ResultValueStatus.VALID_VALUE, "inventory_unit", ()),))
+    brand_store = InMemoryMetricStore()
+    _seed_prior(brand_store, asset="STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT", variant="MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", context="CTX_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", product="Brand Moment", value=Decimal(0))
+    _seed_prior(brand_store, asset="STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH", variant="MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1", context="CTX_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY", value=Decimal("1"))
+    brand = BrandMomentSellThroughExecutor(brand_store).execute(run=run, pipeline_run_id="ZERO_BRAND_AVAILABLE", delivery=delivery, inventory=brand_inventory, generated_at="now")
+    assert brand.execution_status is PipelineExecutionStatus.COMPLETED_WITH_WARNING
+    assert brand.result_contract.field("available_inventory_wow").value_status is ResultValueStatus.MISSING
+    assert brand.result_contract.field("sell_through_wow_change_pp").value == Decimal("100")
+
+    rate_zero_store = InMemoryMetricStore()
+    _seed_prior(rate_zero_store, asset="STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT", variant="MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", context="CTX_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", product="Brand Moment", value=Decimal("5"))
+    _seed_prior(rate_zero_store, asset="STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH", variant="MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1", context="CTX_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY", value=Decimal(0))
+    brand_rate_zero = BrandMomentSellThroughExecutor(rate_zero_store).execute(run=run, pipeline_run_id="ZERO_BRAND_RATE", delivery=delivery, inventory=brand_inventory, generated_at="now")
+    assert brand_rate_zero.execution_status is PipelineExecutionStatus.COMPLETED
+    assert brand_rate_zero.result_contract.field("sell_through_wow_change_pp").value == Decimal("200")
+
+    invalid_store = InMemoryMetricStore()
+    _seed_prior(invalid_store, asset=FULL_SITE.store_asset_id, variant="MV_INVENTORY_FULL_SITE_AVAILABLE_VOLUME_V1", context=FULL_SITE.context_id, value=Decimal("-1"))
+    invalid = InventoryPipelineExecutor(FULL_SITE, _Runtime({key: path}), invalid_store).execute(run=run, pipeline_run_id="NEGATIVE_PRIOR", input_key=key, generated_at="now", rules=_rules())
+    assert invalid.execution_status is PipelineExecutionStatus.BLOCKED
+    assert invalid.error_code == "STAGE3C_PRIOR_REPAIR_REQUIRED"
+
+
 def test_result_contract_requires_explicit_context_lineage():
     run = _run({})
     del run.context.values["cutoff_date"]

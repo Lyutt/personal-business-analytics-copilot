@@ -77,7 +77,12 @@ def test_sqlite_canonical_key_ignores_lineage_and_uses_version_period_and_dimens
 def test_sqlite_preserves_registered_non_revenue_metadata(tmp_path, unit, numeric_semantics, precision, integer_only):
     store = SqliteMetricStore(tmp_path / "metric_results.sqlite")
     item = replace(record("STORE_ASSET_WEEKLY_PLATFORM_DAU"), unit=unit, numeric_semantics=numeric_semantics, precision=precision)
-    store.write_validated(store.preflight_write((item,)))
+    receipt = store.write_validated(store.preflight_write((item,)))
+    daily = replace(item, result_id="DAILY", metric_variant_id="MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1", canonical_dimensions={"activity_date": "2026-08-17", "platform_scope": "full_platform"}, numeric_semantics="integer_count", precision="integer")
+    daily_receipt = store.write_validated(store.preflight_write((daily,)))
+    assert store.verify_write(receipt)
+    assert store.verify_write(daily_receipt)
     with sqlite3.connect(store.database_path) as connection:
-        row = connection.execute("SELECT current_revenue_cutoff_date, integer_only, precision FROM metric_results").fetchone()
-    assert row == ("not_applicable", integer_only, precision)
+        rows = connection.execute("SELECT current_revenue_cutoff_date, integer_only, precision FROM metric_results ORDER BY metric_variant_id").fetchall()
+    assert rows == [(None, integer_only, precision), (None, 1, "integer")]
+    assert store.read_stage3c_exact(Stage3CPhysicalReadKey("STORE", item.store_asset_id, item.metric_variant_id, item.metric_variant_version, item.reporting_period, item.business_context_id)).current_revenue_cutoff_date == "not_applicable"
