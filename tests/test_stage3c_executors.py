@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -26,6 +26,7 @@ from weekly_business_runtime.stage3c import (
     LocalRuleBindings,
     PlatformDauExecutor,
     ProductSellThroughExecutor,
+    _validate_stage3c_contract,
 )
 from weekly_business_runtime.store import InMemoryMetricStore
 
@@ -137,7 +138,8 @@ def test_customer_triggered_path_uses_exact_two_period_product_inputs(tmp_path):
     run = _run({current_key: _Entry("fixture://customer-current"), comparison_key: _Entry("fixture://customer-comparison")})
     trigger = Stage3CResultContractInstance("RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", "1.0.0", "TRIGGER", "RUN_3C", "TRIGGER", "2026-08-17..2026-08-23", "CTX_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", (), {}, {}, {}, "now", "passed", "approved", (ResultFieldValue("non_patch_product_brand_sell_through_wow_change_pp", "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1", Decimal("12"), ResultValueStatus.VALID_VALUE, "percentage_point", ()),), product_parameter="Product A")
     result = CustomerChangeAnalysisExecutor(_Runtime({current_key: current, comparison_key: comparison})).execute(run=run, pipeline_run_id="CUSTOMER_TRIGGERED", product="Product A", rules=_rules(), trigger_contract=trigger, current_key=current_key, comparison_key=comparison_key, generated_at="2026-08-22T00:00:00+08:00")
-    assert result.execution_status is PipelineExecutionStatus.COMPLETED
+    assert result.execution_status is PipelineExecutionStatus.COMPLETED_WITH_WARNING
+    assert {warning.code for warning in result.warnings} == {"CUSTOMER_NEGATIVE_IMPRESSION_EXCLUDED"}
     assert result.result_contract.record_set == ({"customer_id": "c1", "customer_name": "A", "current_period_impression_count": Decimal("1200000"), "comparison_period_impression_count": Decimal("200000"), "impression_change_count": Decimal("1000000"), "ranking_measure": Decimal("1200000"), "customer_rank": 1},)
     assert result.result_contract.context_values["applied_output_limit"] == 2
 
@@ -146,6 +148,18 @@ def test_product_executor_rejects_ambiguous_route(tmp_path):
     result = ProductSellThroughExecutor(InMemoryMetricStore()).execute(run=_run({}), pipeline_run_id="BAD", product="Unknown", rules=_rules(), upstream=None, generated_at="2026-08-22T00:00:00+08:00")
     assert result.execution_status is PipelineExecutionStatus.BLOCKED
     assert result.error_code == "STAGE3C_PRODUCT_ROUTE_AMBIGUOUS"
+
+
+def test_stage3c_contract_validator_rejects_unit_version_and_required_field_errors():
+    field = ResultFieldValue("impression_count", "MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1", Decimal("1"), ResultValueStatus.VALID_VALUE, "impression", ("fixture://input",))
+    base = Stage3CResultContractInstance("RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", "1.0.0", "RESULT", "RUN", "PIPE", "2026-08-17..2026-08-23", "CTX_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", ("fixture://input",), {"MAP": "1.0.0"}, {}, {field.metric_variant_id: "1.0.0-draft"}, "now", "passed", "approved", (field,), cutoff_date="2026-08-21", report_mode="regular_week")
+    _validate_stage3c_contract(base)
+    with pytest.raises(Exception):
+        _validate_stage3c_contract(replace(base, fields=(replace(field, unit="impression_count"),)))
+    with pytest.raises(Exception):
+        _validate_stage3c_contract(replace(base, metric_variant_versions={field.metric_variant_id: "1.0.0"}))
+    with pytest.raises(Exception):
+        _validate_stage3c_contract(replace(base, fields=()))
 
 
 def test_full_site_uses_complete_rows_except_available_and_mapping_fallback(tmp_path):
@@ -179,4 +193,6 @@ def test_dau_composite_contract_contains_daily_records_and_blocks_invalid_covera
     assert result.result_contract.field("weekly_average_dau").unit == "user"
     invalid = _input(tmp_path, "dau-invalid", [{"日期": "2026-08-17", "全平台日活跃用户数": "0"}] * 7)
     blocked = PlatformDauExecutor(_Runtime({key: invalid}), InMemoryMetricStore()).execute(run=run, pipeline_run_id="DAU_BAD", input_key=key, generated_at="2026-08-22T00:00:00+08:00")
-    assert blocked.execution_status is PipelineExecutionStatus.BLOCKED
+    assert blocked.execution_status is PipelineExecutionStatus.COMPLETED_WITH_WARNING
+    assert blocked.result_contract is None
+    assert blocked.warnings[0].code == "STAGE3C_DAU_CONTENT_OMITTED"

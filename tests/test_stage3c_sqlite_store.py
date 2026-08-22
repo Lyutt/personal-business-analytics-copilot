@@ -9,6 +9,7 @@ from weekly_business_runtime.store import (
     MetricStoreError,
     MetricStoreRecord,
     SqliteMetricStore,
+    Stage3CPhysicalReadKey,
 )
 
 
@@ -59,5 +60,8 @@ def test_sqlite_canonical_key_ignores_lineage_and_uses_version_period_and_dimens
     store.write_validated(store.preflight_write((changed_version,)))
     changed_period = replace(original, reporting_period="2026-08-24..2026-08-30")
     store.write_validated(store.preflight_write((changed_period,)))
+    assert store.read_stage3c_exact(Stage3CPhysicalReadKey("STORE", original.store_asset_id, "MV_TEST_V1", "1.0.0", original.reporting_period, "CTX_TEST")).value == Decimal("1")
+    assert store.read_stage3c_exact(Stage3CPhysicalReadKey("STORE", original.store_asset_id, "MV_TEST_V1", "2.0.0", original.reporting_period, "CTX_TEST")).value == Decimal("1")
+    assert store.read_stage3c_exact(Stage3CPhysicalReadKey("STORE", original.store_asset_id, "MV_TEST_V1", "1.0.0", changed_period.reporting_period, "CTX_TEST")).value == Decimal("1")
     with sqlite3.connect(store.database_path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM metric_results").fetchone()[0] == 3

@@ -88,6 +88,8 @@ class Stage3CResultContractInstance:
     product_parameter: str = "not_applicable"
     workflow_reporting_date: str = "not_applicable"
     context_values: Mapping[str, Any] = field(default_factory=dict)
+    cutoff_date: str = "not_applicable"
+    report_mode: str = "not_applicable"
 
     def field(self, field_id: str) -> ResultFieldValue:
         matches = [field for field in self.fields if field.field_id == field_id]

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
@@ -33,12 +33,90 @@ from .models import (
     ResultValueStatus,
     Stage3CResultContractInstance,
 )
-from .store import MetricStorePort, MetricStoreRecord, StoreReadKey
+from .store import (
+    MetricStorePort,
+    MetricStoreRecord,
+    Stage3CPhysicalReadKey,
+    StoreReadKey,
+)
 
 WORKFLOW_ID = "WF_WEEKLY_BUSINESS_REPORT"
 INVENTORY_STORE_ID = "STORE_WEEKLY_INVENTORY_HISTORICAL"
 ADVERTISING_STORE_ID = "STORE_WEEKLY_ADVERTISING_HISTORICAL"
 DAU_STORE_ID = "STORE_WEEKLY_USER_ANALYTICS_HISTORICAL"
+
+_METRIC_VERSION = "1.0.0-draft"
+
+
+def _validate_stage3c_contract(instance: Stage3CResultContractInstance) -> None:
+    """Small authority-bound validator for the eight Stage 3C result shapes."""
+    required = {
+        "RC_INVENTORY_FULL_SITE_WEEKLY": ("gross_inventory_count", "disabled_inventory_count", "available_inventory_count", "brand_delivery_inventory_count", "performance_delivery_inventory_count", "commercial_delivery_inventory_count", "available_inventory_wow"),
+        "RC_INVENTORY_PATCH_WEEKLY": ("gross_inventory_count", "disabled_inventory_count", "available_inventory_count", "brand_delivery_inventory_count", "performance_delivery_inventory_count", "commercial_delivery_inventory_count", "available_inventory_wow"),
+        "RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY": ("gross_inventory_count", "disabled_inventory_count", "available_inventory_count", "brand_delivery_inventory_count", "performance_delivery_inventory_count", "commercial_delivery_inventory_count", "available_inventory_wow", "brand_moment_available_inventory_count"),
+        "RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY": ("impression_count",),
+        "RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY": ("available_inventory_wow", "sell_through_rate", "sell_through_wow_change_pp"),
+        "RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY": ("patch_brand_sell_through_rate", "patch_brand_sell_through_wow_change_pp", "non_patch_product_brand_sell_through_rate", "non_patch_product_brand_sell_through_wow_change_pp"),
+        "RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY": ("weekly_average_dau", "weekly_average_dau_wow"),
+        "RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS": (),
+    }
+    if instance.result_contract_id not in required or instance.result_contract_version != "1.0.0":
+        raise ResultContractError("STAGE3C_RESULT_CONTRACT_MISMATCH", "Result Contract identity/version is not registered")
+    fields = tuple(instance.fields)
+    if len({field.field_id for field in fields}) != len(fields) or {field.field_id for field in fields} != set(required[instance.result_contract_id]):
+        raise ResultContractError("STAGE3C_RESULT_REQUIRED_FIELDS", "Result Contract field set is incomplete or duplicate")
+    for field in fields:
+        expected_variant, expected_unit = _registered_field_binding(instance.result_contract_id, field.field_id)
+        if (field.metric_variant_id, field.unit) != (expected_variant, expected_unit):
+            raise ResultContractError("STAGE3C_RESULT_FIELD_BINDING", "Metric Variant or unit is not registered for this Result field")
+        if not field.lineage_references or instance.metric_variant_versions.get(field.metric_variant_id) != _METRIC_VERSION:
+            raise ResultContractError("STAGE3C_RESULT_FIELD_BINDING", "Metric binding/version/lineage is invalid")
+        if field.value_status is ResultValueStatus.VALID_VALUE and field.value is None:
+            raise ResultContractError("STAGE3C_RESULT_NULLABLE", "Valid field must have a value")
+        if field.value is not None and not field.value.is_finite():
+            raise ResultContractError("STAGE3C_RESULT_NUMERIC", "Numeric result must be finite")
+        if field.value is not None and field.unit in {"inventory_unit", "impression", "user"} and field.value < 0:
+            raise ResultContractError("STAGE3C_RESULT_NEGATIVE_FINAL", "Negative final metric is not allowed")
+    if any(not value or value == "not_applicable" for value in (instance.result_id, instance.workflow_run_id, instance.pipeline_run_id, instance.reporting_period, instance.cutoff_date, instance.report_mode, instance.generated_at)):
+        raise ResultContractError("STAGE3C_RESULT_LINEAGE", "Required Result Contract lineage is missing")
+    if instance.result_contract_id == "RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY":
+        if len(instance.record_set) != 7 or {item.get("activity_date") for item in instance.record_set}.__len__() != 7 or any(item.get("platform_scope") != "full_platform" or item.get("dau_count", 0) <= 0 for item in instance.record_set):
+            raise ResultContractError("STAGE3C_DAU_RECORD_SET", "DAU daily_activity record set is invalid")
+
+
+def _registered_field_binding(contract_id: str, field_id: str) -> tuple[str, str]:
+    """Return the frozen Stage 3C Metric Variant and unit for a result field."""
+    inventory_fields = {
+        "gross_inventory_count": ("GROSS_VOLUME", "inventory_unit"),
+        "disabled_inventory_count": ("DISABLED_VOLUME", "inventory_unit"),
+        "available_inventory_count": ("AVAILABLE_VOLUME", "inventory_unit"),
+        "brand_delivery_inventory_count": ("BRAND_DELIVERY_VOLUME", "inventory_unit"),
+        "performance_delivery_inventory_count": ("PERFORMANCE_DELIVERY_VOLUME", "inventory_unit"),
+        "commercial_delivery_inventory_count": ("COMMERCIAL_DELIVERY_VOLUME", "inventory_unit"),
+        "available_inventory_wow": ("AVAILABLE_VOLUME_WOW", "decimal_ratio"),
+    }
+    prefixes = {
+        "RC_INVENTORY_FULL_SITE_WEEKLY": "MV_INVENTORY_FULL_SITE",
+        "RC_INVENTORY_PATCH_WEEKLY": "MV_INVENTORY_PATCH",
+        "RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY": "MV_INVENTORY_NON_PATCH_PRODUCT",
+    }
+    if contract_id in prefixes and field_id in inventory_fields:
+        suffix, unit = inventory_fields[field_id]
+        return f"{prefixes[contract_id]}_{suffix}_V1", unit
+    bindings = {
+        ("RC_INVENTORY_NON_PATCH_PRODUCT_WEEKLY", "brand_moment_available_inventory_count"): ("MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", "inventory_unit"),
+        ("RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", "impression_count"): ("MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1", "impression"),
+        ("RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY", "available_inventory_wow"): ("MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_WOW_V1", "decimal_ratio"),
+        ("RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY", "sell_through_rate"): ("MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_RATE_V1", "decimal_ratio"),
+        ("RC_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY", "sell_through_wow_change_pp"): ("MV_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WOW_CHANGE_V1", "percentage_point"),
+        ("RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", "patch_brand_sell_through_rate"): ("MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_RATE_V1", "decimal_ratio"),
+        ("RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", "patch_brand_sell_through_wow_change_pp"): ("MV_INVENTORY_PATCH_BRAND_SELL_THROUGH_WOW_CHANGE_V1", "percentage_point"),
+        ("RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", "non_patch_product_brand_sell_through_rate"): ("MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_RATE_V1", "decimal_ratio"),
+        ("RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", "non_patch_product_brand_sell_through_wow_change_pp"): ("MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1", "percentage_point"),
+        ("RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY", "weekly_average_dau"): ("MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1", "user"),
+        ("RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY", "weekly_average_dau_wow"): ("MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1", "decimal_ratio"),
+    }
+    return bindings[(contract_id, field_id)]
 
 
 @dataclass(frozen=True)
@@ -112,7 +190,9 @@ def _field(field_id: str, variant: str, value: Decimal | None, unit: str, lineag
 
 def _contract(*, contract_id: str, result_id: str, run: RuntimeRun, pipeline_run_id: str, context_id: str, fields: Iterable[ResultFieldValue], generated_at: str, inputs: tuple[str, ...], mappings: Mapping[str, str], rules: Mapping[str, str] = {}, record_set: tuple[Mapping[str, Any], ...] = (), product: str = "not_applicable", context_values: Mapping[str, Any] = {}) -> Stage3CResultContractInstance:
     period = f"{run.context.values['reporting_period_start_date']}..{run.context.values['reporting_period_end_date']}"
-    return Stage3CResultContractInstance(contract_id, "1.0.0", result_id, run.context.workflow_run_id, pipeline_run_id, period, context_id, inputs, mappings, rules, {field.metric_variant_id: "1.0.0" for field in fields}, generated_at, "passed", "approved", tuple(fields), record_set, product, str(run.context.values["workflow_reporting_date"]), context_values)
+    instance = Stage3CResultContractInstance(contract_id, "1.0.0", result_id, run.context.workflow_run_id, pipeline_run_id, period, context_id, inputs, mappings, rules, {field.metric_variant_id: _METRIC_VERSION for field in fields}, generated_at, "pending_validation", "approved", tuple(fields), record_set, product, str(run.context.values["workflow_reporting_date"]), context_values, str(run.context.values.get("cutoff_date", run.context.values["workflow_reporting_date"])), str(run.context.values.get("report_mode", "regular_week")))
+    _validate_stage3c_contract(instance)
+    return replace(instance, validation_status="passed")
 
 
 def _persist(result: Stage3CResultContractInstance, *, pipeline_id: str, store_id: str, asset_id: str, store: MetricStorePort, product: str = "not_applicable", extra_records: tuple[MetricStoreRecord, ...] = ()) -> tuple[ExecutionWarning, ...]:
@@ -121,7 +201,7 @@ def _persist(result: Stage3CResultContractInstance, *, pipeline_id: str, store_i
             result_id=f"{result.result_id}:{field.metric_variant_id}", workflow_id=WORKFLOW_ID,
             workflow_run_id=result.workflow_run_id, pipeline_id=pipeline_id, pipeline_run_id=result.pipeline_run_id,
             store_id=store_id, store_asset_id=asset_id, metric_variant_id=field.metric_variant_id,
-            metric_variant_version="1.0.0", workflow_reporting_date=result.workflow_reporting_date,
+            metric_variant_version=result.metric_variant_versions[field.metric_variant_id], workflow_reporting_date=result.workflow_reporting_date,
             current_revenue_cutoff_date=result.workflow_reporting_date, business_context_id=result.business_context_id,
             reporting_period=result.reporting_period, value=field.value or Decimal(0),
             value_status=field.value_status.value, numeric_semantics=("percentage_point_change" if field.unit == "percentage_point" else "ratio" if field.unit == "decimal_ratio" else "average_count" if field.unit == "user" else "integer_count"),
@@ -151,6 +231,10 @@ def _exact_prior(
     context_id: str, run: RuntimeRun, product: str = "not_applicable",
 ) -> Decimal | None:
     try:
+        if hasattr(store, "read_stage3c_exact"):
+            current_start = date.fromisoformat(str(run.context.values["reporting_period_start_date"]))
+            current_end = date.fromisoformat(str(run.context.values["reporting_period_end_date"]))
+            return store.read_stage3c_exact(Stage3CPhysicalReadKey(store_id, asset_id, variant_id, _METRIC_VERSION, f"{current_start - timedelta(days=7)}..{current_end - timedelta(days=7)}", context_id, product)).value  # type: ignore[attr-defined]
         return store.read_exact(StoreReadKey(store_id, asset_id, variant_id, _previous_reporting_date(run), context_id, product)).value
     except MetricStoreError as exc:
         if exc.code == "STORE_EXACT_KEY_NOT_FOUND":
@@ -182,7 +266,8 @@ class InventoryPipelineExecutor:
             fields = self._fields(values, product, rules, run)
             lineage = (entry.local_input_reference, f"mapping-consumed://{self.profile.mapping_id}")
             result = _contract(contract_id=self.profile.contract_id, result_id=f"{pipeline_run_id}:{self.profile.contract_id}", run=run, pipeline_run_id=pipeline_run_id, context_id=self.profile.context_id, fields=fields, generated_at=generated_at, inputs=(entry.local_input_reference,), mappings={self.profile.mapping_id: "1.0.0"}, product=product)
-            warnings = _persist(result, pipeline_id=self.profile.pipeline_id, store_id=INVENTORY_STORE_ID, asset_id=self.profile.store_asset_id, store=self.metric_store, product=product)
+            zero_warnings = tuple(ExecutionWarning("STAGE3C_INVENTORY_ZERO_FINAL", f"{name} is zero; owner notification required") for name, value in values.items() if value == 0)
+            warnings = (*zero_warnings, *_persist(result, pipeline_id=self.profile.pipeline_id, store_id=INVENTORY_STORE_ID, asset_id=self.profile.store_asset_id, store=self.metric_store, product=product))
             return PipelineExecutionResult(run.context.workflow_run_id, self.profile.pipeline_id, pipeline_run_id, {"business_context_id": self.profile.context_id, "product": product}, (entry.local_input_reference,), PipelineExecutionStatus.COMPLETED_WITH_WARNING if warnings else PipelineExecutionStatus.COMPLETED, warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=(*lineage, *(f"metric-store://{result.result_id}" for _ in warnings)), result_contract=result)
         except (Stage3AError, AcquisitionError, KeyError) as exc:
             return PipelineExecutionResult(run.context.workflow_run_id, self.profile.pipeline_id, pipeline_run_id, {"business_context_id": self.profile.context_id}, (), PipelineExecutionStatus.BLOCKED, error_code=getattr(exc, "code", "STAGE3C_EXECUTION_BLOCKED"), error_message=str(exc))
@@ -212,7 +297,8 @@ class InventoryPipelineExecutor:
         return selected
 
     def _calculate(self, rows: list[dict[str, Any]], rules: LocalRuleBindings) -> dict[str, Decimal]:
-        if not rows: raise DatasetValidationError("STAGE3C_NO_APPLICABLE_ROWS", "No rows satisfy the explicit local rule")
+        if not rows:
+            return {"gross_inventory_count": Decimal(0), "disabled_inventory_count": Decimal(0), "available_inventory_count": Decimal(0), "brand_delivery_inventory_count": Decimal(0), "performance_delivery_inventory_count": Decimal(0), "commercial_delivery_inventory_count": Decimal(0)}
         def total(name: str, fallback: str | None = None) -> Decimal: return sum((_decimal(row.get(name, row.get(fallback)) if fallback else row.get(name), name, zero_for_blank=True) for row in rows), Decimal(0))
         total_name = "库存" if self.profile.kind in {"full", "patch"} else "总库存"
         disabled_name = "禁用库存"
@@ -225,15 +311,15 @@ class InventoryPipelineExecutor:
         names = ("GROSS_VOLUME", "DISABLED_VOLUME", "AVAILABLE_VOLUME", "BRAND_DELIVERY_VOLUME", "PERFORMANCE_DELIVERY_VOLUME", "COMMERCIAL_DELIVERY_VOLUME")
         ids = ("gross_inventory_count", "disabled_inventory_count", "available_inventory_count", "brand_delivery_inventory_count", "performance_delivery_inventory_count", "commercial_delivery_inventory_count")
         lineage = (f"mapping-consumed://{self.profile.mapping_id}",)
-        fields = [_field(field_id, f"{self.profile.variant_prefix}_{name}_V1", values[field_id], "inventory_count", lineage) for field_id, name in zip(ids, names, strict=True)]
+        fields = [_field(field_id, f"{self.profile.variant_prefix}_{name}_V1", values[field_id], "inventory_unit", lineage) for field_id, name in zip(ids, names, strict=True)]
         available_variant = f"{self.profile.variant_prefix}_AVAILABLE_VOLUME_V1"
         prior_available = _exact_prior(self.metric_store, store_id=INVENTORY_STORE_ID, asset_id=self.profile.store_asset_id, variant_id=available_variant, context_id=self.profile.context_id, run=run, product=product)
         wow = None if prior_available is None or prior_available <= 0 else values["available_inventory_count"] / prior_available - 1
         fields.append(_field("available_inventory_wow", f"{self.profile.variant_prefix}_AVAILABLE_VOLUME_WOW_V1", wow, "decimal_ratio", lineage, status=ResultValueStatus.VALID_VALUE if wow is not None else ResultValueStatus.MISSING))
         if self.profile.kind == "non_patch":
             rules.require("BR_APOLLO_PRODUCT_FILTER_MAPPING")
-            if rules.product_route_by_name.get(product) == "brand_moment": fields.append(_field("brand_moment_available_inventory_count", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", values["available_inventory_count"], "inventory_count", lineage))
-            else: fields.append(_field("brand_moment_available_inventory_count", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", None, "inventory_count", lineage, status=ResultValueStatus.NOT_APPLICABLE))
+            if rules.product_route_by_name.get(product) == "brand_moment": fields.append(_field("brand_moment_available_inventory_count", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", values["available_inventory_count"], "inventory_unit", lineage))
+            else: fields.append(_field("brand_moment_available_inventory_count", "MV_INVENTORY_BRAND_MOMENT_AVAILABLE_VOLUME_V1", None, "inventory_unit", lineage, status=ResultValueStatus.NOT_APPLICABLE))
         return tuple(fields)
 
 
@@ -257,7 +343,7 @@ class BrandMomentDeliveryExecutor:
             if value <= 0:
                 raise DatasetValidationError("BRAND_MOMENT_IMPRESSION_INVALID", "impression_count must be positive")
             lineage = (entry.local_input_reference, "mapping-consumed://MAP_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_V1")
-            result = _contract(contract_id="RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", result_id=f"{pipeline_run_id}:RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=(_field("impression_count", "MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1", value, "impression_count", lineage),), generated_at=generated_at, inputs=(entry.local_input_reference,), mappings={"MAP_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_V1": "1.0.0"})
+            result = _contract(contract_id="RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", result_id=f"{pipeline_run_id}:RC_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=(_field("impression_count", "MV_ADVERTISING_BRAND_MOMENT_WEEKLY_IMPRESSION_COUNT_V1", value, "impression", lineage),), generated_at=generated_at, inputs=(entry.local_input_reference,), mappings={"MAP_ADVERTISING_APOLLO_BRAND_MOMENT_DELIVERY_EXECUTION_V1": "1.0.0"})
             warnings = _persist(result, pipeline_id=self.pipeline_id, store_id=ADVERTISING_STORE_ID, asset_id="STORE_ASSET_WEEKLY_BRAND_MOMENT_DELIVERY", store=self.metric_store)
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, (entry.local_input_reference,), PipelineExecutionStatus.COMPLETED_WITH_WARNING if warnings else PipelineExecutionStatus.COMPLETED, warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=lineage, result_contract=result)
         except (Stage3AError, AcquisitionError, KeyError) as exc:
@@ -292,9 +378,11 @@ class PlatformDauExecutor:
             fields = (_field("weekly_average_dau", "MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1", average, "user", lineage), _field("weekly_average_dau_wow", "MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1", wow, "decimal_ratio", lineage, status=ResultValueStatus.VALID_VALUE if wow is not None else ResultValueStatus.MISSING))
             daily = tuple({"activity_date": str(row["日期"]), "platform_scope": "full_platform", "dau_count": value} for row, value in sorted(zip(rows, values, strict=True), key=lambda item: str(item[0]["日期"])))
             result = _contract(contract_id="RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY", result_id=f"{pipeline_run_id}:RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=fields, generated_at=generated_at, inputs=(entry.local_input_reference,), mappings={"MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1": "1.0.0"}, record_set=daily)
-            daily_records = tuple(MetricStoreRecord(result_id=f"{result.result_id}:DAU:{item['activity_date']}", workflow_id=WORKFLOW_ID, workflow_run_id=result.workflow_run_id, pipeline_id=self.pipeline_id, pipeline_run_id=result.pipeline_run_id, store_id=DAU_STORE_ID, store_asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", metric_variant_id="MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1", metric_variant_version="1.0.0", workflow_reporting_date=result.workflow_reporting_date, current_revenue_cutoff_date=result.workflow_reporting_date, business_context_id=self.context_id, reporting_period=result.reporting_period, value=item["dau_count"], value_status="valid_value", numeric_semantics="integer_count", unit="user", precision="integer", validation_status="passed", generated_at=generated_at, lineage_references=lineage, canonical_dimensions={"activity_date": item["activity_date"], "platform_scope": "full_platform"}) for item in daily)
+            daily_records = tuple(MetricStoreRecord(result_id=f"{result.result_id}:DAU:{item['activity_date']}", workflow_id=WORKFLOW_ID, workflow_run_id=result.workflow_run_id, pipeline_id=self.pipeline_id, pipeline_run_id=result.pipeline_run_id, store_id=DAU_STORE_ID, store_asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", metric_variant_id="MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1", metric_variant_version=_METRIC_VERSION, workflow_reporting_date=result.workflow_reporting_date, current_revenue_cutoff_date=result.workflow_reporting_date, business_context_id=self.context_id, reporting_period=result.reporting_period, value=item["dau_count"], value_status="valid_value", numeric_semantics="integer_count", unit="user", precision="integer", validation_status="passed", generated_at=generated_at, lineage_references=lineage, canonical_dimensions={"activity_date": item["activity_date"], "platform_scope": "full_platform"}) for item in daily)
             warnings = _persist(result, pipeline_id=self.pipeline_id, store_id=DAU_STORE_ID, asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", store=self.metric_store, extra_records=daily_records)
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, (entry.local_input_reference,), PipelineExecutionStatus.COMPLETED_WITH_WARNING if warnings else PipelineExecutionStatus.COMPLETED, warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=lineage, result_contract=result)
+        except DatasetValidationError as exc:
+            return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, (), PipelineExecutionStatus.COMPLETED_WITH_WARNING, (ExecutionWarning("STAGE3C_DAU_CONTENT_OMITTED", str(exc)),), produced_result_contract_reference="omitted://invalid-dau-input")
         except (Stage3AError, AcquisitionError, KeyError) as exc:
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, (), PipelineExecutionStatus.BLOCKED, error_code=getattr(exc, "code", "STAGE3C_EXECUTION_BLOCKED"), error_message=str(exc))
 
@@ -403,11 +491,11 @@ class CustomerChangeAnalysisExecutor:
             if not current or not comparison:
                 return self._omitted(run, pipeline_run_id, product, "STAGE3C_CUSTOMER_RAW_QUERY_ZERO_ROWS")
             scenario = "positive_sell_through_change" if trigger.value > 0 else "negative_sell_through_change"
-            records = self._compare(current, comparison, scenario, int(config["output_limit"]))
+            records, anomaly_warnings = self._compare(current, comparison, scenario, int(config["output_limit"]), with_warnings=True)
             lineage = (f"result-contract://{trigger_contract.result_id}", current_entry.local_input_reference, comparison_entry.local_input_reference, "policy-evaluated://POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1")
             context = {"target_ad_product_name": product, "analysis_scenario": scenario, "current_period_start_date": str(run.context.values["current_period_start_date"]), "current_period_end_date": str(run.context.values["current_period_end_date"]), "comparison_period_start_date": str(run.context.values["comparison_period_start_date"]), "comparison_period_end_date": str(run.context.values["comparison_period_end_date"]), "trigger_sell_through_wow_change_pp": trigger.value, "applied_trigger_threshold_pp": threshold, "selection_basis": "current_period_impression_count" if scenario.startswith("positive") else "comparison_period_minus_current_period_impression_count", "applied_materiality_threshold_count": Decimal("1000000"), "applied_output_limit": int(config["output_limit"])}
             result = _contract(contract_id="RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS", result_id=f"{pipeline_run_id}:RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=(), generated_at=generated_at, inputs=lineage, mappings={"MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1": "1.0.0"}, rules={"POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1": "1.0.0"}, record_set=tuple(records), product=product, context_values=context)
-            return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, (current_entry.local_input_reference, comparison_entry.local_input_reference), PipelineExecutionStatus.COMPLETED, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=lineage, result_contract=result)
+            return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, (current_entry.local_input_reference, comparison_entry.local_input_reference), PipelineExecutionStatus.COMPLETED_WITH_WARNING if anomaly_warnings else PipelineExecutionStatus.COMPLETED, anomaly_warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=lineage, result_contract=result)
         except AcquisitionError:
             return self._omitted(run, pipeline_run_id, product, "STAGE3C_CUSTOMER_QUERY_FAILURE")
         except (Stage3AError, KeyError) as exc:
@@ -417,20 +505,28 @@ class CustomerChangeAnalysisExecutor:
         return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, (), PipelineExecutionStatus.COMPLETED_WITH_WARNING, (ExecutionWarning(code, "Target product customer analysis omitted; owner notification required"),), produced_result_contract_reference="omitted://source-or-routing-exception")
 
     @staticmethod
-    def _compare(current: list[dict[str, Any]], comparison: list[dict[str, Any]], scenario: str, output_limit: int) -> list[Mapping[str, Any]]:
+    def _compare(current: list[dict[str, Any]], comparison: list[dict[str, Any]], scenario: str, output_limit: int, *, with_warnings: bool = False) -> list[Mapping[str, Any]] | tuple[list[Mapping[str, Any]], tuple[ExecutionWarning, ...]]:
         def eligible(rows: list[dict[str, Any]]) -> dict[str, tuple[str, Decimal]]:
             values: dict[str, tuple[str, Decimal]] = {}
             duplicates: set[str] = set()
+            warnings: list[ExecutionWarning] = []
             for row in rows:
                 customer_id, name = str(row.get("客户ID", "")).strip(), str(row.get("客户名", "")).strip()
                 if not customer_id or not name: continue
                 try: amount = _decimal(row.get("曝光量"), "impression_count")
-                except DatasetValidationError: continue
-                if amount < 0: continue
+                except DatasetValidationError:
+                    continue
+                if amount < 0:
+                    warnings.append(ExecutionWarning("CUSTOMER_NEGATIVE_IMPRESSION_EXCLUDED", "Negative customer impression row excluded; owner notification required"))
+                    continue
                 if customer_id in values: duplicates.add(customer_id)
                 values[customer_id] = (name, amount)
-            return {key: value for key, value in values.items() if key not in duplicates}
-        before, after = eligible(comparison), eligible(current)
+            for _ in duplicates:
+                warnings.append(ExecutionWarning("CUSTOMER_DUPLICATE_ROWS_EXCLUDED", "Duplicate customer rows excluded; owner notification required"))
+            return {key: value for key, value in values.items() if key not in duplicates}, warnings
+        before, before_warnings = eligible(comparison)
+        after, after_warnings = eligible(current)
+        warnings = [*before_warnings, *after_warnings]
         records = []
         for customer_id in sorted(set(before) | set(after)):
             current_item = after.get(customer_id)
@@ -439,10 +535,12 @@ class CustomerChangeAnalysisExecutor:
             current_value = current_item[1] if current_item is not None else Decimal(0)
             previous_value = previous_item[1] if previous_item is not None else Decimal(0)
             if current_item is not None and previous_item is not None and current_item[0] != previous_item[0]:
+                warnings.append(ExecutionWarning("CUSTOMER_NAME_CONFLICT_EXCLUDED", "Conflicting customer names excluded; owner notification required"))
                 continue
             ranking = current_value if scenario == "positive_sell_through_change" else previous_value - current_value
             if (scenario == "negative_sell_through_change" and previous_value <= current_value) or ranking < Decimal("1000000"):
                 continue
             records.append({"customer_id": customer_id, "customer_name": name, "current_period_impression_count": current_value, "comparison_period_impression_count": previous_value, "impression_change_count": current_value - previous_value, "ranking_measure": ranking})
         records.sort(key=lambda item: (-item["ranking_measure"], item["customer_id"]))
-        return [{**item, "customer_rank": index} for index, item in enumerate(records[:output_limit], start=1)]
+        ranked = [{**item, "customer_rank": index} for index, item in enumerate(records[:output_limit], start=1)]
+        return (ranked, tuple(warnings)) if with_warnings else ranked

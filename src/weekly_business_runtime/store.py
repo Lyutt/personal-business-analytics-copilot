@@ -27,6 +27,18 @@ class StoreReadKey:
 
 
 @dataclass(frozen=True)
+class Stage3CPhysicalReadKey:
+    store_id: str
+    store_asset_id: str
+    metric_variant_id: str
+    metric_variant_version: str
+    reporting_period: str
+    business_context_id: str
+    product_parameter: str = "not_applicable"
+    canonical_dimension_items: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
 class StoreBusinessDateReadKey:
     """Exact historical lookup identity keyed by the Store business date."""
 
@@ -593,6 +605,15 @@ class SqliteMetricStore:
         if record.validation_status != "passed" or record.value_status != "valid_value":
             raise MetricStoreError("STORE_RESULT_NOT_CONSUMABLE", "Historical result is not consumable")
         return record
+
+    def read_stage3c_exact(self, key: Stage3CPhysicalReadKey) -> MetricStoreRecord:
+        start, end = key.reporting_period.split("..", 1)
+        dimensions = json.dumps({"business_context_id": key.business_context_id, "product_parameter": key.product_parameter, **dict(key.canonical_dimension_items)}, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        with self._connect() as connection:
+            rows = connection.execute("""SELECT * FROM metric_results WHERE store_id = ? AND store_asset_id = ? AND metric_variant_id = ? AND metric_variant_version = ? AND reporting_period_start = ? AND reporting_period_end = ? AND dimensions_json = ?""", (key.store_id, key.store_asset_id, key.metric_variant_id, key.metric_variant_version, start, end, dimensions)).fetchall()
+        if len(rows) != 1:
+            raise MetricStoreError("STORE_EXACT_KEY_NOT_FOUND" if not rows else "STORE_EXACT_KEY_AMBIGUOUS", "Stage 3C physical exact key did not resolve uniquely")
+        return self._record_from_row(rows[0])
 
     def read_exact_business_date(self, key: StoreBusinessDateReadKey) -> MetricStoreRecord:
         with self._connect() as connection:
