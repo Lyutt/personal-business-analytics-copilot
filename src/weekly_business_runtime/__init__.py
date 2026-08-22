@@ -47,6 +47,7 @@ from .store import (
 )
 from .technical_assets import TechnicalAssetBundle
 from .technical_pipeline import TechnicalPipelineExecutor
+from .weekly_runner import WeeklyWorkflowRunner
 
 __all__ = [
     "CtvAssetBundle",
@@ -85,4 +86,5 @@ __all__ = [
     "CustomerChangeAnalysisExecutor",
     "PlatformDauExecutor",
     "ProductSellThroughExecutor",
+    "WeeklyWorkflowRunner",
 ]

@@ -1,0 +1,198 @@
+config_type: stage_scope_contract
+scope_contract_id: SCOPE_STAGE3C_WEEKLY_EXECUTOR_COMPLETION_RETROSPECTIVE_V1
+scope_contract_version: 1.0.0
+status: retrospectively_registered_completed_and_merged
+registration_date: 2026-08-22
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+stage: Stage 3C
+stage_name: Weekly Executor Completion
+owner: WORKFLOW_OWNER
+
+registration_classification:
+  retrospective_governance_reconciliation: true
+  merged_implementation_fact_source: repository_commit_and_exact_diff
+  pre_implementation_scope_authorization_retroactively_claimed: false
+  historical_chat_or_model_memory_used_as_project_state: false
+  reconciliation_owner_authorized: true
+  reconciliation_authorization_date: 2026-08-22
+  reconciliation_authorization_statement: 做Stage 3C governance reconciliation / retrospective registration
+  implementation_status_at_registration: completed_and_merged
+  implementation_pull_request: 18
+  implementation_merge_commit_sha: 71e035ba94be0ddd32cc359ab37312dcfab0120a
+  merged_to: main
+
+included_scope:
+  pipeline_business_execution_slices:
+    - PL_INVENTORY_FULL_SITE_WEEKLY
+    - PL_INVENTORY_PATCH_WEEKLY
+    - PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    - PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+    - PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+    - PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+    - PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+    - PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+  execution_entry_boundary:
+    - Direct Dataset Pipelines begin from local inputs explicitly bound by the Run Input Manifest.
+    - Dependency-triggered Pipelines begin from exact validated upstream Result Contract instances.
+    - Dataset loading and binding validation are included where a Dataset input is registered.
+    - Mapping, standardization, validation, Business Rule execution, Metric execution, and Result Contract assembly are included only as registered for each Pipeline.
+    - Historical reads and validated writes use MetricStorePort only.
+  reusable_stage3a_foundation:
+    - Existing execution-context and Manifest identity validation patterns.
+    - Existing fail-closed asset composition validation.
+    - Existing Rule, Metric, Result Contract, and MetricStorePort patterns.
+    - Existing Stage 3A and Stage 3B behavior remains regression-protected.
+  revenue_store_adapter:
+    applicability: excluded_not_modified
+    store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+    existing_behavior_regression_protected: true
+  shared_sqlite_metric_store_increment:
+    store_ids:
+      - STORE_WEEKLY_INVENTORY_HISTORICAL
+      - STORE_WEEKLY_USER_ANALYTICS_HISTORICAL
+      - STORE_WEEKLY_ADVERTISING_HISTORICAL
+    store_asset_ids:
+      - STORE_ASSET_WEEKLY_INVENTORY_FULL_SITE
+      - STORE_ASSET_WEEKLY_INVENTORY_PATCH
+      - STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT
+      - STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH
+      - STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH
+      - STORE_ASSET_WEEKLY_BRAND_MOMENT_DELIVERY
+      - STORE_ASSET_WEEKLY_PLATFORM_DAU
+    provider: SQLite
+    table_name: metric_results
+    registered_physical_schema_reused: true
+    stage3c_physical_exact_verification_key: Stage3CPhysicalReadKey
+    non_revenue_current_revenue_cutoff_date_physical_value: null
+    in_memory_not_applicable_sentinel_restored_on_read: true
+    idempotent_same_key_same_value_action: no_op_success
+    same_key_different_value_action: reject_write_notify_owner
+    automatic_overwrite_allowed: false
+    configured_display_values_table_implemented: false
+    local_runtime_file_or_table_initialized_by_merged_implementation: false
+  frozen_contract_preservation:
+    business_semantics_modified: false
+    metric_definitions_modified: false
+    metric_variants_modified: false
+    result_contracts_modified: false
+    manifest_business_keys_modified: false
+    pipeline_registry_modified: false
+    metric_store_registry_modified: false
+    runtime_contract_candidate_modified: false
+
+registered_runtime_boundaries:
+  exact_manifest_or_upstream_result_binding_required: true
+  result_contract_cutoff_date_binding_required: true
+  result_contract_report_mode_binding_required: true
+  missing_required_result_context_action: fail_closed
+  prior_history_outcomes:
+    missing: apply_registered_repair_failure_warning_or_pause_boundary
+    ambiguous: apply_registered_repair_failure_warning_or_pause_boundary
+    invalid: apply_registered_repair_failure_warning_or_pause_boundary
+    valid_zero: treat_as_valid_metric_value_without_repair
+  provider_dependent_repair_query_implemented: false
+  older_or_nearby_history_fallback_allowed: false
+  pipeline_recovery_mode: rerun_pipeline_from_start
+
+explicit_exclusions:
+  - Revenue Pipeline modification
+  - Revenue Excel Historical Store modification
+  - Provider acquisition
+  - Provider capability validation
+  - Provider-dependent repair query execution
+  - Weekly Workflow Runner or Orchestrator
+  - Scheduler and Queue
+  - Output Assembly and Weekly Report preview
+  - Configured display value selection or persistence
+  - Automatic Draft
+  - Outlook Draft
+  - Outlook Send
+  - Runtime Acceptance
+  - Real-data qualification
+  - Cutover
+  - Baseline promotion or refreeze
+  - ORM, Repository, or migration framework
+  - Customer Revenue Detail Workflow
+
+exit_criteria:
+  - The exact PR #18 merged diff is fully represented by the eight registered non-Revenue Weekly Pipeline executors and seven registered shared-SQLite Store Assets.
+  - Each executor consumes only exact Manifest-bound local Dataset input or exact validated upstream Result Contract instances as registered.
+  - Each executor validates only its registered Result Contract and uses MetricStorePort for historical reads and validated writes.
+  - SQLite same-key idempotency, conflict rejection, SQL NULL physical handling, sentinel restoration, and exact post-write verification match the registered minimum physical Store contract.
+  - Missing, ambiguous, or invalid history applies the existing repair-failure warning or pause boundary without Provider queries or inferred fallback; valid prior zero remains a valid metric value.
+  - Stage 3C and affected Revenue regression tests pass without real business data in Git.
+  - No explicit exclusion is implemented, activated, validated, or represented as accepted by the PR #18 merged diff.
+  - Completion does not imply Stage 3D, Runtime Acceptance, Provider, Scheduler, Draft/Send, Cutover, or Baseline promotion/refreeze authorization.
+
+retrospective_conformance_evidence:
+  exact_merged_files:
+    - src/weekly_business_runtime/__init__.py
+    - src/weekly_business_runtime/models.py
+    - src/weekly_business_runtime/stage3c.py
+    - src/weekly_business_runtime/store.py
+    - tests/test_stage3c_executors.py
+    - tests/test_stage3c_sqlite_store.py
+  stage3c_executor_count: 8
+  sqlite_store_asset_count: 7
+  targeted_stage3c_and_affected_revenue_test_count: 43
+  targeted_test_status: passed
+  scoped_ruff_status: passed
+  python_compile_status: passed
+  asset_integrity_status: passed
+  repository_safety_status: passed
+  git_diff_check_status: passed
+  real_data_qualification_reexecuted: false
+  provider_query_run: false
+  real_metric_store_runtime_run: false
+  local_source_values_or_fingerprints_recorded_in_git: false
+  runtime_acceptance_implication: none
+  baseline_promotion_or_refreeze_implication: none
+
+retrospective_exit_assessment:
+  status: passed_for_merged_stage3c_implementation_scope_only
+  implementation_completed: true
+  implementation_merged: true
+  exact_registered_pipeline_and_store_scope_confirmed: true
+  explicit_exclusions_confirmed_absent_from_merge_diff: true
+  prior_stage_revenue_regression_required: true
+  later_stage_authorization_implication: none
+  automatic_next_stage_allowed: false
+
+referenced_authoritative_assets:
+  - phase1_5/assets/readiness/status_index.yaml
+  - phase1_5/assets/readiness/stage3b_revenue_expansion_exact_scope.yaml
+  - phase1_5/assets/pipelines/pipeline_registry.yaml
+  - phase1_5/assets/metric_stores/metric_result_store_registry.yaml
+  - phase1_5/assets/metric_stores/metric_result_store_readiness_matrix.yaml
+  - phase1_5/assets/result_contracts/result_contract_readiness_gate.yaml
+  - phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml
+  - src/weekly_business_runtime/stage3c.py
+  - src/weekly_business_runtime/store.py
+  - tests/test_stage3c_executors.py
+  - tests/test_stage3c_sqlite_store.py
+
+authorization:
+  stage3b_authorized: true
+  retrospective_registration_authorized: true
+  merged_implementation_recognized: true
+  implementation_may_start: not_applicable_already_merged
+  stage3d_authorized: false
+  runtime_acceptance_authorized: false
+  provider_authorized: false
+  scheduler_or_queue_authorized: false
+  draft_or_send_authorized: false
+  cutover_authorized: false
+  baseline_promotion_or_refreeze_authorized: false
+  separate_explicit_owner_authorization_required: true
+  required_owner_authorization_statement: not_applicable_for_already_merged_implementation; use registration_classification.reconciliation_authorization_statement for this retrospective registration
+  separate_explicit_owner_authorization_required_for_any_later_stage: true
+  automatic_next_stage_allowed: false
+
+constraints:
+  retrospective_registration_does_not_rewrite_historical_authorization_timing: true
+  merged_implementation_does_not_authorize_later_stage: true
+  qualification_inference_allowed: false
+  runtime_acceptance_inference_allowed: false
+  baseline_change_allowed: false
+  auto_send: false
+  auto_merge: false

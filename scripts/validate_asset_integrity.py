@@ -2456,8 +2456,8 @@ def validate_customer_analysis_narrative_mapping(
     for key, expected in expected_status.items():
         if status_scope.get(key) != expected:
             errors.append(f"{status_file}:scope_boundaries.{key}: expected {expected!r}")
-    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-20":
-        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-20")
+    if str(documents.get(status_file, {}).get("last_semantic_sync_date")) != "2026-08-22":
+        errors.append(f"{status_file}: last_semantic_sync_date must be 2026-08-22")
 
     output_gate_file = (
         "phase1_5/assets/output_mappings/"
@@ -4375,7 +4375,7 @@ def validate_status_consistency(
 def validate_stage3a_qualification_status_consistency(
     documents: dict[str, Any], errors: list[str]
 ) -> int:
-    """Fail closed when Stage 3A qualification governance records drift."""
+    """Fail closed when Stage 3A-3D qualification and governance records drift."""
     qualification_path = (
         "phase1_5/assets/readiness/stage3a_ctv_qualification_status.yaml"
     )
@@ -4742,7 +4742,7 @@ def validate_stage3a_qualification_status_consistency(
                 status_index_path,
                 status_index,
                 "current_next_stage_boundary.status",
-                "stage3b_completed_later_stages_not_authorized",
+                "stage3d_completed_exit_qualified_later_stages_not_authorized",
             ),
             (
                 status_index_path,
@@ -5265,6 +5265,357 @@ def validate_stage3a_qualification_status_consistency(
             )
         checked += 1
 
+    stage3c_scope_path = (
+        "phase1_5/assets/readiness/"
+        "stage3c_weekly_executor_completion_retrospective_scope.yaml"
+    )
+    stage3c_scope = documents.get(stage3c_scope_path)
+    if not isinstance(stage3c_scope, dict):
+        errors.append(
+            f"{stage3c_scope_path}: missing or invalid Stage 3C retrospective scope contract"
+        )
+    else:
+        expected_stage3c_pipelines = [
+            "PL_INVENTORY_FULL_SITE_WEEKLY",
+            "PL_INVENTORY_PATCH_WEEKLY",
+            "PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY",
+            "PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY",
+            "PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY",
+            "PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY",
+            "PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS",
+            "PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY",
+        ]
+        expected_stage3c_store_assets = [
+            "STORE_ASSET_WEEKLY_INVENTORY_FULL_SITE",
+            "STORE_ASSET_WEEKLY_INVENTORY_PATCH",
+            "STORE_ASSET_WEEKLY_INVENTORY_NON_PATCH_PRODUCT",
+            "STORE_ASSET_WEEKLY_INVENTORY_BRAND_MOMENT_SELL_THROUGH",
+            "STORE_ASSET_WEEKLY_INVENTORY_PRODUCT_SELL_THROUGH",
+            "STORE_ASSET_WEEKLY_BRAND_MOMENT_DELIVERY",
+            "STORE_ASSET_WEEKLY_PLATFORM_DAU",
+        ]
+        for file, document, path, expected in (
+            (stage3c_scope_path, stage3c_scope, "config_type", "stage_scope_contract"),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "scope_contract_id",
+                "SCOPE_STAGE3C_WEEKLY_EXECUTOR_COMPLETION_RETROSPECTIVE_V1",
+            ),
+            (stage3c_scope_path, stage3c_scope, "scope_contract_version", "1.0.0"),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "status",
+                "retrospectively_registered_completed_and_merged",
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "registration_classification.retrospective_governance_reconciliation",
+                True,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "registration_classification.pre_implementation_scope_authorization_retroactively_claimed",
+                False,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "registration_classification.implementation_pull_request",
+                18,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "registration_classification.implementation_merge_commit_sha",
+                "71e035ba94be0ddd32cc359ab37312dcfab0120a",
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "included_scope.pipeline_business_execution_slices",
+                expected_stage3c_pipelines,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "included_scope.shared_sqlite_metric_store_increment.store_asset_ids",
+                expected_stage3c_store_assets,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "included_scope.shared_sqlite_metric_store_increment.stage3c_physical_exact_verification_key",
+                "Stage3CPhysicalReadKey",
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "included_scope.shared_sqlite_metric_store_increment.non_revenue_current_revenue_cutoff_date_physical_value",
+                None,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "included_scope.shared_sqlite_metric_store_increment.configured_display_values_table_implemented",
+                False,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "included_scope.frozen_contract_preservation.pipeline_registry_modified",
+                False,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "registered_runtime_boundaries.result_contract_cutoff_date_binding_required",
+                True,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "registered_runtime_boundaries.result_contract_report_mode_binding_required",
+                True,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "registered_runtime_boundaries.prior_history_outcomes.valid_zero",
+                "treat_as_valid_metric_value_without_repair",
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "retrospective_conformance_evidence.targeted_stage3c_and_affected_revenue_test_count",
+                43,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "retrospective_exit_assessment.status",
+                "passed_for_merged_stage3c_implementation_scope_only",
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "authorization.retrospective_registration_authorized",
+                True,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "authorization.stage3d_authorized",
+                False,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "authorization.runtime_acceptance_authorized",
+                False,
+            ),
+            (
+                stage3c_scope_path,
+                stage3c_scope,
+                "authorization.automatic_next_stage_allowed",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_stage",
+                "Stage 3D Weekly Workflow Runner Implementation Completed - Exit Qualified; Later Stages Not Authorized",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "phase_status.code_implementation",
+                "stage3d_weekly_workflow_runner_completed_exit_qualified",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3c_scope_contract_id",
+                "SCOPE_STAGE3C_WEEKLY_EXECUTOR_COMPLETION_RETROSPECTIVE_V1",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3c_scope_contract_source",
+                stage3c_scope_path,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3c_pre_implementation_scope_authorization_retroactively_claimed",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "current_next_stage_boundary.stage3d_authorized",
+                True,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3c_weekly_executor_completion_implementation.pipeline_ids",
+                expected_stage3c_pipelines,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3c_weekly_executor_completion_implementation.implementation_merge_commit_sha",
+                "71e035ba94be0ddd32cc359ab37312dcfab0120a",
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3c_weekly_executor_completion_implementation.execution_boundaries.provider_query_implemented",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3c_weekly_executor_completion_implementation.execution_boundaries.output_assembly_implemented",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3c_weekly_executor_completion_implementation.stage3d_authorized",
+                False,
+            ),
+            (
+                status_index_path,
+                status_index,
+                "stage3c_weekly_executor_completion_implementation.automatic_next_stage_allowed",
+                False,
+            ),
+        ):
+            require_exact(file, document, path, expected)
+
+        required_stage3c_exclusions = {
+            "Provider acquisition",
+            "Provider capability validation",
+            "Provider-dependent repair query execution",
+            "Weekly Workflow Runner or Orchestrator",
+            "Scheduler and Queue",
+            "Output Assembly and Weekly Report preview",
+            "Outlook Draft",
+            "Outlook Send",
+            "Runtime Acceptance",
+            "Cutover",
+            "Baseline promotion or refreeze",
+            "Customer Revenue Detail Workflow",
+        }
+        stage3c_exclusions = nested_value(stage3c_scope, "explicit_exclusions")
+        if not isinstance(stage3c_exclusions, list) or not required_stage3c_exclusions.issubset(
+            set(stage3c_exclusions)
+        ):
+            errors.append(
+                f"{stage3c_scope_path}:explicit_exclusions: missing fail-closed "
+                "Stage 3C exclusions"
+            )
+        checked += 1
+
+    stage3d_scope_path = (
+        "phase1_5/assets/readiness/stage3d_weekly_workflow_runner_exact_scope.yaml"
+    )
+    stage3d_scope = documents.get(stage3d_scope_path)
+    if not isinstance(stage3d_scope, dict):
+        errors.append(f"{stage3d_scope_path}: missing or invalid Stage 3D scope contract")
+    else:
+        expected_stage3d_pipelines = [
+            "PL_REVENUE_TECHNICAL_WEEKLY",
+            "PL_REVENUE_CTV_WEEKLY",
+            "PL_REVENUE_SMART_SPEAKER_WEEKLY",
+            "PL_REVENUE_FAST_VERSION_WEEKLY",
+            "PL_INVENTORY_FULL_SITE_WEEKLY",
+            "PL_INVENTORY_PATCH_WEEKLY",
+            "PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY",
+            "PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY",
+            "PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY",
+            "PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY",
+            "PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS",
+            "PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY",
+        ]
+        for file, document, path, expected in (
+            (stage3d_scope_path, stage3d_scope, "config_type", "stage_scope_contract"),
+            (
+                stage3d_scope_path,
+                stage3d_scope,
+                "scope_contract_id",
+                "SCOPE_STAGE3D_WEEKLY_WORKFLOW_RUNNER_V1",
+            ),
+            (stage3d_scope_path, stage3d_scope, "status", "implementation_completed_exit_qualified"),
+            (
+                stage3d_scope_path,
+                stage3d_scope,
+                "included_scope.pipeline_business_execution_slices",
+                expected_stage3d_pipelines,
+            ),
+            (
+                stage3d_scope_path,
+                stage3d_scope,
+                "runner_contract.entry_point",
+                "weekly_business_runtime.WeeklyWorkflowRunner.execute",
+            ),
+            (stage3d_scope_path, stage3d_scope, "runner_contract.dependency_authority.cycle_detection", "fail_closed"),
+            (stage3d_scope_path, stage3d_scope, "runner_contract.dependency_authority.generic_dag_engine", False),
+            (stage3d_scope_path, stage3d_scope, "runner_contract.report_mode_integration.default_value_allowed", False),
+            (stage3d_scope_path, stage3d_scope, "runner_contract.workflow_execution_summary.new_workflow_result_model_created", False),
+            (stage3d_scope_path, stage3d_scope, "implementation_evidence.stage3d_total_test_count", 13),
+            (stage3d_scope_path, stage3d_scope, "implementation_evidence.affected_stage3c_and_revenue_regression_test_count", 43),
+            (stage3d_scope_path, stage3d_scope, "implementation_evidence.combined_targeted_and_affected_test_count", 56),
+            (stage3d_scope_path, stage3d_scope, "completion.stage3d_completed", True),
+            (stage3d_scope_path, stage3d_scope, "completion.stage3_completed", False),
+            (stage3d_scope_path, stage3d_scope, "authorization.stage3e_authorized", False),
+            (stage3d_scope_path, stage3d_scope, "authorization.stage3f_authorized", False),
+            (stage3d_scope_path, stage3d_scope, "authorization.runtime_acceptance_authorized", False),
+            (stage3d_scope_path, stage3d_scope, "authorization.merge_authorized", False),
+            (status_index_path, status_index, "current_next_stage_boundary.stage3d_scope_contract_source", stage3d_scope_path),
+            (status_index_path, status_index, "current_next_stage_boundary.stage3d_completed", True),
+            (status_index_path, status_index, "current_next_stage_boundary.stage3e_authorized", False),
+            (status_index_path, status_index, "current_next_stage_boundary.stage3f_authorized", False),
+            (
+                status_index_path,
+                status_index,
+                "stage3d_weekly_workflow_runner_implementation.runner_entry_point",
+                "weekly_business_runtime.WeeklyWorkflowRunner.execute",
+            ),
+            (status_index_path, status_index, "stage3d_weekly_workflow_runner_implementation.stage3d_completed", True),
+            (status_index_path, status_index, "stage3d_weekly_workflow_runner_implementation.stage3_completed", False),
+            (status_index_path, status_index, "stage3d_weekly_workflow_runner_implementation.runtime_acceptance_authorized", False),
+            (status_index_path, status_index, "stage3d_weekly_workflow_runner_implementation.automatic_next_stage_allowed", False),
+        ):
+            require_exact(file, document, path, expected)
+
+        required_stage3d_exclusions = {
+            "Provider acquisition",
+            "Scheduler and Queue",
+            "Generic DAG or Workflow framework",
+            "Weekly Output Mapping",
+            "Outlook Draft",
+            "Outlook Send",
+            "Stage 3F integrated local real-data qualification",
+            "Runtime Acceptance",
+            "Cutover",
+            "Baseline promotion or refreeze",
+        }
+        stage3d_exclusions = nested_value(stage3d_scope, "explicit_exclusions")
+        if not isinstance(stage3d_exclusions, list) or not required_stage3d_exclusions.issubset(
+            set(stage3d_exclusions)
+        ):
+            errors.append(
+                f"{stage3d_scope_path}:explicit_exclusions: missing fail-closed "
+                "Stage 3D exclusions"
+            )
+        checked += 1
+
     for status_path in (
         "stage3a_ctv_vertical_slice_implementation.automatic_next_stage_allowed",
         "current_next_stage_boundary.automatic_next_stage_allowed",
@@ -5420,7 +5771,7 @@ def main() -> int:
         f"{len(references)} asset references resolved; "
         f"{checked_paths} Required paths checked across {matched_assets} assets; "
         f"{checked_status_entries} Gate status links and "
-        f"{qualification_status_checks} Stage 3A qualification governance "
+        f"{qualification_status_checks} Stage 3A-3D qualification and governance "
         "boundaries are consistent."
     )
     return 0

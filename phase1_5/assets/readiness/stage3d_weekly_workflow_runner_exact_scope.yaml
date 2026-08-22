@@ -1,0 +1,214 @@
+config_type: stage_scope_contract
+scope_contract_id: SCOPE_STAGE3D_WEEKLY_WORKFLOW_RUNNER_V1
+scope_contract_version: 1.0.0
+status: implementation_completed_exit_qualified
+registration_date: 2026-08-22
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+stage: Stage 3D
+stage_name: Weekly Workflow Runner
+owner: WORKFLOW_OWNER
+
+authorization_record:
+  owner_authorized: true
+  authorization_date: 2026-08-22
+  authorization_statement: 你现在开始实施：Stage 3D — Weekly Workflow Runner
+  authorized_implementation_and_exit_qualification: true
+  authorized_git_branch: codex/stage3d-weekly-deterministic-runtime
+  authorized_pull_request_title: "Stage 3D: complete weekly workflow runner"
+  merge_authorized: false
+  automatic_next_stage_allowed: false
+
+included_scope:
+  pipeline_business_execution_slices:
+    - PL_REVENUE_TECHNICAL_WEEKLY
+    - PL_REVENUE_CTV_WEEKLY
+    - PL_REVENUE_SMART_SPEAKER_WEEKLY
+    - PL_REVENUE_FAST_VERSION_WEEKLY
+    - PL_INVENTORY_FULL_SITE_WEEKLY
+    - PL_INVENTORY_PATCH_WEEKLY
+    - PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    - PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+    - PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+    - PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+    - PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+    - PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+  execution_entry_boundary:
+    - Begin from the existing locked Workflow Run Context and finalized Run Input Manifest.
+    - Resolve applicable Pipeline Runs only from explicit Registry, Manifest, product-route, and trigger bindings.
+    - Validate dependency references and cycles before any Pipeline Run executes.
+    - Execute sequentially in deterministic topological order with Registry order as the existing tie-break authority.
+    - Invoke existing Revenue and Stage 3C executors without reimplementing business logic.
+    - Handoff only exact validated current-Run Result Contracts to registered downstream Pipeline Runs.
+    - Aggregate existing Pipeline execution statuses, warnings, errors, blocked scopes, normal omissions, Result Contract references, and lineage in an immutable summary mapping.
+  reusable_stage3a_foundation:
+    - Existing RuntimeRun, locked Workflow Run Context, Run Input Manifest, BusinessKey, PipelineExecutionResult, PipelineExecutionStatus, and Result Contract models.
+    - Existing Stage 3A and Stage 3B Revenue executors and Metric Store behavior.
+    - Existing Stage 3C non-Revenue executors and SQLite Metric Store behavior.
+    - Existing fail-closed context, Manifest, Result Contract, and Store validation patterns.
+  revenue_store_adapter:
+    applicability: reused_not_modified
+    store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+    existing_behavior_regression_protected: true
+  frozen_contract_preservation:
+    business_semantics_modified: false
+    metric_definitions_modified: false
+    metric_variants_modified: false
+    result_contracts_modified: false
+    manifest_business_keys_modified: false
+    pipeline_registry_modified: false
+    metric_store_registry_modified: false
+    runtime_contract_candidate_modified: false
+
+runner_contract:
+  entry_point: weekly_business_runtime.WeeklyWorkflowRunner.execute
+  execution_unit: existing Pipeline Run identity
+  pipeline_run_identity_binding: explicit_caller_binding_required
+  activation_authority:
+    required_optional_conditional_and_dependency_triggered_preserved: true
+    optional_pipeline_without_explicit_input: normal_omission
+    customer_trigger_not_met: normal_omission_without_executor_invocation
+    product_or_activation_inference_allowed: false
+  dependency_authority:
+    sources:
+      - Pipeline Registry result_contract_dependencies
+      - Pipeline Registry result_contract_dependency_routing
+      - Explicit configured product routes
+      - Frozen customer trigger routes
+    dependency_reference_validation: fail_closed
+    cycle_detection: fail_closed
+    deterministic_topological_order: true
+    deterministic_tie_break: existing_registry_mvp_order_then_explicit_product_binding_order
+    generic_dag_engine: false
+  result_contract_handoff:
+    exact_workflow_run_identity_required: true
+    exact_pipeline_run_identity_required: true
+    exact_reporting_period_required: true
+    exact_workflow_reporting_date_required: true
+    exact_context_and_product_binding_required: true
+    validation_status_required: passed
+    store_latest_or_fuzzy_fallback_allowed: false
+  failure_isolation:
+    required_invalid_upstream_blocks_dependent_scope: true
+    independent_pipeline_continuation_required: true
+    target_product_failure_isolated: true
+    revenue_context_failure_does_not_block_non_revenue: true
+    core_context_or_manifest_invalid_action: fail_closed
+  report_mode_integration:
+    authority: BR_WEEKLY_REVENUE_REPORT_MODE_SELECTION_V1 and locked Workflow Run Context
+    default_value_allowed: false
+    invalid_or_unbound_action: block_revenue_scope_and_continue_independent_non_revenue
+  workflow_execution_summary:
+    representation: immutable_mapping_of_existing_execution_results
+    new_workflow_result_model_created: false
+    new_lifecycle_enum_created: false
+    business_completion_status_created_or_inferred: false
+    complete_draft_or_partial_draft_created: false
+  recovery:
+    rerun_from_runner_entry: true
+    retry_framework: false
+    checkpoint_or_resume: false
+
+explicit_exclusions:
+  - Provider acquisition
+  - Provider capability validation
+  - Scheduler and Queue
+  - Generic DAG or Workflow framework
+  - Retry, checkpoint, resume, or partial replay framework
+  - Weekly Output Mapping
+  - Weekly Report Preview or Output Assembly
+  - Narrative, Excel, HTML, or Email body generation
+  - Automatic Draft
+  - Outlook Draft
+  - Outlook Send
+  - Stage 3F integrated local real-data qualification
+  - Runtime Acceptance
+  - Cutover
+  - Baseline promotion or refreeze
+  - Customer Revenue Detail Workflow
+
+exit_criteria:
+  - A clear WeeklyWorkflowRunner entry point consumes the locked Context, finalized Manifest, explicit Pipeline Run identities, existing executors, and explicit local rule bindings.
+  - Required, Optional, Conditional, Dependency-triggered, normal-omission, and product-scoped activation semantics are preserved without inference.
+  - Dependency references, cycles, deterministic topological ordering, and Registry-order tie-break are validated before sequential execution.
+  - Revenue and Stage 3C capabilities are invoked through their existing interfaces or the Runner's pipeline-specific thin invocation helper.
+  - Only exact validated Result Contracts are handed to registered downstream Pipeline Runs.
+  - Independent, Revenue, Brand Moment, and target-product failure scopes remain isolated as registered.
+  - The immutable summary mapping contains existing execution results, dependency status, warnings, errors, blocked scopes, normal omissions, Result Contract references, and lineage without a new business Completion Status.
+  - Same inputs, bindings, generated_at, and Pipeline Run identities produce deterministic business results on rerun.
+  - Stage 3D targeted tests, integrated synthetic qualification, affected Stage 3C and Revenue regression, lint, compile, asset integrity, consistency, repository safety, and diff checks pass.
+  - No explicit exclusion is implemented, activated, qualified, or represented as accepted.
+  - Completion does not imply Stage 3 completion, Stage 3E or Stage 3F authorization, Runtime Acceptance, Cutover, Production Ready, or Baseline promotion/refreeze.
+
+implementation_evidence:
+  branch: codex/stage3d-weekly-deterministic-runtime
+  implementation_files:
+    - src/weekly_business_runtime/weekly_runner.py
+    - src/weekly_business_runtime/__init__.py
+  test_files:
+    - tests/test_stage3d_weekly_runner.py
+  runner_targeted_test_count: 12
+  integrated_synthetic_qualification_count: 1
+  stage3d_total_test_count: 13
+  affected_stage3c_and_revenue_regression_test_count: 43
+  combined_targeted_and_affected_test_count: 56
+  combined_test_status: passed
+  affected_stage3c_subtest_count: 12
+  lint_status: passed
+  python_compile_status: passed
+  asset_integrity_status: passed
+  weekly_runtime_consistency_status: passed
+  final_acceptance_status: passed
+  repository_safety_status: passed
+  git_diff_check_status: passed
+  real_data_qualification_executed: false
+  provider_query_run: false
+  runtime_acceptance_executed: false
+  prior_stage_qualification_evidence_reused: true
+
+completion:
+  implementation_completed: true
+  exit_qualification_passed: true
+  stage3d_completed: true
+  stage3_completed: false
+  production_runtime_completed: false
+  runtime_acceptance_passed: false
+  automatic_next_stage_allowed: false
+
+referenced_authoritative_assets:
+  - phase1_5/assets/readiness/status_index.yaml
+  - phase1_5/assets/readiness/stage3c_weekly_executor_completion_retrospective_scope.yaml
+  - phase1_5/assets/pipelines/pipeline_registry.yaml
+  - phase1_5/assets/result_contracts/result_contract_readiness_gate.yaml
+  - phase1_5/assets/metric_stores/metric_result_store_registry.yaml
+  - phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml
+  - src/weekly_acquisition_runtime/contracts.py
+  - src/weekly_acquisition_runtime/runtime.py
+  - src/weekly_business_runtime/models.py
+  - src/weekly_business_runtime/weekly_runner.py
+  - tests/test_stage3d_weekly_runner.py
+
+authorization:
+  stage3b_authorized: true
+  stage3d_authorized: true
+  implementation_may_start: true
+  implementation_completed_under_authorization: true
+  separate_explicit_owner_authorization_required: true
+  required_owner_authorization_statement: 你现在开始实施：Stage 3D — Weekly Workflow Runner
+  stage3e_authorized: false
+  stage3f_authorized: false
+  runtime_acceptance_authorized: false
+  provider_authorized: false
+  scheduler_or_queue_authorized: false
+  draft_or_send_authorized: false
+  cutover_authorized: false
+  baseline_promotion_or_refreeze_authorized: false
+  merge_authorized: false
+  automatic_next_stage_allowed: false
+
+constraints:
+  stage3d_completion_does_not_complete_stage3: true
+  qualification_inference_allowed: false
+  runtime_acceptance_inference_allowed: false
+  baseline_change_allowed: false
+  auto_send: false
+  auto_merge: false

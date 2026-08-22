@@ -11,12 +11,14 @@ contract.
 
 1. [Weekly Phase 1.5 Status Index](phase1_5/assets/readiness/status_index.yaml)
 2. [Customer Revenue Detail Status Index](phase1_5/assets/readiness/status_index_customer_revenue_detail.yaml)
-3. [Stage 3B Revenue Expansion Exact Scope Contract](phase1_5/assets/readiness/stage3b_revenue_expansion_exact_scope.yaml)
-4. [Weekly Implementation Baseline](phase1_5/assets/readiness/implementation_baseline.yaml)
-5. [Customer Revenue Detail Implementation Baseline](phase1_5/assets/readiness/implementation_baseline_customer_revenue_detail.yaml)
-6. [Phase 1.5 Asset Index](phase1_5/INDEX.md)
-7. [Weekly Business Report Workflow v2](phase1_5/workflows/weekly_business_report/WORKFLOW_v2.md)
-8. [Customer Revenue Detail Workflow v1](phase1_5/workflows/customer_revenue_detail/WORKFLOW_v1.md)
+3. [Stage 3D Weekly Workflow Runner Exact Scope](phase1_5/assets/readiness/stage3d_weekly_workflow_runner_exact_scope.yaml)
+4. [Stage 3C Weekly Executor Completion Retrospective Scope](phase1_5/assets/readiness/stage3c_weekly_executor_completion_retrospective_scope.yaml)
+5. [Stage 3B Revenue Expansion Exact Scope Contract](phase1_5/assets/readiness/stage3b_revenue_expansion_exact_scope.yaml)
+6. [Weekly Implementation Baseline](phase1_5/assets/readiness/implementation_baseline.yaml)
+7. [Customer Revenue Detail Implementation Baseline](phase1_5/assets/readiness/implementation_baseline_customer_revenue_detail.yaml)
+8. [Phase 1.5 Asset Index](phase1_5/INDEX.md)
+9. [Weekly Business Report Workflow v2](phase1_5/workflows/weekly_business_report/WORKFLOW_v2.md)
+10. [Customer Revenue Detail Workflow v1](phase1_5/workflows/customer_revenue_detail/WORKFLOW_v1.md)
 
 The Weekly Acquisition Runtime Foundation completed Stage 2 in PR #8. Pydantic
 V2 validation parity and Ruff Phases 1, 2A, and 2B were merged in PRs #9-#12,
@@ -40,17 +42,23 @@ path are implemented and validated. Stage 3B implementation is completed and
 its exit qualification has passed. Technical local real-data calculation
 qualification is PASS; CTV reuses the Stage 3A PASS evidence. Smart Speaker and
 Fast Version real-data Source-to-Result qualification was not executed and is
-not a Stage 3B exit requirement. Runtime Acceptance, Stage 3C, Provider,
-Scheduler, Draft/Send, Cutover, and Baseline promotion/refreeze remain
-unauthorized. Automated checks, readiness Gates,
+not a Stage 3B exit requirement. Stage 3C completed the remaining eight Weekly
+Pipeline executors and seven registered shared-SQLite Store Assets in PR #18.
+Its scope is retrospectively registered from the exact merged implementation
+and does not claim pre-implementation scope authorization. Stage 3D implements
+the deterministic sequential Weekly Workflow Runner over the existing 12
+Pipeline executors and has passed its scoped exit qualification. Runtime
+Acceptance, Stage 3E, Stage 3F, Provider, Scheduler, Draft/Send, Cutover, and
+Baseline promotion/refreeze remain unauthorized. Automated checks, readiness Gates,
 qualification evidence, and merge status do not grant any later-stage approval.
 
 The two Workflows remain isolated: they may reuse registered source and Mapping
 assets, but neither consumes the other Workflow's files or outputs. The initial
-MVP remains sequential. The Acquisition Runtime Foundation exists, while the
-Stage 3A CTV Data Engine and Business Execution slice is implemented. Other
-business Pipelines, the Output Engine, and the end-to-end Workflow runtime are
-not implied complete by that vertical slice.
+MVP remains sequential. The Acquisition Runtime Foundation, all 12 Weekly
+Pipeline executors, their registered minimum Store paths, and the Stage 3D
+deterministic Runner are implemented. The Output Engine, Provider acquisition,
+Scheduler, Draft/Send, and production Runtime Acceptance remain unimplemented
+and unauthorized.
 
 Local business data, customer rows, emails, templates, recipients, credentials,
 paths, resolved External Asset versions, and content fingerprints must remain

@@ -3,6 +3,7 @@ gate_id: GATE_METRIC_RESULT_STORE_RUNTIME_WF_WEEKLY_BUSINESS_REPORT_V1
 schema_version: "0.2"
 matrix_scope: WF_WEEKLY_BUSINESS_REPORT Metric Result Stores
 assessment_date: 2026-08-02
+last_semantic_sync_date: 2026-08-22
 status: synchronized
 gate_result: conditional
 
@@ -45,6 +46,9 @@ mvp_physical_store_adapter_strategy:
   multi_provider_architecture_required: false
   plugin_store_architecture_required: false
   complex_orm_required: false
+  sqlite_adapter_implementation_status: implemented_and_synthetic_validated_in_stage3c
+  implemented_store_asset_count: 7
+  local_runtime_bootstrap_completed: false
 
 readiness_records:
   - store_id: STORE_WEEKLY_REVENUE_HISTORICAL
@@ -83,6 +87,7 @@ readiness_records:
     store_asset_count: 5
     metric_and_formula_definitions_confirmed: true
     local_storage_contract_confirmed: true
+    sqlite_adapter_implementation_status: implemented_and_synthetic_validated
     local_physical_store_initialized: false
     blocking_runtime_items:
       - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
@@ -102,6 +107,7 @@ readiness_records:
     store_asset_count: 1
     metric_and_formula_definitions_confirmed: true
     local_storage_contract_confirmed: true
+    sqlite_adapter_implementation_status: implemented_and_synthetic_validated
     local_physical_store_initialized: false
     blocking_runtime_items:
       - Configure SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY
@@ -120,6 +126,7 @@ readiness_records:
     store_asset_count: 1
     metric_and_formula_definitions_confirmed: true
     local_storage_contract_confirmed: true
+    sqlite_adapter_implementation_status: implemented_and_synthetic_validated
     local_physical_store_initialized: false
     workflow_runtime_impact: non_blocking_persistence_warning
     blocking_runtime_items:
@@ -131,6 +138,9 @@ summary:
   registered_store_count: 4
   registered_store_asset_count: 11
   implementation_ready_store_count: 4
+  implemented_store_count: 4
+  stage3c_sqlite_implemented_store_count: 3
+  stage3c_sqlite_implemented_store_asset_count: 7
   runtime_conditional_store_count: 1
   runtime_bootstrap_blocked_store_count: 3
   unresolved_metric_definition_count: 0
