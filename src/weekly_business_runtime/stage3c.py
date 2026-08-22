@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import json
 from dataclasses import dataclass
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -50,11 +51,13 @@ class LocalRuleBindings:
     excluded_patch_time_slot_ids: frozenset[str] = frozenset()
     product_by_placement_id: Mapping[str, str] = None  # type: ignore[assignment]
     product_route_by_name: Mapping[str, str] = None  # type: ignore[assignment]
+    customer_analysis_by_product: Mapping[str, Mapping[str, object]] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "commercial_sellability_by_placement", self.commercial_sellability_by_placement or {})
         object.__setattr__(self, "product_by_placement_id", self.product_by_placement_id or {})
         object.__setattr__(self, "product_route_by_name", self.product_route_by_name or {})
+        object.__setattr__(self, "customer_analysis_by_product", self.customer_analysis_by_product or {})
 
     def require(self, asset_id: str) -> None:
         if self.versions.get(asset_id) != "1.0.0":
@@ -107,12 +110,12 @@ def _field(field_id: str, variant: str, value: Decimal | None, unit: str, lineag
     return ResultFieldValue(field_id, variant, value, status, unit, lineage)
 
 
-def _contract(*, contract_id: str, result_id: str, run: RuntimeRun, pipeline_run_id: str, context_id: str, fields: Iterable[ResultFieldValue], generated_at: str, inputs: tuple[str, ...], mappings: Mapping[str, str], rules: Mapping[str, str] = {}, record_set: tuple[Mapping[str, Any], ...] = (), product: str = "not_applicable") -> Stage3CResultContractInstance:
+def _contract(*, contract_id: str, result_id: str, run: RuntimeRun, pipeline_run_id: str, context_id: str, fields: Iterable[ResultFieldValue], generated_at: str, inputs: tuple[str, ...], mappings: Mapping[str, str], rules: Mapping[str, str] = {}, record_set: tuple[Mapping[str, Any], ...] = (), product: str = "not_applicable", context_values: Mapping[str, Any] = {}) -> Stage3CResultContractInstance:
     period = f"{run.context.values['reporting_period_start_date']}..{run.context.values['reporting_period_end_date']}"
-    return Stage3CResultContractInstance(contract_id, "1.0.0", result_id, run.context.workflow_run_id, pipeline_run_id, period, context_id, inputs, mappings, rules, {field.metric_variant_id: "1.0.0" for field in fields}, generated_at, "passed", "approved", tuple(fields), record_set, product, str(run.context.values["workflow_reporting_date"]))
+    return Stage3CResultContractInstance(contract_id, "1.0.0", result_id, run.context.workflow_run_id, pipeline_run_id, period, context_id, inputs, mappings, rules, {field.metric_variant_id: "1.0.0" for field in fields}, generated_at, "passed", "approved", tuple(fields), record_set, product, str(run.context.values["workflow_reporting_date"]), context_values)
 
 
-def _persist(result: Stage3CResultContractInstance, *, pipeline_id: str, store_id: str, asset_id: str, store: MetricStorePort, product: str = "not_applicable") -> tuple[ExecutionWarning, ...]:
+def _persist(result: Stage3CResultContractInstance, *, pipeline_id: str, store_id: str, asset_id: str, store: MetricStorePort, product: str = "not_applicable", extra_records: tuple[MetricStoreRecord, ...] = ()) -> tuple[ExecutionWarning, ...]:
     records = tuple(
         MetricStoreRecord(
             result_id=f"{result.result_id}:{field.metric_variant_id}", workflow_id=WORKFLOW_ID,
@@ -121,11 +124,11 @@ def _persist(result: Stage3CResultContractInstance, *, pipeline_id: str, store_i
             metric_variant_version="1.0.0", workflow_reporting_date=result.workflow_reporting_date,
             current_revenue_cutoff_date=result.workflow_reporting_date, business_context_id=result.business_context_id,
             reporting_period=result.reporting_period, value=field.value or Decimal(0),
-            value_status=field.value_status.value, numeric_semantics=("percentage_point_change" if field.unit == "percentage_point" else "decimal_ratio" if field.unit == "decimal_ratio" else "integer_count"),
-            unit=field.unit, precision="integer" if field.unit.endswith("count") else "decimal", validation_status="passed",
+            value_status=field.value_status.value, numeric_semantics=("percentage_point_change" if field.unit == "percentage_point" else "ratio" if field.unit == "decimal_ratio" else "average_count" if field.unit == "user" else "integer_count"),
+            unit=field.unit, precision="preserve_source_precision" if field.unit in {"decimal_ratio", "user"} else "integer", validation_status="passed",
             generated_at=result.generated_at, lineage_references=field.lineage_references, product_parameter=product,
         ) for field in result.fields if field.value_status is ResultValueStatus.VALID_VALUE and field.value is not None
-    )
+    ) + extra_records
     try:
         plan = store.preflight_write(records)
         receipt = store.write_validated(plan)
@@ -137,10 +140,10 @@ def _persist(result: Stage3CResultContractInstance, *, pipeline_id: str, store_i
 
 
 def _previous_reporting_date(run: RuntimeRun) -> str:
-    value = run.context.values.get("expected_previous_revenue_workflow_reporting_date")
-    if value is None:
-        raise Stage3AError("STAGE3C_PREVIOUS_PERIOD_UNBOUND", "Exact previous reporting date is not locked")
-    return str(value)
+    try:
+        return (date.fromisoformat(str(run.context.values["workflow_reporting_date"])) - timedelta(days=7)).isoformat()
+    except (KeyError, TypeError, ValueError) as exc:
+        raise Stage3AError("STAGE3C_PREVIOUS_PERIOD_UNBOUND", "Core weekly reporting date is not locked") from exc
 
 
 def _exact_prior(
@@ -173,7 +176,9 @@ class InventoryPipelineExecutor:
             if not rows:
                 raise DatasetValidationError("STAGE3C_DATASET_EMPTY", "Dataset must contain at least one row")
             selected = self._select(rows, rules, product)
-            values = self._calculate(selected, rules)
+            values = self._calculate(rows if self.profile.kind == "full" else selected, rules)
+            if self.profile.kind == "full":
+                values["available_inventory_count"] = self._calculate(selected, rules)["available_inventory_count"]
             fields = self._fields(values, product, rules, run)
             lineage = (entry.local_input_reference, f"mapping-consumed://{self.profile.mapping_id}")
             result = _contract(contract_id=self.profile.contract_id, result_id=f"{pipeline_run_id}:{self.profile.contract_id}", run=run, pipeline_run_id=pipeline_run_id, context_id=self.profile.context_id, fields=fields, generated_at=generated_at, inputs=(entry.local_input_reference,), mappings={self.profile.mapping_id: "1.0.0"}, product=product)
@@ -189,11 +194,11 @@ class InventoryPipelineExecutor:
             selected = []
             for row in rows:
                 placement = str(row.get("广告位ID", "")).strip()
-                if not placement or placement not in rules.commercial_sellability_by_placement:
-                    raise Stage3AError("STAGE3C_COMMERCIAL_MAPPING_MISSING", "Commercial sellability mapping is not explicit")
+                mapped_sellability = rules.commercial_sellability_by_placement.get(placement)
+                sellable = mapped_sellability not in {False, "否"}
                 if placement in rules.special_placement_ids:
                     if str(row.get("是否VIP", "")).strip() == "非vip": selected.append(row)
-                elif rules.commercial_sellability_by_placement[placement]: selected.append(row)
+                elif sellable: selected.append(row)
             return selected
         if self.profile.kind == "patch":
             rules.require("FILTER_PATCH_TIME_SLICE_EXCLUSION_LOCAL_ONLY")
@@ -284,9 +289,11 @@ class PlatformDauExecutor:
             lineage = (entry.local_input_reference, "mapping-consumed://MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1")
             prior = _exact_prior(self.metric_store, store_id=DAU_STORE_ID, asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", variant_id="MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1", context_id=self.context_id, run=run)
             wow = None if prior is None or prior <= 0 else average / prior - 1
-            fields = (_field("weekly_average_dau", "MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1", average, "dau_count", lineage), _field("weekly_average_dau_wow", "MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1", wow, "decimal_ratio", lineage, status=ResultValueStatus.VALID_VALUE if wow is not None else ResultValueStatus.MISSING))
-            result = _contract(contract_id="RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY", result_id=f"{pipeline_run_id}:RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=fields, generated_at=generated_at, inputs=(entry.local_input_reference,), mappings={"MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1": "1.0.0"})
-            warnings = _persist(result, pipeline_id=self.pipeline_id, store_id=DAU_STORE_ID, asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", store=self.metric_store)
+            fields = (_field("weekly_average_dau", "MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_V1", average, "user", lineage), _field("weekly_average_dau_wow", "MV_USER_ANALYTICS_PLATFORM_WEEKLY_AVERAGE_DAU_WOW_V1", wow, "decimal_ratio", lineage, status=ResultValueStatus.VALID_VALUE if wow is not None else ResultValueStatus.MISSING))
+            daily = tuple({"activity_date": str(row["日期"]), "platform_scope": "full_platform", "dau_count": value} for row, value in sorted(zip(rows, values, strict=True), key=lambda item: str(item[0]["日期"])))
+            result = _contract(contract_id="RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY", result_id=f"{pipeline_run_id}:RC_USER_ANALYTICS_PLATFORM_DAU_WEEKLY", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=fields, generated_at=generated_at, inputs=(entry.local_input_reference,), mappings={"MAP_USER_ANALYTICS_NOVABI_PLATFORM_DAU_V1": "1.0.0"}, record_set=daily)
+            daily_records = tuple(MetricStoreRecord(result_id=f"{result.result_id}:DAU:{item['activity_date']}", workflow_id=WORKFLOW_ID, workflow_run_id=result.workflow_run_id, pipeline_id=self.pipeline_id, pipeline_run_id=result.pipeline_run_id, store_id=DAU_STORE_ID, store_asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", metric_variant_id="MV_USER_ANALYTICS_PLATFORM_DAILY_DAU_V1", metric_variant_version="1.0.0", workflow_reporting_date=result.workflow_reporting_date, current_revenue_cutoff_date=result.workflow_reporting_date, business_context_id=self.context_id, reporting_period=result.reporting_period, value=item["dau_count"], value_status="valid_value", numeric_semantics="integer_count", unit="user", precision="integer", validation_status="passed", generated_at=generated_at, lineage_references=lineage, canonical_dimensions={"activity_date": item["activity_date"], "platform_scope": "full_platform"}) for item in daily)
+            warnings = _persist(result, pipeline_id=self.pipeline_id, store_id=DAU_STORE_ID, asset_id="STORE_ASSET_WEEKLY_PLATFORM_DAU", store=self.metric_store, extra_records=daily_records)
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, (entry.local_input_reference,), PipelineExecutionStatus.COMPLETED_WITH_WARNING if warnings else PipelineExecutionStatus.COMPLETED, warnings, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=lineage, result_contract=result)
         except (Stage3AError, AcquisitionError, KeyError) as exc:
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id}, (), PipelineExecutionStatus.BLOCKED, error_code=getattr(exc, "code", "STAGE3C_EXECUTION_BLOCKED"), error_message=str(exc))
@@ -366,12 +373,15 @@ class CustomerChangeAnalysisExecutor:
 
     def __init__(self, acquisition_runtime: AcquisitionRuntime) -> None: self.acquisition_runtime = acquisition_runtime
 
-    def execute(self, *, run: RuntimeRun, pipeline_run_id: str, product: str, rules: LocalRuleBindings, trigger_contract: Stage3CResultContractInstance | None, current_key: BusinessKey | None, comparison_key: BusinessKey | None, generated_at: str, threshold_pp: Decimal = Decimal("10")) -> PipelineExecutionResult:
+    def execute(self, *, run: RuntimeRun, pipeline_run_id: str, product: str, rules: LocalRuleBindings, trigger_contract: Stage3CResultContractInstance | None, current_key: BusinessKey | None, comparison_key: BusinessKey | None, generated_at: str) -> PipelineExecutionResult:
         try:
             if not product or product == "not_applicable": raise Stage3AError("STAGE3C_PRODUCT_REQUIRED", "Explicit product is required")
             rules.require("BR_APOLLO_PRODUCT_FILTER_MAPPING")
             route = rules.product_route_by_name.get(product)
-            if route not in {"patch", "non_patch", "brand_moment"}: raise Stage3AError("STAGE3C_TRIGGER_ROUTE_AMBIGUOUS", "Product has no registered trigger route")
+            config = rules.customer_analysis_by_product.get(product)
+            if route not in {"patch", "non_patch", "brand_moment"} or not isinstance(config, Mapping) or not isinstance(config.get("output_limit"), int) or config["output_limit"] < 1:
+                return self._omitted(run, pipeline_run_id, product, "STAGE3C_CUSTOMER_MAPPING_INVALID")
+            threshold = Decimal(str(config.get("trigger_threshold_pp", "10")))
             if trigger_contract is None: raise ResultContractError("STAGE3C_TRIGGER_CONTRACT_MISSING", "Validated sell-through trigger Contract is required")
             period = f"{run.context.values['reporting_period_start_date']}..{run.context.values['reporting_period_end_date']}"
             if route == "brand_moment":
@@ -383,22 +393,31 @@ class CustomerChangeAnalysisExecutor:
             trigger = trigger_contract.field(field_id)
             if trigger.value is None or trigger.value_status is not ResultValueStatus.VALID_VALUE:
                 return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, (), PipelineExecutionStatus.COMPLETED, produced_result_contract_reference="normal-omission://trigger-not-met")
-            if abs(trigger.value) < threshold_pp:
+            if abs(trigger.value) < threshold:
                 return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, (), PipelineExecutionStatus.COMPLETED, produced_result_contract_reference="normal-omission://trigger-not-met")
             if current_key is None or comparison_key is None: raise Stage3AError("STAGE3C_CUSTOMER_INPUT_MISSING", "Triggered analysis requires both explicit period inputs")
             for key, role in ((current_key, "current"), (comparison_key, "comparison")):
                 if key.workflow_run_id != run.context.workflow_run_id or key.dataset_id != self.dataset_id or key.period_role != role or key.product_parameter != product: raise Stage3AError("STAGE3C_CUSTOMER_INPUT_KEY_INVALID", "Customer input key is not exact")
             current_entry, comparison_entry = run.run_input_manifest.get_entry(current_key), run.run_input_manifest.get_entry(comparison_key)
             current, comparison = _rows(self.acquisition_runtime.consume_bound_input(run, current_key)), _rows(self.acquisition_runtime.consume_bound_input(run, comparison_key))
-            records = self._compare(current, comparison)
+            if not current or not comparison:
+                return self._omitted(run, pipeline_run_id, product, "STAGE3C_CUSTOMER_RAW_QUERY_ZERO_ROWS")
+            scenario = "positive_sell_through_change" if trigger.value > 0 else "negative_sell_through_change"
+            records = self._compare(current, comparison, scenario, int(config["output_limit"]))
             lineage = (f"result-contract://{trigger_contract.result_id}", current_entry.local_input_reference, comparison_entry.local_input_reference, "policy-evaluated://POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1")
-            result = _contract(contract_id="RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS", result_id=f"{pipeline_run_id}:RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=(), generated_at=generated_at, inputs=lineage, mappings={"MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1": "1.0.0"}, rules={"POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1": "1.0.0"}, record_set=tuple(records))
+            context = {"target_ad_product_name": product, "analysis_scenario": scenario, "current_period_start_date": str(run.context.values["current_period_start_date"]), "current_period_end_date": str(run.context.values["current_period_end_date"]), "comparison_period_start_date": str(run.context.values["comparison_period_start_date"]), "comparison_period_end_date": str(run.context.values["comparison_period_end_date"]), "trigger_sell_through_wow_change_pp": trigger.value, "applied_trigger_threshold_pp": threshold, "selection_basis": "current_period_impression_count" if scenario.startswith("positive") else "comparison_period_minus_current_period_impression_count", "applied_materiality_threshold_count": Decimal("1000000"), "applied_output_limit": int(config["output_limit"])}
+            result = _contract(contract_id="RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS", result_id=f"{pipeline_run_id}:RC_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS", run=run, pipeline_run_id=pipeline_run_id, context_id=self.context_id, fields=(), generated_at=generated_at, inputs=lineage, mappings={"MAP_ADVERTISING_APOLLO_PRODUCT_CUSTOMER_DELIVERY_CHANGE_V1": "1.0.0"}, rules={"POLICY_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS_V1": "1.0.0"}, record_set=tuple(records), product=product, context_values=context)
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, (current_entry.local_input_reference, comparison_entry.local_input_reference), PipelineExecutionStatus.COMPLETED, produced_result_contract_reference=f"result-contract://{result.result_id}", lineage_references=lineage, result_contract=result)
-        except (Stage3AError, AcquisitionError, KeyError) as exc:
+        except AcquisitionError:
+            return self._omitted(run, pipeline_run_id, product, "STAGE3C_CUSTOMER_QUERY_FAILURE")
+        except (Stage3AError, KeyError) as exc:
             return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, (), PipelineExecutionStatus.BLOCKED, error_code=getattr(exc, "code", "STAGE3C_EXECUTION_BLOCKED"), error_message=str(exc))
 
+    def _omitted(self, run: RuntimeRun, pipeline_run_id: str, product: str, code: str) -> PipelineExecutionResult:
+        return PipelineExecutionResult(run.context.workflow_run_id, self.pipeline_id, pipeline_run_id, {"business_context_id": self.context_id, "product": product}, (), PipelineExecutionStatus.COMPLETED_WITH_WARNING, (ExecutionWarning(code, "Target product customer analysis omitted; owner notification required"),), produced_result_contract_reference="omitted://source-or-routing-exception")
+
     @staticmethod
-    def _compare(current: list[dict[str, Any]], comparison: list[dict[str, Any]]) -> list[Mapping[str, Any]]:
+    def _compare(current: list[dict[str, Any]], comparison: list[dict[str, Any]], scenario: str, output_limit: int) -> list[Mapping[str, Any]]:
         def eligible(rows: list[dict[str, Any]]) -> dict[str, tuple[str, Decimal]]:
             values: dict[str, tuple[str, Decimal]] = {}
             duplicates: set[str] = set()
@@ -419,5 +438,11 @@ class CustomerChangeAnalysisExecutor:
             name = (current_item or previous_item or ("", Decimal(0)))[0]
             current_value = current_item[1] if current_item is not None else Decimal(0)
             previous_value = previous_item[1] if previous_item is not None else Decimal(0)
-            records.append({"customer_id": customer_id, "customer_name": name, "current_period_impression_count": current_value, "impression_change_count": current_value - previous_value})
-        return records
+            if current_item is not None and previous_item is not None and current_item[0] != previous_item[0]:
+                continue
+            ranking = current_value if scenario == "positive_sell_through_change" else previous_value - current_value
+            if (scenario == "negative_sell_through_change" and previous_value <= current_value) or ranking < Decimal("1000000"):
+                continue
+            records.append({"customer_id": customer_id, "customer_name": name, "current_period_impression_count": current_value, "comparison_period_impression_count": previous_value, "impression_change_count": current_value - previous_value, "ranking_measure": ranking})
+        records.sort(key=lambda item: (-item["ranking_measure"], item["customer_id"]))
+        return [{**item, "customer_rank": index} for index, item in enumerate(records[:output_limit], start=1)]

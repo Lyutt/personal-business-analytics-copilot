@@ -48,9 +48,9 @@ class _Runtime:
 def _run(entries):
     values = {
         "workflow_run_id": "RUN_3C", "workflow_reporting_date": "2026-08-21",
-        "expected_previous_revenue_workflow_reporting_date": "2026-08-14",
         "reporting_period_start_date": "2026-08-17", "reporting_period_end_date": "2026-08-23",
         "current_period_start_date": "2026-08-17", "current_period_end_date": "2026-08-23",
+        "comparison_period_start_date": "2026-08-10", "comparison_period_end_date": "2026-08-16",
     }
     return SimpleNamespace(context=SimpleNamespace(workflow_run_id="RUN_3C", values=values), run_input_manifest=_Manifest(entries))
 
@@ -78,6 +78,7 @@ def _rules():
         special_placement_ids=frozenset(), excluded_patch_time_slot_ids=frozenset({"drop"}),
         product_by_placement_id={"nonpatch": "Product A"},
         product_route_by_name={"Product A": "non_patch", "Patch Product": "patch", "Brand Moment": "brand_moment"},
+        customer_analysis_by_product={"Product A": {"output_limit": 2, "trigger_threshold_pp": "10"}, "Patch Product": {"output_limit": 1}, "Brand Moment": {"output_limit": 1}},
     )
 
 
@@ -131,16 +132,51 @@ def test_product_and_customer_paths_fail_closed_or_return_normal_omission(tmp_pa
 def test_customer_triggered_path_uses_exact_two_period_product_inputs(tmp_path):
     current_key = _key("DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS", "current", "Product A")
     comparison_key = _key("DS_AD_PRODUCT_CUSTOMER_DELIVERY_CHANGE_ANALYSIS", "comparison", "Product A")
-    current = _input(tmp_path, "customer-current", [{"客户ID": "c1", "客户名": "A", "曝光量": "12"}, {"客户ID": "c2", "客户名": "B", "曝光量": "-1"}])
-    comparison = _input(tmp_path, "customer-comparison", [{"客户ID": "c1", "客户名": "A", "曝光量": "2"}, {"客户ID": "c3", "客户名": "C", "曝光量": "3"}])
+    current = _input(tmp_path, "customer-current", [{"客户ID": "c1", "客户名": "A", "曝光量": "1200000"}, {"客户ID": "c2", "客户名": "B", "曝光量": "-1"}])
+    comparison = _input(tmp_path, "customer-comparison", [{"客户ID": "c1", "客户名": "A", "曝光量": "200000"}, {"客户ID": "c3", "客户名": "C", "曝光量": "300000"}])
     run = _run({current_key: _Entry("fixture://customer-current"), comparison_key: _Entry("fixture://customer-comparison")})
     trigger = Stage3CResultContractInstance("RC_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", "1.0.0", "TRIGGER", "RUN_3C", "TRIGGER", "2026-08-17..2026-08-23", "CTX_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY", (), {}, {}, {}, "now", "passed", "approved", (ResultFieldValue("non_patch_product_brand_sell_through_wow_change_pp", "MV_INVENTORY_NON_PATCH_PRODUCT_BRAND_SELL_THROUGH_WOW_CHANGE_V1", Decimal("12"), ResultValueStatus.VALID_VALUE, "percentage_point", ()),), product_parameter="Product A")
     result = CustomerChangeAnalysisExecutor(_Runtime({current_key: current, comparison_key: comparison})).execute(run=run, pipeline_run_id="CUSTOMER_TRIGGERED", product="Product A", rules=_rules(), trigger_contract=trigger, current_key=current_key, comparison_key=comparison_key, generated_at="2026-08-22T00:00:00+08:00")
     assert result.execution_status is PipelineExecutionStatus.COMPLETED
-    assert result.result_contract.record_set == ({"customer_id": "c1", "customer_name": "A", "current_period_impression_count": Decimal("12"), "impression_change_count": Decimal("10")}, {"customer_id": "c3", "customer_name": "C", "current_period_impression_count": Decimal("0"), "impression_change_count": Decimal("-3")})
+    assert result.result_contract.record_set == ({"customer_id": "c1", "customer_name": "A", "current_period_impression_count": Decimal("1200000"), "comparison_period_impression_count": Decimal("200000"), "impression_change_count": Decimal("1000000"), "ranking_measure": Decimal("1200000"), "customer_rank": 1},)
+    assert result.result_contract.context_values["applied_output_limit"] == 2
 
 
 def test_product_executor_rejects_ambiguous_route(tmp_path):
     result = ProductSellThroughExecutor(InMemoryMetricStore()).execute(run=_run({}), pipeline_run_id="BAD", product="Unknown", rules=_rules(), upstream=None, generated_at="2026-08-22T00:00:00+08:00")
     assert result.execution_status is PipelineExecutionStatus.BLOCKED
     assert result.error_code == "STAGE3C_PRODUCT_ROUTE_AMBIGUOUS"
+
+
+def test_full_site_uses_complete_rows_except_available_and_mapping_fallback(tmp_path):
+    key = _key(FULL_SITE.dataset_id)
+    rows = [{"广告位ID": "off", "是否VIP": "vip", "库存": "10", "禁用库存": "1", "品牌商广整体投放库存": "2", "效果投放库存": "3"}, {"广告位ID": "missing", "是否VIP": "vip", "库存": "20", "禁用库存": "2", "品牌商广整体投放库存": "4", "效果投放库存": "5"}, {"广告位ID": "special", "是否VIP": "vip", "库存": "30", "禁用库存": "3", "品牌商广整体投放库存": "6", "效果投放库存": "7"}, {"广告位ID": "special", "是否VIP": "非vip", "库存": "40", "禁用库存": "4", "品牌商广整体投放库存": "8", "效果投放库存": "9"}]
+    path = _input(tmp_path, "full-scope", rows)
+    rules = _rules()
+    rules = LocalRuleBindings(versions=rules.versions, commercial_sellability_by_placement={"off": False}, special_placement_ids=frozenset({"special"}), product_by_placement_id=rules.product_by_placement_id, product_route_by_name=rules.product_route_by_name, customer_analysis_by_product=rules.customer_analysis_by_product)
+    result = InventoryPipelineExecutor(FULL_SITE, _Runtime({key: path}), InMemoryMetricStore()).execute(run=_run({key: _Entry("fixture://full")}), pipeline_run_id="FULL", input_key=key, generated_at="2026-08-22T00:00:00+08:00", rules=rules)
+    assert result.execution_status is PipelineExecutionStatus.COMPLETED
+    assert result.result_contract.field("gross_inventory_count").value == Decimal("100")
+    assert result.result_contract.field("available_inventory_count").value == Decimal("54")
+
+
+def test_customer_negative_selection_excludes_duplicates_conflicts_and_applies_limit():
+    records = CustomerChangeAnalysisExecutor._compare(
+        [{"客户ID": "a", "客户名": "A", "曝光量": "0"}, {"客户ID": "dup", "客户名": "D", "曝光量": "0"}, {"客户ID": "dup", "客户名": "D", "曝光量": "0"}, {"客户ID": "conflict", "客户名": "Now", "曝光量": "0"}],
+        [{"客户ID": "a", "客户名": "A", "曝光量": "3000000"}, {"客户ID": "dup", "客户名": "D", "曝光量": "2000000"}, {"客户ID": "conflict", "客户名": "Before", "曝光量": "2000000"}, {"客户ID": "small", "客户名": "S", "曝光量": "999999"}],
+        "negative_sell_through_change", 1,
+    )
+    assert records == [{"customer_id": "a", "customer_name": "A", "current_period_impression_count": Decimal("0"), "comparison_period_impression_count": Decimal("3000000"), "impression_change_count": Decimal("-3000000"), "ranking_measure": Decimal("3000000"), "customer_rank": 1}]
+
+
+def test_dau_composite_contract_contains_daily_records_and_blocks_invalid_coverage(tmp_path):
+    key = _key("DS_NOVABI_PLATFORM_DAU")
+    valid = _input(tmp_path, "dau-valid", [{"日期": f"2026-08-{day:02d}", "全平台日活跃用户数": "70"} for day in range(17, 24)])
+    run = _run({key: _Entry("fixture://dau")})
+    result = PlatformDauExecutor(_Runtime({key: valid}), InMemoryMetricStore()).execute(run=run, pipeline_run_id="DAU_FULL", input_key=key, generated_at="2026-08-22T00:00:00+08:00")
+    assert len(result.result_contract.record_set) == 7
+    assert result.result_contract.record_set[0]["platform_scope"] == "full_platform"
+    assert result.result_contract.field("weekly_average_dau").unit == "user"
+    invalid = _input(tmp_path, "dau-invalid", [{"日期": "2026-08-17", "全平台日活跃用户数": "0"}] * 7)
+    blocked = PlatformDauExecutor(_Runtime({key: invalid}), InMemoryMetricStore()).execute(run=run, pipeline_run_id="DAU_BAD", input_key=key, generated_at="2026-08-22T00:00:00+08:00")
+    assert blocked.execution_status is PipelineExecutionStatus.BLOCKED

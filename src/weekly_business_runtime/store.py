@@ -5,10 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
-from typing import Protocol
+from typing import Mapping, Protocol
 
 from .errors import MetricStoreError
 
@@ -23,6 +23,7 @@ class StoreReadKey:
     workflow_reporting_date: str
     business_context_id: str
     product_parameter: str = "not_applicable"
+    canonical_dimension_items: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -97,6 +98,7 @@ class MetricStoreRecord:
     generated_at: str
     lineage_references: tuple[str, ...]
     product_parameter: str = "not_applicable"
+    canonical_dimensions: Mapping[str, str] = field(default_factory=dict)
 
     @property
     def read_key(self) -> StoreReadKey:
@@ -107,6 +109,7 @@ class MetricStoreRecord:
             self.workflow_reporting_date,
             self.business_context_id,
             self.product_parameter,
+            tuple(sorted(self.canonical_dimensions.items())),
         )
 
     @property
@@ -350,7 +353,10 @@ class InMemoryMetricStore:
                 "STORE_WRITE_IDENTITY_MISMATCH",
                 "Every record in a Result Contract write set must share one business identity",
             )
-        if len({record.metric_variant_id for record in records}) != len(records):
+        if (
+            len({record.metric_variant_id for record in records}) != len(records)
+            and len({record.read_key for record in records}) != len(records)
+        ):
             raise MetricStoreError(
                 "STORE_WRITE_SET_DUPLICATE_METRIC",
                 "Result Contract write set contains duplicate Metric identities",
@@ -499,8 +505,11 @@ class SqliteMetricStore:
                     precision TEXT NOT NULL,
                     validation_status TEXT NOT NULL,
                     generated_at TEXT NOT NULL,
+                    CHECK (integer_only IN (0, 1)),
+                    CHECK (validation_status = 'passed'),
                     UNIQUE (store_id, store_asset_id, metric_variant_id,
-                        workflow_reporting_date, dimensions_json)
+                        metric_variant_version, reporting_period_start,
+                        reporting_period_end, dimensions_json)
                 )
                 """
             )
@@ -513,8 +522,11 @@ class SqliteMetricStore:
     @staticmethod
     def _dimensions(record: MetricStoreRecord) -> str:
         return json.dumps(
-            {"business_context_id": record.business_context_id, "product_parameter": record.product_parameter,
-             "lineage_references": list(record.lineage_references), "value_status": record.value_status},
+            {
+                "business_context_id": record.business_context_id,
+                "product_parameter": record.product_parameter,
+                **record.canonical_dimensions,
+            },
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
@@ -533,11 +545,15 @@ class SqliteMetricStore:
             current_revenue_cutoff_date=row["current_revenue_cutoff_date"],
             business_context_id=dimensions["business_context_id"],
             reporting_period=f"{row['reporting_period_start']}..{row['reporting_period_end']}",
-            value=Decimal(str(row["value_numeric"])), value_status=dimensions["value_status"],
+            value=Decimal(str(row["value_numeric"])), value_status="valid_value",
             numeric_semantics=row["numeric_semantics"], unit=row["unit"], precision=row["precision"],
             validation_status=row["validation_status"], generated_at=row["generated_at"],
-            lineage_references=tuple(dimensions["lineage_references"]),
+            lineage_references=(),
             product_parameter=dimensions["product_parameter"],
+            canonical_dimensions={
+                key: value for key, value in dimensions.items()
+                if key not in {"business_context_id", "product_parameter"}
+            },
         )
 
     @staticmethod
@@ -549,12 +565,24 @@ class SqliteMetricStore:
         with self._connect() as connection:
             rows = connection.execute(
                 """SELECT * FROM metric_results WHERE store_id = ? AND store_asset_id = ?
-                AND metric_variant_id = ? AND workflow_reporting_date = ?""",
-                (key.store_id, key.store_asset_id, key.metric_variant_id, key.workflow_reporting_date),
+                AND metric_variant_id = ?""",
+                (key.store_id, key.store_asset_id, key.metric_variant_id),
             ).fetchall()
         return tuple(
             record for row in rows if (record := self._record_from_row(row)).read_key == key
         )
+
+    def _physical_matches(self, record: MetricStoreRecord) -> tuple[MetricStoreRecord, ...]:
+        start, end = record.reporting_period.split("..", 1)
+        with self._connect() as connection:
+            rows = connection.execute(
+                """SELECT * FROM metric_results WHERE store_id = ? AND store_asset_id = ?
+                AND metric_variant_id = ? AND metric_variant_version = ?
+                AND reporting_period_start = ? AND reporting_period_end = ? AND dimensions_json = ?""",
+                (record.store_id, record.store_asset_id, record.metric_variant_id,
+                 record.metric_variant_version, start, end, self._dimensions(record)),
+            ).fetchall()
+        return tuple(self._record_from_row(row) for row in rows)
 
     def read_exact(self, key: StoreReadKey) -> MetricStoreRecord:
         records = self._matching_records(key)
@@ -594,7 +622,7 @@ class SqliteMetricStore:
         if not records:
             raise MetricStoreError("STORE_WRITE_SET_INCOMPLETE", "Validated write set is empty")
         identities = {record.write_identity for record in records}
-        if len(identities) != 1 or len({record.metric_variant_id for record in records}) != len(records):
+        if len(identities) != 1:
             raise MetricStoreError("STORE_WRITE_IDENTITY_MISMATCH", "Write set identity is not unique")
         for record in records:
             self._require_stage3c_asset(record)
@@ -602,12 +630,9 @@ class SqliteMetricStore:
                 raise MetricStoreError("STORE_WRITE_REQUIRES_VALIDATED_RESULT", "Only valid results may persist")
         identity = next(iter(identities))
         digest = _business_digest(records)
-        existing = tuple(
-            record for record in records for record in self._matching_records(record.read_key)
-            if record.write_identity == identity
-        )
+        existing = tuple(item for record in records for item in self._physical_matches(record))
         if existing:
-            if _business_digest(existing) != digest:
+            if len(existing) != len(records) or _business_digest(existing) != digest:
                 raise MetricStoreError("STORE_DUPLICATE_CONFLICT", "Existing SQLite Result set conflicts")
             return StoreWritePlan(identity, records, digest, True, physical_write_context)
         return StoreWritePlan(identity, records, digest, False, physical_write_context)

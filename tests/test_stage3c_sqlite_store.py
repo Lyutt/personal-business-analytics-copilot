@@ -1,3 +1,4 @@
+import sqlite3
 from dataclasses import replace
 from decimal import Decimal
 
@@ -44,3 +45,19 @@ def test_stage3c_store_rejects_conflict_and_unapproved_asset(tmp_path):
         store.preflight_write((replace(original, value=Decimal("2"), result_id="CONFLICT"),))
     with pytest.raises(MetricStoreError, match="outside Stage 3C"):
         store.preflight_write((replace(original, store_asset_id="STORE_ASSET_NOT_AUTHORIZED"),))
+
+
+def test_sqlite_canonical_key_ignores_lineage_and_uses_version_period_and_dimensions(tmp_path):
+    store = SqliteMetricStore(tmp_path / "metric_results.sqlite")
+    original = record("STORE_ASSET_WEEKLY_PLATFORM_DAU", product="not_applicable")
+    assert store.verify_write(store.write_validated(store.preflight_write((original,))))
+    same = replace(original, result_id="OTHER", workflow_run_id="OTHER_RUN", pipeline_run_id="OTHER_PIPELINE", lineage_references=("fixture://other",))
+    assert store.write_validated(store.preflight_write((same,))).idempotent_replay
+    with pytest.raises(MetricStoreError, match="conflicts"):
+        store.preflight_write((replace(same, value=Decimal("2")),))
+    changed_version = replace(original, metric_variant_version="2.0.0")
+    store.write_validated(store.preflight_write((changed_version,)))
+    changed_period = replace(original, reporting_period="2026-08-24..2026-08-30")
+    store.write_validated(store.preflight_write((changed_period,)))
+    with sqlite3.connect(store.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM metric_results").fetchone()[0] == 3
