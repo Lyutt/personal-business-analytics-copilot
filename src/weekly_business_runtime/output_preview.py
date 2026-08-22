@@ -122,6 +122,7 @@ class WeeklyOutputAssembler:
         report_mode = context.get("report_mode")
         expected_template = self._template_for(report_mode)
         self._validate_template(template, expected_template)
+        self._validate_quarter_transition_bindings(report_mode)
         if configured_display_value not in {"92%", "93%", "94%", "95%"}:
             raise Stage3AError(
                 "STAGE3E_CONFIGURED_VALUE_UNRESOLVED", "Configured value is unresolved"
@@ -331,11 +332,25 @@ class WeeklyOutputAssembler:
         if report_mode != "quarter_transition_week":
             return False
         rules = self.mapping["quarter_transition_display_rules"]
+        if output_slot_id in {"SLOT_REVENUE_TECHNICAL", "SLOT_REVENUE_CTV"}:
+            return output_field_id not in rules["qtd_fields"]
         key = {
             "SLOT_REVENUE_SMART_SPEAKER": "smart_speaker",
             "SLOT_REVENUE_FAST_VERSION": "fast_version",
         }.get(output_slot_id)
         return key is not None and output_field_id in rules[key]["hide_fields"]
+
+    def _validate_quarter_transition_bindings(self, report_mode: object) -> None:
+        if report_mode != "quarter_transition_week":
+            return
+        rules = self.mapping["quarter_transition_display_rules"]
+        if rules["technical_and_ctv"]["display_previous_quarter_final_result"]:
+            raise Stage3AError(
+                "STAGE3E_QUARTER_TRANSITION_AUTHORITY_GAP",
+                "OM_WEEKLY_BUSINESS_REPORT_V1 requires previous-quarter-final "
+                "Technical/CTV output, but no distinct consumable Result Contract "
+                "field binding is registered",
+            )
 
     @staticmethod
     def _products(

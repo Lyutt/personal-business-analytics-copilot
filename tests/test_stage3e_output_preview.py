@@ -382,32 +382,37 @@ def test_integrated_synthetic_regular_preview_and_fixed_narrative(tmp_path):
     ]
 
 
-def test_quarter_transition_uses_exact_template_variant():
-    regular = _assemble()
-    preview = _assemble("quarter_transition_week")
-    assert (
-        preview["template_asset_id"]
-        == "TEMPLATE_WEEKLY_REPORT_QUARTER_TRANSITION_REVENUE_LOCAL_ONLY"
-    )
-    assert preview["sections"][0] == regular["sections"][0]
-    revenue = {
-        row["output_slot_id"]: row["values"] for row in preview["sections"][1]["rows"]
-    }
-    assert set(revenue["SLOT_REVENUE_TECHNICAL"]) == {
-        "qtd_performance_revenue",
-        "qtd_performance_revenue_yoy",
-        "qtd_executed_revenue",
+def test_quarter_transition_hides_technical_weekly_fields_and_fails_on_authority_gap():
+    assembler = WeeklyOutputAssembler(repository_root=ROOT)
+    for field_id in (
         "weekly_incremental_executed_revenue",
         "weekly_incremental_executed_revenue_wow",
         "weekly_incremental_executed_revenue_yoy",
-    }
-    assert set(revenue["SLOT_REVENUE_CTV"]) == {
+    ):
+        assert assembler._hidden_quarter_field(
+            "quarter_transition_week", "SLOT_REVENUE_TECHNICAL", field_id
+        )
+    for field_id in (
         "qtd_performance_revenue",
         "qtd_performance_revenue_yoy",
         "qtd_executed_revenue",
-    }
-    assert set(revenue["SLOT_REVENUE_SMART_SPEAKER"]) == {"qtd_executed_revenue"}
-    assert set(revenue["SLOT_REVENUE_FAST_VERSION"]) == {"qtd_executed_revenue"}
+    ):
+        assert not assembler._hidden_quarter_field(
+            "quarter_transition_week", "SLOT_REVENUE_TECHNICAL", field_id
+        )
+    for slot in ("SLOT_REVENUE_SMART_SPEAKER", "SLOT_REVENUE_FAST_VERSION"):
+        assert assembler._hidden_quarter_field(
+            "quarter_transition_week", slot, "weekly_executed_revenue"
+        )
+        assert assembler._hidden_quarter_field(
+            "quarter_transition_week", slot, "weekly_executed_revenue_wow"
+        )
+        assert not assembler._hidden_quarter_field(
+            "quarter_transition_week", slot, "qtd_executed_revenue"
+        )
+    with pytest.raises(Stage3AError) as exc_info:
+        _assemble("quarter_transition_week")
+    assert exc_info.value.code == "STAGE3E_QUARTER_TRANSITION_AUTHORITY_GAP"
 
 
 def test_product_rows_follow_explicit_bindings():
