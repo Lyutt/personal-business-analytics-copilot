@@ -282,10 +282,11 @@ def main() -> int:
     assert active_index["runtime_acceptance_authorized"] is False
     assert active_index["automatic_next_stage_allowed"] is False
     assert status_index["current_stage"] == (
-        "Stage 3B Revenue Expansion Implementation Completed - Exit Qualified; Later Stages Not Authorized"
+        "Stage 3D Weekly Workflow Runner Implementation Completed - "
+        "Exit Qualified; Later Stages Not Authorized"
     )
     assert status_index["phase_status"]["code_implementation"] == (
-        "stage3b_revenue_expansion_completed_exit_qualified"
+        "stage3d_weekly_workflow_runner_completed_exit_qualified"
     )
     stage3b = status_index["stage3b_revenue_expansion_implementation"]
     assert stage3b["scope_contract_id"] == "SCOPE_STAGE3B_REVENUE_EXPANSION_V1"
@@ -342,6 +343,43 @@ def main() -> int:
     assert qualification["provider_query_run"] is False
     assert qualification["runtime_acceptance_implication"] == "none"
     assert qualification["automatic_next_stage_allowed"] is False
+    stage3c = status_index["stage3c_weekly_executor_completion_implementation"]
+    assert stage3c["scope_contract_id"] == (
+        "SCOPE_STAGE3C_WEEKLY_EXECUTOR_COMPLETION_RETROSPECTIVE_V1"
+    )
+    assert stage3c["pre_implementation_scope_authorization_retroactively_claimed"] is False
+    assert stage3c["implementation_pull_request"] == 18
+    assert stage3c["implementation_merge_commit_sha"] == (
+        "71e035ba94be0ddd32cc359ab37312dcfab0120a"
+    )
+    assert stage3c["implementation_completed"] is True
+    assert stage3c["implementation_merged"] is True
+    assert stage3c["pipeline_executor_count"] == 8
+    assert stage3c["sqlite_metric_store_increment"]["store_asset_count"] == 7
+    assert stage3c["execution_boundaries"]["provider_query_implemented"] is False
+    assert stage3c["execution_boundaries"]["runner_or_orchestrator_implemented"] is False
+    assert stage3c["execution_boundaries"]["output_assembly_implemented"] is False
+    assert stage3c["runtime_acceptance_authorized"] is False
+    assert stage3c["stage3d_authorized"] is False
+    assert stage3c["automatic_next_stage_allowed"] is False
+    stage3d = status_index["stage3d_weekly_workflow_runner_implementation"]
+    assert stage3d["scope_contract_id"] == "SCOPE_STAGE3D_WEEKLY_WORKFLOW_RUNNER_V1"
+    assert stage3d["runner_entry_point"] == (
+        "weekly_business_runtime.WeeklyWorkflowRunner.execute"
+    )
+    assert stage3d["implementation_completed"] is True
+    assert stage3d["exit_qualification_passed"] is True
+    assert stage3d["stage3d_completed"] is True
+    assert stage3d["validation_evidence"]["stage3d_total_test_count"] == 13
+    assert stage3d["validation_evidence"]["combined_targeted_and_affected_test_count"] == 56
+    assert stage3d["provider_added"] is False
+    assert stage3d["scheduler_or_queue_added"] is False
+    assert stage3d["generic_dag_or_workflow_framework_added"] is False
+    assert stage3d["stage3_completed"] is False
+    assert stage3d["stage3e_authorized"] is False
+    assert stage3d["stage3f_authorized"] is False
+    assert stage3d["runtime_acceptance_authorized"] is False
+    assert stage3d["automatic_next_stage_allowed"] is False
     revenue_store = next(
         item
         for item in store_registry["metric_result_stores"]

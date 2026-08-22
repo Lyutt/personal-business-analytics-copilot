@@ -1,21 +1,23 @@
 config_type: business_asset_status_index
-index_version: 1.0.1
+index_version: 1.2.0
 status: synchronized
-assessment_date: 2026-08-20
-last_semantic_sync_date: 2026-08-20
+assessment_date: 2026-08-22
+last_semantic_sync_date: 2026-08-22
 design_asset_closure_review_date: 2026-08-09
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-current_stage: Stage 3B Revenue Expansion Implementation Completed - Exit Qualified; Later Stages Not Authorized
+current_stage: Stage 3D Weekly Workflow Runner Implementation Completed - Exit Qualified; Later Stages Not Authorized
 
 phase_status:
   phase_1: completed_and_retained_as_historical_design_baseline
   phase_1_5_business_asset_initialization: completed_for_weekly_workflow_p0_scope
   phase_1_5_final_acceptance: passed
-  code_implementation: stage3b_revenue_expansion_completed_exit_qualified
+  code_implementation: stage3d_weekly_workflow_runner_completed_exit_qualified
   stage_2_5_governance_sync: synchronized
-  data_engine_business_execution: stage3b_revenue_expansion_completed_exit_qualified
+  data_engine_business_execution: all_12_weekly_pipeline_executors_completed_and_merged
   stage_3a_ctv_vertical_slice: completed_and_merged
   stage_3b_revenue_expansion: implementation_completed_exit_qualified
+  stage_3c_weekly_executor_completion: completed_and_merged_retrospectively_reconciled
+  stage_3d_weekly_workflow_runner: implementation_completed_exit_qualified
   local_real_data_calculation_qualification: passed_for_calculation_scope_only
   end_to_end_runtime_acceptance: conditional
 
@@ -102,6 +104,10 @@ scope_boundaries:
   mvp_recovery_mode: rerun_pipeline_from_start
   initial_mvp_pipeline_count_with_sequential_execution: 12
   initial_mvp_pipeline_count_with_rerun_from_start: 12
+  weekly_pipeline_executor_implementation_count: 12
+  weekly_pipeline_executor_implementation_status: completed_and_merged
+  stage3c_non_revenue_pipeline_executor_count: 8
+  stage3c_shared_sqlite_store_asset_count: 7
   development_complexity_reduction: true
   code_implementation_owner_approved: true
   code_implementation_start: stage2_acquisition_runtime_foundation_completed_and_merged
@@ -144,6 +150,8 @@ scope_boundaries:
 
 source_of_truth_order:
   - phase1_5/assets/readiness/status_index.yaml
+  - phase1_5/assets/readiness/stage3d_weekly_workflow_runner_exact_scope.yaml
+  - phase1_5/assets/readiness/stage3c_weekly_executor_completion_retrospective_scope.yaml
   - phase1_5/assets/readiness/stage3b_revenue_expansion_exact_scope.yaml
   - phase1_5/assets/readiness/implementation_baseline.yaml
   - phase1_5/assets/readiness/code_implementation_readiness_gate.yaml
@@ -265,7 +273,7 @@ stage3a_ctv_vertical_slice_implementation:
   automatic_next_stage_allowed: false
 
 current_next_stage_boundary:
-  status: stage3b_completed_later_stages_not_authorized
+  status: stage3d_completed_exit_qualified_later_stages_not_authorized
   stage3b_scope_contract_registered: true
   stage3b_scope_contract_id: SCOPE_STAGE3B_REVENUE_EXPANSION_V1
   stage3b_scope_contract_version: 1.0.0
@@ -278,6 +286,30 @@ current_next_stage_boundary:
   stage3b_implementation_completed: true
   stage3b_exit_qualification_passed: true
   stage3b_completed: true
+  stage3c_scope_contract_registered: true
+  stage3c_scope_contract_id: SCOPE_STAGE3C_WEEKLY_EXECUTOR_COMPLETION_RETROSPECTIVE_V1
+  stage3c_scope_contract_version: 1.0.0
+  stage3c_scope_contract_status: retrospectively_registered_completed_and_merged
+  stage3c_scope_contract_source: phase1_5/assets/readiness/stage3c_weekly_executor_completion_retrospective_scope.yaml
+  stage3c_pre_implementation_scope_authorization_retroactively_claimed: false
+  stage3c_retrospective_registration_authorized: true
+  stage3c_reconciliation_authorization_date: 2026-08-22
+  stage3c_implementation_completed: true
+  stage3c_implementation_merged: true
+  stage3c_retrospective_exit_assessment_passed: true
+  stage3d_scope_contract_registered: true
+  stage3d_scope_contract_id: SCOPE_STAGE3D_WEEKLY_WORKFLOW_RUNNER_V1
+  stage3d_scope_contract_version: 1.0.0
+  stage3d_scope_contract_status: implementation_completed_exit_qualified
+  stage3d_scope_contract_source: phase1_5/assets/readiness/stage3d_weekly_workflow_runner_exact_scope.yaml
+  stage3d_authorized: true
+  stage3d_authorization_date: 2026-08-22
+  stage3d_implementation_started: true
+  stage3d_implementation_completed: true
+  stage3d_exit_qualification_passed: true
+  stage3d_completed: true
+  stage3e_authorized: false
+  stage3f_authorized: false
   runtime_acceptance_status: not_started
   separate_owner_authorization_required: true
   automatic_next_stage_allowed: false
@@ -452,6 +484,126 @@ stage3b_revenue_expansion_implementation:
     scheduler_or_queue_authorized: false
     draft_or_send_authorized: false
     cutover_authorized: false
+
+stage3c_weekly_executor_completion_implementation:
+  status: completed_and_merged_retrospectively_reconciled
+  scope_contract_id: SCOPE_STAGE3C_WEEKLY_EXECUTOR_COMPLETION_RETROSPECTIVE_V1
+  scope_contract_version: 1.0.0
+  scope_contract_source: phase1_5/assets/readiness/stage3c_weekly_executor_completion_retrospective_scope.yaml
+  retrospective_registration_authorized: true
+  reconciliation_authorization_date: 2026-08-22
+  pre_implementation_scope_authorization_retroactively_claimed: false
+  implementation_pull_request: 18
+  implementation_merge_commit_sha: 71e035ba94be0ddd32cc359ab37312dcfab0120a
+  merged_to: main
+  implementation_completed: true
+  implementation_merged: true
+  implementation_code_changed: true
+  retrospective_exit_assessment_status: passed_for_merged_stage3c_implementation_scope_only
+  pipeline_executor_count: 8
+  pipeline_ids:
+    - PL_INVENTORY_FULL_SITE_WEEKLY
+    - PL_INVENTORY_PATCH_WEEKLY
+    - PL_INVENTORY_NON_PATCH_PRODUCT_WEEKLY
+    - PL_ADVERTISING_BRAND_MOMENT_DELIVERY_WEEKLY
+    - PL_INVENTORY_BRAND_MOMENT_SELL_THROUGH_WEEKLY
+    - PL_USER_ANALYTICS_PLATFORM_DAU_WEEKLY
+    - PL_ADVERTISING_PRODUCT_CUSTOMER_CHANGE_ANALYSIS
+    - PL_INVENTORY_PRODUCT_SELL_THROUGH_WEEKLY
+  sqlite_metric_store_increment:
+    status: implemented_and_synthetic_validated
+    provider: SQLite
+    table_name: metric_results
+    store_asset_count: 7
+    exact_post_write_verification_key: Stage3CPhysicalReadKey
+    non_revenue_current_revenue_cutoff_date_written_as_sql_null: true
+    in_memory_not_applicable_sentinel_restored_on_read: true
+    configured_display_values_table_implemented: false
+    local_runtime_store_initialized: false
+  execution_boundaries:
+    manifest_or_exact_upstream_result_binding_required: true
+    missing_required_result_context_action: fail_closed
+    prior_missing_ambiguous_invalid_action: registered_repair_failure_warning_or_pause
+    valid_prior_zero_is_missing: false
+    provider_query_implemented: false
+    runner_or_orchestrator_implemented: false
+    output_assembly_implemented: false
+  validation_evidence:
+    targeted_stage3c_and_affected_revenue_test_count: 43
+    targeted_test_status: passed
+    scoped_ruff_status: passed
+    python_compile_status: passed
+    asset_integrity_status: passed
+    repository_safety_status: passed
+    git_diff_check_status: passed
+    real_data_qualification_reexecuted: false
+  explicit_exclusions_unchanged: true
+  runtime_acceptance_authorized: false
+  provider_authorized: false
+  scheduler_or_queue_authorized: false
+  draft_or_send_authorized: false
+  cutover_authorized: false
+  baseline_promotion_or_refreeze_authorized: false
+  stage3d_authorized: false
+  automatic_next_stage_allowed: false
+  auto_send: false
+
+stage3d_weekly_workflow_runner_implementation:
+  status: implementation_completed_exit_qualified
+  scope_contract_id: SCOPE_STAGE3D_WEEKLY_WORKFLOW_RUNNER_V1
+  scope_contract_version: 1.0.0
+  scope_contract_source: phase1_5/assets/readiness/stage3d_weekly_workflow_runner_exact_scope.yaml
+  owner_authorization_received: true
+  owner_authorization_date: 2026-08-22
+  implementation_authorized: true
+  implementation_started: true
+  implementation_completed: true
+  exit_qualification_passed: true
+  stage3d_completed: true
+  runner_entry_point: weekly_business_runtime.WeeklyWorkflowRunner.execute
+  registry_driven_activation: true
+  explicit_pipeline_run_identity_required: true
+  explicit_dependency_reference_validation: true
+  dependency_cycle_detection: true
+  deterministic_topological_order: true
+  deterministic_tie_break: existing_registry_mvp_order_then_explicit_product_binding_order
+  sequential_execution: true
+  existing_revenue_executors_reused: true
+  existing_stage3c_executors_reused: true
+  exact_validated_result_contract_handoff: true
+  failure_isolation: true
+  normal_omission_without_customer_executor_invocation: true
+  workflow_execution_summary_representation: immutable_mapping_of_existing_execution_results
+  new_business_completion_status_created: false
+  validation_evidence:
+    runner_targeted_test_count: 12
+    integrated_synthetic_qualification_count: 1
+    stage3d_total_test_count: 13
+    affected_stage3c_and_revenue_regression_test_count: 43
+    combined_targeted_and_affected_test_count: 56
+    combined_test_status: passed
+    lint_status: passed
+    python_compile_status: passed
+    asset_integrity_status: passed
+    weekly_runtime_consistency_status: passed
+    final_acceptance_status: passed
+    repository_safety_status: passed
+    git_diff_check_status: passed
+    real_data_qualification_executed: false
+  provider_added: false
+  scheduler_or_queue_added: false
+  generic_dag_or_workflow_framework_added: false
+  retry_checkpoint_or_resume_framework_added: false
+  weekly_output_or_draft_added: false
+  stage3f_qualification_executed: false
+  runtime_acceptance_authorized: false
+  cutover_authorized: false
+  baseline_promotion_or_refreeze_authorized: false
+  stage3_completed: false
+  stage3e_authorized: false
+  stage3f_authorized: false
+  automatic_next_stage_allowed: false
+  auto_send: false
 
 stage2_5_governance_and_implementation_boundary_sync:
   status: governance_synchronized

@@ -7,7 +7,7 @@
 - Weekly 与 Customer 可复用已登记输入资产，但彼此不产生文件、输出、Result Contract、Metric Store、Baseline 或 Gate 依赖。
 - 架构方向：已确认。
 - Phase 1：已确认。
-- 当前正式阶段：`Stage 3B Revenue Expansion Completed - Later Stages Not Authorized`。
+- 当前正式阶段：`Stage 3D Weekly Workflow Runner Implementation Completed - Exit Qualified; Later Stages Not Authorized`。
 - Stage 2 已在 PR #8 完成并合并；Pydantic V2 parity 与 Ruff Phase 1、2A、2B 已在 PR #9–#12 完成并合并；Stage 2.5 治理同步已在 PR #13 合并。
 - Stage 3A CTV vertical slice 已在 PR #14 完成并合并；CTV prior-year source authority 修正已在 PR #15 合并，Stage 3A CTV 专项测试 47/47 PASS。
 - Weekly Business Report Baseline 1.0.0与Customer Revenue Detail Baseline 1.0.0继续作为各自冻结历史基线，不因后续实现被追溯改写。
@@ -20,7 +20,9 @@
 - 当前已完成设计资产的Workflow：Weekly Business Report与独立的Customer Revenue Detail；Weekly 已完成 Acquisition Runtime Foundation 与 Stage 3A CTV vertical slice，Customer 仍保持独立未授权状态。
 - Runtime Contract v1.2 当前仅为 active execution/validation candidate，尚未晋级，也未重冻结为新的正式 Baseline。
 - Stage 3B Revenue Expansion 已完成 implementation 并通过 exit qualification。Technical 本地真实数据 calculation qualification 为 PASS；CTV 复用 Stage 3A PASS evidence；Smart Speaker / Fast Version real-data Source-to-Result qualification 未执行，且不属于 Stage 3B exit requirement。
-- Runtime Acceptance、Stage 3C、Provider、Scheduler、Draft/Send、Cutover 与 Baseline promotion/refreeze 均未授权，`auto_send=false`。
+- Stage 3C 已在 PR #18 完成其余 8 条 Weekly executor 与 7 个共享 SQLite Store Asset 最小实现；当前登记为基于 exact merged diff 的追溯治理对账，不追溯声称事前 scope authorization。
+- Stage 3D deterministic sequential Weekly Workflow Runner 已完成 implementation 与 exit qualification；复用既有 12 条 executor，并保持显式 activation、dependency、Result Contract handoff 与 failure-isolation 边界。
+- Runtime Acceptance、Stage 3E、Stage 3F、Provider、Scheduler、Draft/Send、Cutover 与 Baseline promotion/refreeze 均未授权，`auto_send=false`。
 
 ## 默认读取顺序
 
