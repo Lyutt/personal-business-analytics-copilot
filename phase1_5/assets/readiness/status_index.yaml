@@ -1,11 +1,11 @@
 config_type: business_asset_status_index
-index_version: 1.2.0
+index_version: 1.3.0
 status: synchronized
 assessment_date: 2026-08-22
 last_semantic_sync_date: 2026-08-22
 design_asset_closure_review_date: 2026-08-09
 workflow_id: WF_WEEKLY_BUSINESS_REPORT
-current_stage: Stage 3D Weekly Workflow Runner Implementation Completed - Exit Qualified; Later Stages Not Authorized
+current_stage: Stage 3D Weekly Workflow Runner Implementation Completed - Exit Qualified; Stage 3E Exact Scope Owner Confirmed - Implementation Not Authorized
 
 phase_status:
   phase_1: completed_and_retained_as_historical_design_baseline
@@ -18,6 +18,7 @@ phase_status:
   stage_3b_revenue_expansion: implementation_completed_exit_qualified
   stage_3c_weekly_executor_completion: completed_and_merged_retrospectively_reconciled
   stage_3d_weekly_workflow_runner: implementation_completed_exit_qualified
+  stage_3e_weekly_output_assembly_review_preview: exact_scope_owner_confirmed_implementation_not_authorized
   local_real_data_calculation_qualification: passed_for_calculation_scope_only
   end_to_end_runtime_acceptance: conditional
 
@@ -150,6 +151,7 @@ scope_boundaries:
 
 source_of_truth_order:
   - phase1_5/assets/readiness/status_index.yaml
+  - phase1_5/assets/readiness/stage3e_weekly_output_assembly_review_preview_exact_scope.yaml
   - phase1_5/assets/readiness/stage3d_weekly_workflow_runner_exact_scope.yaml
   - phase1_5/assets/readiness/stage3c_weekly_executor_completion_retrospective_scope.yaml
   - phase1_5/assets/readiness/stage3b_revenue_expansion_exact_scope.yaml
@@ -273,7 +275,7 @@ stage3a_ctv_vertical_slice_implementation:
   automatic_next_stage_allowed: false
 
 current_next_stage_boundary:
-  status: stage3d_completed_exit_qualified_later_stages_not_authorized
+  status: stage3e_exact_scope_owner_confirmed_implementation_not_authorized
   stage3b_scope_contract_registered: true
   stage3b_scope_contract_id: SCOPE_STAGE3B_REVENUE_EXPANSION_V1
   stage3b_scope_contract_version: 1.0.0
@@ -308,6 +310,18 @@ current_next_stage_boundary:
   stage3d_implementation_completed: true
   stage3d_exit_qualification_passed: true
   stage3d_completed: true
+  stage3e_scope_contract_registered: true
+  stage3e_scope_contract_id: SCOPE_STAGE3E_WEEKLY_OUTPUT_ASSEMBLY_REVIEW_PREVIEW_V1
+  stage3e_scope_contract_version: 1.0.0
+  stage3e_scope_contract_status: owner_confirmed_registered_implementation_not_authorized
+  stage3e_scope_contract_source: phase1_5/assets/readiness/stage3e_weekly_output_assembly_review_preview_exact_scope.yaml
+  stage3e_exact_scope_owner_confirmed: true
+  stage3e_scope_decision_date: 2026-08-22
+  stage3e_configured_display_value_resolver_in_scope: true
+  stage3e_configured_display_values_sqlite_persistence_in_scope: true
+  stage3e_implementation_authorized: false
+  stage3e_implementation_started: false
+  stage3e_exit_qualification_authorized: false
   stage3e_authorized: false
   stage3f_authorized: false
   runtime_acceptance_status: not_started
@@ -602,6 +616,41 @@ stage3d_weekly_workflow_runner_implementation:
   stage3_completed: false
   stage3e_authorized: false
   stage3f_authorized: false
+  automatic_next_stage_allowed: false
+  auto_send: false
+
+stage3e_weekly_output_assembly_review_preview_scope_registration:
+  status: exact_scope_owner_confirmed_implementation_not_authorized
+  scope_contract_id: SCOPE_STAGE3E_WEEKLY_OUTPUT_ASSEMBLY_REVIEW_PREVIEW_V1
+  scope_contract_version: 1.0.0
+  scope_contract_source: phase1_5/assets/readiness/stage3e_weekly_output_assembly_review_preview_exact_scope.yaml
+  owner_scope_decision_received: true
+  owner_scope_decision_date: 2026-08-22
+  registered_stage_name: Weekly Output Assembly and Review Preview
+  weekly_output_assembly_in_scope: true
+  review_preview_in_scope: true
+  configured_display_value_resolver_in_scope: true
+  configured_display_values_sqlite_persistence_in_scope: true
+  resolver_frozen_semantics:
+    policy_id: POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1
+    current_period_reuse: true
+    previous_period_read: true
+    consecutive_period_repeat_prohibited: true
+    conflicting_same_period_write_rejected: true
+  output_assembly_consumes_resolved_value_only: true
+  configured_display_state_is_metric_store: false
+  generic_state_store_added: false
+  repository_or_persistence_framework_added: false
+  outlook_draft_or_send_in_scope: false
+  provider_in_scope: false
+  scheduler_or_queue_in_scope: false
+  stage3f_qualification_in_scope: false
+  runtime_acceptance_in_scope: false
+  cutover_in_scope: false
+  baseline_promotion_or_refreeze_in_scope: false
+  implementation_authorized: false
+  implementation_started: false
+  exit_qualification_authorized: false
   automatic_next_stage_allowed: false
   auto_send: false
 

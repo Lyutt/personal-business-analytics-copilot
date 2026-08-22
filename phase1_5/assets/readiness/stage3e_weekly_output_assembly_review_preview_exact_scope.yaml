@@ -1,0 +1,174 @@
+config_type: stage_scope_contract
+scope_contract_id: SCOPE_STAGE3E_WEEKLY_OUTPUT_ASSEMBLY_REVIEW_PREVIEW_V1
+scope_contract_version: 1.0.0
+status: owner_confirmed_registered_implementation_not_authorized
+registration_date: 2026-08-22
+workflow_id: WF_WEEKLY_BUSINESS_REPORT
+stage: Stage 3E
+stage_name: Weekly Output Assembly and Review Preview
+owner: WORKFLOW_OWNER
+
+owner_decision:
+  exact_scope_owner_confirmed: true
+  decision_date: 2026-08-22
+  decision_classification: scope_authority_only
+  implementation_authorized: false
+  implementation_may_start: false
+  automatic_next_stage_allowed: false
+
+included_scope:
+  pipeline_business_execution_slices: []
+  execution_entry_boundary:
+    - Begin from the existing locked Workflow Run Context and immutable Stage 3D Workflow Execution Summary.
+    - Consume only exact validated current-Run Result Contracts and registered normal-omission, warning, blocked-scope, and lineage records.
+    - Resolve the configured display value through the minimum pre-assembly resolver before Output Assembly consumes it.
+    - Assemble only the registered Weekly Output Mapping into a review-only Preview with no Draft creation or external side effect.
+  reusable_stage3a_foundation:
+    - Existing locked Workflow Run Context and Run Input Manifest authority.
+    - Existing Result Contract models, field value statuses, Pipeline execution statuses, and failure-scope semantics.
+    - Existing Stage 3D immutable Workflow Execution Summary and exact Result Contract handoff.
+    - Existing Output Mapping, configured display-value Policy, External Asset reference, and SQLite schema contracts.
+  revenue_store_adapter:
+    applicability: reused_not_modified
+    store_id: STORE_WEEKLY_REVENUE_HISTORICAL
+    existing_behavior_regression_protected: true
+  frozen_contract_preservation:
+    business_semantics_modified: false
+    metric_definitions_modified: false
+    metric_variants_modified: false
+    result_contracts_modified: false
+    manifest_business_keys_modified: false
+    pipeline_registry_modified: false
+    metric_store_registry_modified: false
+    output_mapping_modified: false
+    configured_display_value_policy_modified: false
+    runtime_contract_candidate_modified: false
+  weekly_output_assembly:
+    output_mapping_id: OM_WEEKLY_BUSINESS_REPORT_V1
+    consumes_stage3d_workflow_execution_summary: true
+    consumes_exact_validated_current_run_result_contracts_only: true
+    consumes_resolved_configured_display_value_only: true
+    raw_dataset_read_allowed: false
+    metric_calculation_allowed: false
+    business_rule_evaluation_allowed: false
+    metric_variant_selection_allowed: false
+  review_preview:
+    review_only: true
+    outlook_draft_creation: false
+    publication_or_send: false
+    generated_runtime_artifacts_must_remain_outside_git: true
+  workflow_completion_status:
+    authority_source: phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml#workflow_completion_status
+    existing_statuses_only: [complete_draft, partial_draft, blocked]
+    new_completion_status_allowed: false
+    completion_status_does_not_create_outlook_draft: true
+  configured_display_value_pre_assembly_resolution:
+    policy_id: POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1
+    policy_source: phase1_5/assets/policies/POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1.yaml
+    scope_role: minimum_pre_assembly_resolver
+    frozen_policy_selection_only: true
+    first_period_selection_method: random_choice_from_policy_allowed_values
+    current_period_saved_value_precedence: reuse_without_reselection
+    previous_period_value_source: same_local_configured_display_value_state
+    consecutive_period_repeat_allowed: false
+    same_period_conflict_action: reject_write_notify_owner
+    output_assembly_performs_resolution: false
+    output_assembly_consumes_resolved_value_only: true
+  configured_display_value_persistence:
+    provider: SQLite
+    sqlite_file_reference: ${SHARED_WEEKLY_METRIC_STORE_SQLITE_LOCAL_ONLY}
+    table_name: configured_display_values
+    shares_sqlite_file_with_metric_results: true
+    schema_source: phase1_5/assets/metric_stores/metric_result_store_registry.yaml#mvp_physical_store_adapter_strategy.configured_display_value_state_schema
+    metric_result_store: false
+    metric_results_table_write: false
+    generic_state_store: false
+    repository_abstraction: false
+    persistence_framework: false
+    automatic_overwrite_allowed: false
+  presentation_contract:
+    regular_and_quarter_transition_variants_preserved: true
+    explicit_section_and_slot_order_preserved: true
+    explicit_result_field_bindings_preserved: true
+    fixed_customer_narrative_templates_preserved: true
+    registered_warning_and_fallback_display_preserved: true
+    local_template_version_and_anchor_validation_required: true
+    generic_dynamic_renderer_allowed: false
+
+explicit_exclusions:
+  - Outlook Draft creation
+  - Outlook Send
+  - Provider acquisition or capability validation
+  - Scheduler and Queue
+  - Generic State Store
+  - Repository or persistence framework
+  - Metric Store expansion for configured display values
+  - Generic rendering, Output, or Workflow framework
+  - Stage 3F local real-data or end-to-end qualification
+  - Runtime Acceptance
+  - Cutover
+  - Baseline promotion or refreeze
+  - Customer Revenue Detail Workflow
+
+readiness_reconciliation:
+  output_mapping_authority_status: complete_and_gate_passed
+  result_contract_consumption_authority_status: complete
+  completion_and_failure_semantics_status: complete
+  configured_display_value_business_semantics_status: complete
+  configured_display_value_implementation_stage_ownership_status: resolved_by_owner_decision
+  local_template_and_rendering_technology_status: runtime_conditional
+  local_sqlite_bootstrap_status: runtime_conditional
+  implementation_readiness: ready_awaiting_separate_explicit_owner_implementation_authorization
+  owner_business_semantics_decision_required: false
+
+exit_criteria:
+  - Weekly Output Assembly consumes only exact validated current-Run Result Contracts from the Stage 3D execution summary.
+  - Existing completion status, warning, fallback, omission, product binding, section order, formatting, and fixed narrative semantics are preserved.
+  - The minimum configured display-value resolver implements only the frozen Policy selection, reuse, previous-period, non-repeat, and conflict semantics.
+  - Configured display-value persistence uses only the registered configured_display_values SQLite table and does not become a Metric Store or generic persistence abstraction.
+  - Output Assembly consumes the resolved configured value and does not select or persist it.
+  - Review Preview is produced without Outlook Draft creation, Send, publication, or external side effects.
+  - Synthetic Stage 3E tests and affected Stage 3D, Output Mapping, asset integrity, consistency, repository safety, and diff checks pass.
+  - Completion does not imply Stage 3 completion, Stage 3F authorization, Runtime Acceptance, Cutover, Production Ready, or baseline promotion/refreeze.
+
+referenced_authoritative_assets:
+  - phase1_5/assets/readiness/status_index.yaml
+  - phase1_5/assets/readiness/stage3d_weekly_workflow_runner_exact_scope.yaml
+  - phase1_5/assets/output_mappings/OM_WEEKLY_BUSINESS_REPORT_V1.yaml
+  - phase1_5/assets/output_mappings/OM_WEEKLY_BUSINESS_REPORT_OUTLOOK_DRAFT_V1.yaml
+  - phase1_5/assets/output_mappings/weekly_report_output_mapping_readiness_gate.yaml
+  - phase1_5/assets/execution/weekly_workflow_runtime_contracts_v1_2_candidate.yaml
+  - phase1_5/assets/pipelines/pipeline_registry.yaml
+  - phase1_5/assets/policies/POLICY_ORDER_OVERALL_IMPRESSION_COMPLETION_RATE_DISPLAY_V1.yaml
+  - phase1_5/assets/metric_stores/metric_result_store_registry.yaml
+  - phase1_5/assets/external_asset_references.yaml
+
+authorization:
+  stage3b_authorized: true
+  exact_scope_registered: true
+  exact_scope_owner_confirmed: true
+  implementation_authorized: false
+  implementation_may_start: false
+  implementation_started: false
+  exit_qualification_authorized: false
+  separate_explicit_owner_authorization_required: true
+  required_owner_authorization_statement: 我正式授权按照已登记的 Stage 3E exact scope 实施 Weekly Output Assembly and Review Preview
+  stage3f_authorized: false
+  outlook_draft_or_send_authorized: false
+  provider_authorized: false
+  scheduler_or_queue_authorized: false
+  runtime_acceptance_authorized: false
+  cutover_authorized: false
+  baseline_promotion_or_refreeze_authorized: false
+  merge_authorized: false
+  automatic_next_stage_allowed: false
+
+constraints:
+  scope_registration_does_not_authorize_implementation: true
+  output_mapping_gate_does_not_authorize_implementation: true
+  stage3d_completion_does_not_authorize_stage3e_implementation: true
+  configured_display_value_policy_may_not_be_extended: true
+  configured_display_value_state_may_not_be_reclassified_as_metric_result: true
+  generated_preview_must_not_enter_git: true
+  auto_send: false
+  auto_merge: false
